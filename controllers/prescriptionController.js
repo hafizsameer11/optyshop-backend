@@ -160,3 +160,46 @@ exports.deletePrescription = asyncHandler(async (req, res) => {
 
   return success(res, 'Prescription deleted successfully');
 });
+
+// @desc    Validate prescription (Admin)
+// @route   POST /api/prescriptions/validate
+// @access  Private/Admin
+exports.validatePrescription = asyncHandler(async (req, res) => {
+  const { od_sphere, os_sphere, od_cylinder, os_cylinder, pd_binocular } = req.body;
+  const issues = [];
+
+  // Check for extreme power
+  if (Math.abs(od_sphere) > 10 || Math.abs(os_sphere) > 10) {
+    issues.push('Sphere power is unusually high (> 10.00)');
+  }
+
+  // Check for cylinder
+  if (Math.abs(od_cylinder) > 6 || Math.abs(os_cylinder) > 6) {
+    issues.push('Cylinder power is unusually high (> 6.00)');
+  }
+
+  // Check PD
+  if (pd_binocular && (pd_binocular < 50 || pd_binocular > 80)) {
+    issues.push('PD is outside typical adult range (50-80mm)');
+  }
+
+  if (issues.length > 0) {
+    return success(res, 'Prescription validation completed with warnings', { valid: false, issues });
+  }
+
+  return success(res, 'Prescription appears valid', { valid: true });
+});
+
+// @desc    Verify prescription (Admin)
+// @route   PUT /api/prescriptions/:id/verify
+// @access  Private/Admin
+exports.verifyPrescription = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const prescription = await prisma.prescription.update({
+    where: { id: parseInt(id) },
+    data: { is_verified: true }
+  });
+
+  return success(res, 'Prescription verified successfully', { prescription });
+});

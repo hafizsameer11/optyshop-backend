@@ -10,10 +10,20 @@ const {
   updateUser,
   createCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  createFrameSize,
+  updateFrameSize,
+  deleteFrameSize,
+  createLensType,
+  updateLensType,
+  deleteLensType,
+  createLensCoating,
+  updateLensCoating,
+  deleteLensCoating,
+  bulkUploadProducts
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadMultiple } = require('../middleware/upload');
+const { uploadMultiple, uploadSingle, uploadFields } = require('../middleware/upload');
 const {
   validateCreateProduct,
   validateUpdateProduct
@@ -27,9 +37,33 @@ router.use(authorize('admin'));
 router.get('/dashboard', getDashboardStats);
 
 // Products
-router.post('/products', uploadMultiple('images', 5), validateCreateProduct, createProduct);
-router.put('/products/:id', uploadMultiple('images', 5), validateUpdateProduct, updateProduct);
+router.post('/products',
+  uploadFields([{ name: 'images', maxCount: 5 }, { name: 'model_3d', maxCount: 1 }]),
+  validateCreateProduct,
+  createProduct
+);
+router.put('/products/:id',
+  uploadFields([{ name: 'images', maxCount: 5 }, { name: 'model_3d', maxCount: 1 }]),
+  validateUpdateProduct,
+  updateProduct
+);
 router.delete('/products/:id', deleteProduct);
+router.post('/products/bulk-upload', uploadSingle('file'), bulkUploadProducts);
+
+// Frame Sizes
+router.post('/frame-sizes', createFrameSize);
+router.put('/frame-sizes/:id', updateFrameSize);
+router.delete('/frame-sizes/:id', deleteFrameSize);
+
+// Lens Types
+router.post('/lens-types', createLensType);
+router.put('/lens-types/:id', updateLensType);
+router.delete('/lens-types/:id', deleteLensType);
+
+// Lens Coatings
+router.post('/lens-coatings', createLensCoating);
+router.put('/lens-coatings/:id', updateLensCoating);
+router.delete('/lens-coatings/:id', deleteLensCoating);
 
 // Orders
 router.get('/orders', getAllOrders);

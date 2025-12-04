@@ -1,4 +1,6 @@
 const opticalCalculations = require('../services/opticalCalculations');
+const prisma = require('../lib/prisma');
+const { uploadToS3, deleteFromS3 } = require('../config/aws');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 
@@ -122,5 +124,127 @@ exports.simulateARCoating = asyncHandler(async (req, res) => {
       colors: ['green', 'blue', 'purple'] // Typical AR coating colors
     }
   });
+});
+
+// ==================== SIMULATION CONFIG ====================
+
+// @desc    Get simulation config
+// @route   GET /api/simulations/config
+// @access  Private/Admin
+exports.getSimulationConfig = asyncHandler(async (req, res) => {
+  const configs = await prisma.simulationConfig.findMany({
+    where: { is_active: true }
+  });
+  return success(res, 'Simulation config retrieved', { configs });
+});
+
+// @desc    Update simulation config
+// @route   PUT /api/simulations/config
+// @access  Private/Admin
+exports.updateSimulationConfig = asyncHandler(async (req, res) => {
+  const { config_key, config_value, description, category } = req.body;
+
+  const config = await prisma.simulationConfig.upsert({
+    where: { config_key },
+    update: { config_value, description, category },
+    create: { config_key, config_value, description, category }
+  });
+
+  return success(res, 'Simulation config updated', { config });
+});
+
+// ==================== VTO ASSETS ====================
+
+// @desc    Get VTO assets
+// @route   GET /api/simulations/vto-assets
+// @access  Private/Admin
+exports.getVtoAssets = asyncHandler(async (req, res) => {
+  const { type } = req.query;
+  const where = { is_active: true };
+  if (type) where.asset_type = type;
+
+  const assets = await prisma.vtoAsset.findMany({ where });
+  return success(res, 'VTO assets retrieved', { assets });
+});
+
+// @desc    Create VTO asset
+// @route   POST /api/simulations/vto-assets
+// @access  Private/Admin
+exports.createVtoAsset = asyncHandler(async (req, res) => {
+  if (!req.file) return error(res, 'File is required', 400);
+
+  const { name, asset_type, description, metadata } = req.body;
+  const url = await uploadToS3(req.file, 'vto-assets');
+
+  const asset = await prisma.vtoAsset.create({
+    data: {
+      name,
+      asset_type,
+      file_url: url,
+      description,
+      metadata: metadata ? JSON.parse(metadata) : {}
+    }
+  });
+
+  return success(res, 'VTO asset created', { asset }, 201);
+});
+
+// @desc    Delete VTO asset
+// @route   DELETE /api/simulations/vto-assets/:id
+// @access  Private/Admin
+exports.deleteVtoAsset = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const asset = await prisma.vtoAsset.findUnique({ where: { id: parseInt(id) } });
+  if (!asset) return error(res, 'Asset not found', 404);
+
+  // Delete from S3
+  const key = asset.file_url.split('.com/')[1];
+  if (key) await deleteFromS3(key);
+
+  await prisma.vtoAsset.delete({ where: { id: parseInt(id) } });
+  return success(res, 'VTO asset deleted');
+});
+
+// ==================== VTO CONFIGS ====================
+
+// @desc    Get VTO configs
+// @route   GET /api/simulations/vto-configs
+// @access  Private/Admin
+exports.getVtoConfigs = asyncHandler(async (req, res) => {
+  const configs = await prisma.vtoConfig.findMany({ where: { is_active: true } });
+  return success(res, 'VTO configs retrieved', { configs });
+});
+
+// @desc    Create VTO config
+// @route   POST /api/simulations/vto-configs
+// @access  Private/Admin
+exports.createVtoConfig = asyncHandler(async (req, res) => {
+  const configData = { ...req.body };
+  if (!configData.slug) {
+    configData.slug = configData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  }
+  const config = await prisma.vtoConfig.create({ data: configData });
+  return success(res, 'VTO config created', { config }, 201);
+});
+
+// @desc    Update VTO config
+// @route   PUT /api/simulations/vto-configs/:id
+// @access  Private/Admin
+exports.updateVtoConfig = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const config = await prisma.vtoConfig.update({
+    where: { id: parseInt(id) },
+    data: req.body
+  });
+  return success(res, 'VTO config updated', { config });
+});
+
+// @desc    Delete VTO config
+// @route   DELETE /api/simulations/vto-configs/:id
+// @access  Private/Admin
+exports.deleteVtoConfig = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.vtoConfig.delete({ where: { id: parseInt(id) } });
+  return success(res, 'VTO config deleted');
 });
 

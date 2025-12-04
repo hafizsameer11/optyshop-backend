@@ -26,8 +26,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/register",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "register"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
 						}
 					}
 				},
@@ -47,8 +53,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/login",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "login"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
 						}
 					}
 				},
@@ -64,8 +76,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/auth/me",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "me"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
 						}
 					}
 				},
@@ -85,8 +103,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/refresh",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "refresh"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
 						}
 					}
 				},
@@ -110,8 +134,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/profile",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "profile"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
 						}
 					}
 				},
@@ -135,8 +165,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auth/change-password",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "change-password"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"change-password"
+							]
 						}
 					}
 				},
@@ -152,8 +188,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/auth/logout",
-							"host": ["{{base_url}}"],
-							"path": ["api", "auth", "logout"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
 						}
 					}
 				}
@@ -169,8 +211,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/products?page=1&limit=12&frameShape=round&frameMaterial=acetate&minPrice=50&maxPrice=200",
-							"host": ["{{base_url}}"],
-							"path": ["api", "products"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products"
+							],
 							"query": [
 								{
 									"key": "page",
@@ -207,8 +254,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/products/featured?limit=8",
-							"host": ["{{base_url}}"],
-							"path": ["api", "products", "featured"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"featured"
+							],
 							"query": [
 								{
 									"key": "limit",
@@ -225,8 +278,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/products/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "products", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"1"
+							]
 						}
 					}
 				},
@@ -237,8 +296,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/products/slug/classic-round-frame",
-							"host": ["{{base_url}}"],
-							"path": ["api", "products", "slug", "classic-round-frame"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"slug",
+								"classic-round-frame"
+							]
 						}
 					}
 				},
@@ -249,8 +315,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/products/1/related?limit=4",
-							"host": ["{{base_url}}"],
-							"path": ["api", "products", "1", "related"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"1",
+								"related"
+							],
 							"query": [
 								{
 									"key": "limit",
@@ -272,8 +345,13 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/categories?includeProducts=true",
-							"host": ["{{base_url}}"],
-							"path": ["api", "categories"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories"
+							],
 							"query": [
 								{
 									"key": "includeProducts",
@@ -290,8 +368,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/categories/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "categories", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"1"
+							]
 						}
 					}
 				},
@@ -302,8 +386,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/categories/slug/prescription-glasses",
-							"host": ["{{base_url}}"],
-							"path": ["api", "categories", "slug", "prescription-glasses"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"slug",
+								"prescription-glasses"
+							]
 						}
 					}
 				}
@@ -324,8 +415,13 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/cart",
-							"host": ["{{base_url}}"],
-							"path": ["api", "cart"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cart"
+							]
 						}
 					}
 				},
@@ -349,8 +445,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/cart/items",
-							"host": ["{{base_url}}"],
-							"path": ["api", "cart", "items"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cart",
+								"items"
+							]
 						}
 					}
 				},
@@ -374,8 +476,15 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/cart/items/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "cart", "items", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cart",
+								"items",
+								"1"
+							]
 						}
 					}
 				},
@@ -391,8 +500,15 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/cart/items/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "cart", "items", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cart",
+								"items",
+								"1"
+							]
 						}
 					}
 				},
@@ -408,8 +524,13 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/cart",
-							"host": ["{{base_url}}"],
-							"path": ["api", "cart"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cart"
+							]
 						}
 					}
 				}
@@ -438,8 +559,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/orders",
-							"host": ["{{base_url}}"],
-							"path": ["api", "orders"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders"
+							]
 						}
 					}
 				},
@@ -455,8 +581,13 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/orders?page=1&limit=10&status=pending",
-							"host": ["{{base_url}}"],
-							"path": ["api", "orders"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders"
+							],
 							"query": [
 								{
 									"key": "page",
@@ -486,8 +617,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/orders/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "orders", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"1"
+							]
 						}
 					}
 				},
@@ -503,8 +640,15 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/orders/1/cancel",
-							"host": ["{{base_url}}"],
-							"path": ["api", "orders", "1", "cancel"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"1",
+								"cancel"
+							]
 						}
 					}
 				}
@@ -525,8 +669,13 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/prescriptions",
-							"host": ["{{base_url}}"],
-							"path": ["api", "prescriptions"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions"
+							]
 						}
 					}
 				},
@@ -550,8 +699,13 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/prescriptions",
-							"host": ["{{base_url}}"],
-							"path": ["api", "prescriptions"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions"
+							]
 						}
 					}
 				},
@@ -567,8 +721,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/prescriptions/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "prescriptions", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions",
+								"1"
+							]
 						}
 					}
 				},
@@ -592,8 +752,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/prescriptions/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "prescriptions", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions",
+								"1"
+							]
 						}
 					}
 				},
@@ -609,8 +775,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/prescriptions/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "prescriptions", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions",
+								"1"
+							]
 						}
 					}
 				}
@@ -635,8 +807,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/pd",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "pd"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"pd"
+							]
 						}
 					}
 				},
@@ -656,8 +834,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/pupillary-height",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "pupillary-height"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"pupillary-height"
+							]
 						}
 					}
 				},
@@ -677,8 +861,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/lens-thickness",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "lens-thickness"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"lens-thickness"
+							]
 						}
 					}
 				},
@@ -698,8 +888,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/kids-lens-recommendation",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "kids-lens-recommendation"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"kids-lens-recommendation"
+							]
 						}
 					}
 				},
@@ -719,8 +915,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/lifestyle-recommendation",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "lifestyle-recommendation"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"lifestyle-recommendation"
+							]
 						}
 					}
 				},
@@ -740,8 +942,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/photochromic",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "photochromic"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"photochromic"
+							]
 						}
 					}
 				},
@@ -761,8 +969,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/simulations/ar-coating",
-							"host": ["{{base_url}}"],
-							"path": ["api", "simulations", "ar-coating"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"ar-coating"
+							]
 						}
 					}
 				}
@@ -783,8 +997,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/admin/dashboard",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "dashboard"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"dashboard"
+							]
 						}
 					}
 				},
@@ -830,8 +1050,14 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/products",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "products"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"products"
+							]
 						}
 					}
 				},
@@ -855,8 +1081,15 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/products/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "products", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"products",
+								"1"
+							]
 						}
 					}
 				},
@@ -872,8 +1105,15 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/admin/products/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "products", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"products",
+								"1"
+							]
 						}
 					}
 				},
@@ -889,8 +1129,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/admin/orders?page=1&limit=20",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "orders"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"orders"
+							],
 							"query": [
 								{
 									"key": "page",
@@ -924,8 +1170,16 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/orders/1/status",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "orders", "1", "status"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"orders",
+								"1",
+								"status"
+							]
 						}
 					}
 				},
@@ -941,8 +1195,14 @@
 						],
 						"url": {
 							"raw": "{{base_url}}/api/admin/users?page=1&limit=20",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "users"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users"
+							],
 							"query": [
 								{
 									"key": "page",
@@ -976,8 +1236,15 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/users/1",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "users", "1"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"1"
+							]
 						}
 					}
 				},
@@ -1001,8 +1268,365 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/categories",
-							"host": ["{{base_url}}"],
-							"path": ["api", "admin", "categories"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"categories"
+							]
+						}
+					}
+				},
+				{
+					"name": "Bulk Upload Products",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/products/bulk-upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"products",
+								"bulk-upload"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Category\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/categories/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"categories",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Category",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/categories/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"categories",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Frame Size",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Medium\",\n  \"width_mm\": 135\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/frame-sizes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"frame-sizes"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Frame Size",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"width_mm\": 138\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/frame-sizes/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"frame-sizes",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Frame Size",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/frame-sizes/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"frame-sizes",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Lens Type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Single Vision\",\n  \"description\": \"Standard single vision lens\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/lens-types",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"lens-types"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Lens Type",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Updated description\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/lens-types/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"lens-types",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Lens Type",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/lens-types/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"lens-types",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Lens Coating",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Anti-Reflective\",\n  \"price\": 30.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/lens-coatings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"lens-coatings"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Lens Coating",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"price\": 35.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/lens-coatings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"lens-coatings",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Lens Coating",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/lens-coatings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"lens-coatings",
+								"1"
+							]
 						}
 					}
 				}
@@ -1018,8 +1642,12 @@
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/health",
-							"host": ["{{base_url}}"],
-							"path": ["health"]
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
 						}
 					}
 				}
@@ -1049,4 +1677,3 @@
 		}
 	]
 }
-

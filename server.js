@@ -18,6 +18,9 @@ const prescriptionRoutes = require('./routes/prescriptions');
 const simulationRoutes = require('./routes/simulations');
 const categoryRoutes = require('./routes/categories');
 const adminRoutes = require('./routes/admin');
+const marketingRoutes = require('./routes/marketing');
+const cmsRoutes = require('./routes/cms');
+const analyticsRoutes = require('./routes/analytics');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -70,6 +73,26 @@ app.get('/health', (req, res) => {
   });
 });
 
+// API base route
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'OptyShop API is running',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      products: '/api/products',
+      cart: '/api/cart',
+      orders: '/api/orders',
+      prescriptions: '/api/prescriptions',
+      simulations: '/api/simulations',
+      categories: '/api/categories',
+      admin: '/api/admin'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -79,6 +102,9 @@ app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/simulations', simulationRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/marketing', marketingRoutes);
+app.use('/api/cms', cmsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use((req, res) => {

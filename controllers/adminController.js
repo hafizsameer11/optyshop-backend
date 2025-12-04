@@ -2,6 +2,8 @@ const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { uploadToS3, deleteFromS3 } = require('../config/aws');
+const csv = require('csv-parser');
+const { Readable } = require('stream');
 
 // ==================== DASHBOARD ====================
 
@@ -74,6 +76,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
     productData.images = imageUrls;
   }
 
+  // Handle 3D model upload
+  if (req.files && req.files.model_3d) {
+    const url = await uploadToS3(req.files.model_3d[0], 'products/models');
+    productData.model_3d_url = url;
+  }
+
   // Generate slug if not provided
   if (!productData.slug) {
     productData.slug = productData.name
@@ -93,8 +101,26 @@ exports.createProduct = asyncHandler(async (req, res) => {
     productData.cost_price = parseFloat(productData.cost_price);
   }
 
+  // Handle variants
+  let variantsData = [];
+  if (productData.variants) {
+    try {
+      variantsData = typeof productData.variants === 'string'
+        ? JSON.parse(productData.variants)
+        : productData.variants;
+      delete productData.variants;
+    } catch (e) {
+      console.error('Error parsing variants:', e);
+    }
+  }
+
   const product = await prisma.product.create({
-    data: productData
+    data: {
+      ...productData,
+      variants: {
+        create: variantsData
+      }
+    }
   });
 
   return success(res, 'Product created successfully', { product }, 201);
@@ -120,6 +146,12 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       imageUrls.push(url);
     }
     productData.images = imageUrls;
+  }
+
+  // Handle 3D model upload
+  if (req.files && req.files.model_3d) {
+    const url = await uploadToS3(req.files.model_3d[0], 'products/models');
+    productData.model_3d_url = url;
   }
 
   // Convert price to Decimal if provided
@@ -358,4 +390,179 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
   await prisma.category.delete({ where: { id: parseInt(id) } });
 
   return success(res, 'Category deleted successfully');
+});
+
+// ==================== FRAME SIZES ====================
+
+// @desc    Create frame size (Admin)
+// @route   POST /api/admin/frame-sizes
+// @access  Private/Admin
+exports.createFrameSize = asyncHandler(async (req, res) => {
+  const frameSize = await prisma.frameSize.create({
+    data: req.body
+  });
+  return success(res, 'Frame size created successfully', { frameSize }, 201);
+});
+
+// @desc    Update frame size (Admin)
+// @route   PUT /api/admin/frame-sizes/:id
+// @access  Private/Admin
+exports.updateFrameSize = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const frameSize = await prisma.frameSize.update({
+    where: { id: parseInt(id) },
+    data: req.body
+  });
+  return success(res, 'Frame size updated successfully', { frameSize });
+});
+
+// @desc    Delete frame size (Admin)
+// @route   DELETE /api/admin/frame-sizes/:id
+// @access  Private/Admin
+exports.deleteFrameSize = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.frameSize.delete({ where: { id: parseInt(id) } });
+  return success(res, 'Frame size deleted successfully');
+});
+
+// ==================== LENS TYPES ====================
+
+// @desc    Create lens type (Admin)
+// @route   POST /api/admin/lens-types
+// @access  Private/Admin
+exports.createLensType = asyncHandler(async (req, res) => {
+  const lensTypeData = { ...req.body };
+
+  if (!lensTypeData.slug) {
+    lensTypeData.slug = lensTypeData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  const lensType = await prisma.lensType.create({
+    data: lensTypeData
+  });
+  return success(res, 'Lens type created successfully', { lensType }, 201);
+});
+
+// @desc    Update lens type (Admin)
+// @route   PUT /api/admin/lens-types/:id
+// @access  Private/Admin
+exports.updateLensType = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const lensType = await prisma.lensType.update({
+    where: { id: parseInt(id) },
+    data: req.body
+  });
+  return success(res, 'Lens type updated successfully', { lensType });
+});
+
+// @desc    Delete lens type (Admin)
+// @route   DELETE /api/admin/lens-types/:id
+// @access  Private/Admin
+exports.deleteLensType = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.lensType.delete({ where: { id: parseInt(id) } });
+  return success(res, 'Lens type deleted successfully');
+});
+
+// ==================== LENS COATINGS ====================
+
+// @desc    Create lens coating (Admin)
+// @route   POST /api/admin/lens-coatings
+// @access  Private/Admin
+exports.createLensCoating = asyncHandler(async (req, res) => {
+  const coatingData = { ...req.body };
+
+  if (!coatingData.slug) {
+    coatingData.slug = coatingData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  const lensCoating = await prisma.lensCoating.create({
+    data: coatingData
+  });
+  return success(res, 'Lens coating created successfully', { lensCoating }, 201);
+});
+
+// @desc    Update lens coating (Admin)
+// @route   PUT /api/admin/lens-coatings/:id
+// @access  Private/Admin
+exports.updateLensCoating = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const lensCoating = await prisma.lensCoating.update({
+    where: { id: parseInt(id) },
+    data: req.body
+  });
+  return success(res, 'Lens coating updated successfully', { lensCoating });
+});
+
+// @desc    Delete lens coating (Admin)
+// @route   DELETE /api/admin/lens-coatings/:id
+// @access  Private/Admin
+exports.deleteLensCoating = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.lensCoating.delete({ where: { id: parseInt(id) } });
+  return success(res, 'Lens coating deleted successfully');
+});
+
+// ==================== BULK UPLOAD ====================
+
+// @desc    Bulk upload products (Admin)
+// @route   POST /api/admin/products/bulk-upload
+// @access  Private/Admin
+exports.bulkUploadProducts = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return error(res, 'Please upload a CSV file', 400);
+  }
+
+  const results = [];
+  const stream = Readable.from(req.file.buffer.toString());
+
+  stream
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', async () => {
+      try {
+        const createdProducts = [];
+        for (const item of results) {
+          // Basic validation and transformation
+          if (!item.name || !item.sku) continue;
+
+          const slug = item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+          // Check if product exists
+          const existing = await prisma.product.findFirst({
+            where: { OR: [{ sku: item.sku }, { slug }] }
+          });
+
+          if (existing) continue; // Skip duplicates for now
+
+          const product = await prisma.product.create({
+            data: {
+              name: item.name,
+              slug,
+              sku: item.sku,
+              description: item.description,
+              price: parseFloat(item.price || 0),
+              category_id: parseInt(item.category_id || 1), // Default to 1 if missing
+              stock_quantity: parseInt(item.stock_quantity || 0),
+              product_type: item.product_type || 'frame',
+              gender: item.gender || 'unisex'
+            }
+          });
+          createdProducts.push(product);
+        }
+
+        return success(res, `Processed ${results.length} items. Created ${createdProducts.length} products.`, {
+          count: createdProducts.length
+        });
+      } catch (err) {
+        console.error('Bulk upload error:', err);
+        return error(res, 'Error processing bulk upload', 500);
+      }
+    });
 });

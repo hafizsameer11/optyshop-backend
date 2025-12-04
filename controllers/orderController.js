@@ -263,3 +263,51 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
 
   return success(res, 'Order cancelled successfully', { order: updatedOrder });
 });
+
+// @desc    Process refund (Admin)
+// @route   POST /api/orders/:id/refund
+// @access  Private/Admin
+exports.processRefund = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { amount, reason } = req.body;
+
+  const order = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+  if (!order) return error(res, 'Order not found', 404);
+
+  // Placeholder for payment gateway refund logic (Stripe/PayPal)
+  // await paymentGateway.refund(order.payment_id, amount);
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: parseInt(id) },
+    data: {
+      payment_status: 'refunded',
+      status: 'refunded',
+      notes: order.notes ? `${order.notes}\nRefunded: ${amount} (${reason})` : `Refunded: ${amount} (${reason})`
+    }
+  });
+
+  return success(res, 'Refund processed successfully', { order: updatedOrder });
+});
+
+// @desc    Assign technician (Admin)
+// @route   PUT /api/orders/:id/assign-technician
+// @access  Private/Admin
+exports.assignTechnician = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { technician_name, technician_id } = req.body;
+
+  const order = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+  if (!order) return error(res, 'Order not found', 404);
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: parseInt(id) },
+    data: {
+      status: 'processing',
+      notes: order.notes
+        ? `${order.notes}\nAssigned to technician: ${technician_name} (ID: ${technician_id})`
+        : `Assigned to technician: ${technician_name} (ID: ${technician_id})`
+    }
+  });
+
+  return success(res, 'Technician assigned successfully', { order: updatedOrder });
+});

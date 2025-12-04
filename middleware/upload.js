@@ -7,9 +7,12 @@ const storage = multer.memoryStorage();
 // File filter
 const fileFilter = (req, file, cb) => {
   // Allowed file types
-  const allowedTypes = /jpeg|jpg|png|gif|webp|glb|gltf/;
+  const allowedTypes = /jpeg|jpg|png|gif|webp|glb|gltf|csv|xlsx|xls/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const mimetype = allowedTypes.test(file.mimetype) ||
+    file.mimetype === 'application/vnd.ms-excel' ||
+    file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    file.mimetype === 'text/csv';
 
   if (mimetype && extname) {
     return cb(null, true);

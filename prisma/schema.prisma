@@ -32,6 +32,8 @@ model User {
   prescriptions Prescription[]
   reviews       Review[]
   cart          Cart?
+  adminActivityLogs AdminActivityLog[]
+  analyticsEvents   AnalyticsEvent[]
 
   @@map("users")
 }
@@ -66,6 +68,7 @@ model Product {
   sku               String         @unique @db.VarChar(100)
   description       String?        @db.Text
   short_description String?        @db.VarChar(500)
+  product_type      ProductType    @default(frame)
   category_id       Int
   price             Decimal        @db.Decimal(10, 2) @default(0.00)
   compare_at_price  Decimal?       @db.Decimal(10, 2)
@@ -86,6 +89,7 @@ model Product {
   is_active         Boolean        @default(true)
   meta_title        String?        @db.VarChar(255)
   meta_description  String?        @db.Text
+  meta_keywords     String?        @db.VarChar(255)
   rating            Decimal        @db.Decimal(3, 2) @default(0.00)
   review_count      Int            @default(0)
   view_count        Int            @default(0)
@@ -99,6 +103,7 @@ model Product {
   frameSizes  FrameSize[]
   lensTypes   ProductLensType[]
   lensCoatings ProductLensCoating[]
+  variants    ProductVariant[]
 
   @@index([category_id])
   @@index([slug])
@@ -107,6 +112,13 @@ model Product {
   @@index([frame_material])
   @@index([is_active, is_featured])
   @@map("products")
+}
+
+enum ProductType {
+  frame
+  sunglasses
+  contact_lens
+  accessory
 }
 
 enum StockStatus {
@@ -183,6 +195,7 @@ model LensType {
   updated_at      DateTime @updatedAt
 
   products ProductLensType[]
+  lensPackages LensPackage[]
 
   @@map("lens_types")
 }
@@ -448,3 +461,271 @@ model SimulationConfig {
   @@index([category])
   @@map("simulation_configs")
 }
+
+// Product Variant Model - for sizes, colors, materials
+model ProductVariant {
+  id             Int       @id @default(autoincrement())
+  product_id     Int
+  sku            String?   @db.VarChar(100)
+  size_label     String?   @db.VarChar(50)
+  color          String?   @db.VarChar(100)
+  material       String?   @db.VarChar(100)
+  additional_data Json?    @default("{}") // any extra attributes
+  stock_quantity Int       @default(0)
+  price          Decimal?  @db.Decimal(10, 2)
+  images         Json?     @default("[]")
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_variants")
+}
+
+// Lens Packages & Pricing Rules
+model LensPackage {
+  id               Int      @id @default(autoincrement())
+  name             String   @db.VarChar(150)
+  slug             String   @unique @db.VarChar(150)
+  description      String?  @db.Text
+  base_index       Decimal  @db.Decimal(3, 2)
+  lens_type_id     Int?
+  coatings         Json?    @default("[]") // list of coating ids or descriptors
+  price            Decimal  @db.Decimal(10, 2)
+  price_rules      Json?    @default("{}") // rules based on index, power, etc.
+  is_active        Boolean  @default(true)
+  sort_order       Int      @default(0)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  lensType LensType? @relation(fields: [lens_type_id], references: [id], onDelete: SetNull)
+
+  @@index([lens_type_id])
+  @@map("lens_packages")
+}
+
+// Coupons / Discounts
+model Coupon {
+  id               Int          @id @default(autoincrement())
+  code             String       @unique @db.VarChar(50)
+  description      String?      @db.Text
+  discount_type    DiscountType
+  discount_value   Decimal      @db.Decimal(10, 2)
+  max_discount     Decimal?     @db.Decimal(10, 2)
+  min_order_amount Decimal?     @db.Decimal(10, 2)
+  usage_limit      Int?         // total usage limit
+  usage_per_user   Int?         // usage per user
+  starts_at        DateTime?
+  ends_at          DateTime?
+  is_active        Boolean      @default(true)
+  applicable_to    String?      @db.VarChar(50) // e.g. 'order','lens_package','product'
+  conditions       Json?        @default("{}")  // JSON rules (e.g. specific products/categories)
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+
+  @@index([code])
+  @@index([is_active])
+  @@map("coupons")
+}
+
+enum DiscountType {
+  percentage
+  fixed_amount
+  free_shipping
+  bogo // buy one get one
+}
+
+// Simple Marketing Campaign model (seasonal sales, first-time discount, etc.)
+model MarketingCampaign {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(150)
+  slug         String   @unique @db.VarChar(150)
+  description  String?  @db.Text
+  campaign_type String? @db.VarChar(50) // e.g. 'seasonal','flash_sale'
+  config       Json?    @default("{}")  // e.g. discount rules, target segments
+  is_active    Boolean  @default(false)
+  starts_at    DateTime?
+  ends_at      DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([is_active])
+  @@map("marketing_campaigns")
+}
+
+// CMS: Homepage banners
+model Banner {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(150)
+  image_url   String   @db.VarChar(500)
+  link_url    String?  @db.VarChar(500)
+  position    String?  @db.VarChar(50) // e.g. 'homepage_hero','homepage_secondary'
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  meta        Json?    @default("{}")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([position])
+  @@map("banners")
+}
+
+// CMS: Blog articles
+model BlogPost {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(255)
+  excerpt     String?  @db.VarChar(500)
+  content     String   @db.Text
+  thumbnail   String?  @db.VarChar(500)
+  tags        Json?    @default("[]")
+  is_published Boolean @default(false)
+  published_at DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([slug])
+  @@index([is_published, published_at])
+  @@map("blog_posts")
+}
+
+// CMS: FAQs
+model Faq {
+  id          Int      @id @default(autoincrement())
+  question    String   @db.VarChar(500)
+  answer      String   @db.Text
+  category    String?  @db.VarChar(100)
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([category])
+  @@map("faqs")
+}
+
+// CMS: Policy / Static pages
+model Page {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(255)
+  content     String   @db.Text
+  page_type   String?  @db.VarChar(50) // e.g. 'refund','privacy','shipping'
+  is_published Boolean @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([slug])
+  @@map("pages")
+}
+
+// CMS: Testimonials
+model Testimonial {
+  id          Int      @id @default(autoincrement())
+  customer_name String @db.VarChar(150)
+  text        String   @db.Text
+  rating      Int?     // optional rating
+  avatar_url  String?  @db.VarChar(500)
+  is_featured Boolean  @default(false)
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("testimonials")
+}
+
+// VTO Assets (3D models, masks, env maps, etc.)
+model VtoAsset {
+  id          Int        @id @default(autoincrement())
+  name        String     @db.VarChar(150)
+  asset_type  VtoAssetType
+  file_url    String     @db.VarChar(500)
+  thumbnail_url String?  @db.VarChar(500)
+  description String?    @db.Text
+  metadata    Json?      @default("{}") // alignment params, scale, etc.
+  is_active   Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+
+  @@index([asset_type])
+  @@map("vto_assets")
+}
+
+enum VtoAssetType {
+  frame_3d
+  face_mesh
+  occlusion_mask
+  environment_map
+}
+
+// VTO / Simulator configuration presets
+model VtoConfig {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  slug        String   @unique @db.VarChar(150)
+  description String?  @db.Text
+  settings    Json     // AR alignment, face mesh offsets, lighting, etc.
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([slug])
+  @@map("vto_configs")
+}
+
+// System & Audit Logs
+model AdminActivityLog {
+  id            Int      @id @default(autoincrement())
+  admin_id      Int?
+  action        String   @db.VarChar(100) // e.g. 'product_updated'
+  resource_type String?  @db.VarChar(100) // e.g. 'Product','Order'
+  resource_id   Int?
+  ip_address    String?  @db.VarChar(45)
+  user_agent    String?  @db.VarChar(255)
+  success       Boolean  @default(true)
+  details       Json?    @default("{}")
+  created_at    DateTime @default(now())
+
+  admin User? @relation(fields: [admin_id], references: [id], onDelete: SetNull)
+
+  @@index([admin_id])
+  @@index([resource_type, resource_id])
+  @@map("admin_activity_logs")
+}
+
+// API error / failed requests
+model ApiErrorLog {
+  id            Int      @id @default(autoincrement())
+  path          String   @db.VarChar(255)
+  method        String   @db.VarChar(10)
+  status_code   Int
+  error_message String?  @db.Text
+  request_id    String?  @db.VarChar(100)
+  meta          Json?    @default("{}")
+  created_at    DateTime @default(now())
+
+  @@index([path])
+  @@index([status_code])
+  @@map("api_error_logs")
+}
+
+// Simple analytics events (VTO usage, failed checkouts, etc.)
+model AnalyticsEvent {
+  id          Int      @id @default(autoincrement())
+  event_type  String   @db.VarChar(100) // e.g. 'vto_used','checkout_failed'
+  user_id     Int?
+  session_id  String?  @db.VarChar(100)
+  device      String?  @db.VarChar(100)
+  country     String?  @db.VarChar(100)
+  data        Json?    @default("{}")
+  created_at  DateTime @default(now())
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([event_type])
+  @@index([created_at])
+  @@map("analytics_events")
+}
+

@@ -1,0 +1,55 @@
+╔════════════════════════════════════════════════════════════════╗
+║           OptyShop API - Quick Login Reference                 ║
+╚════════════════════════════════════════════════════════════════╝
+
+🔐 CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Admin:
+    Email:    admin@optyshop.com
+    Password: admin123
+
+  Customer:
+    Email:    customer@test.com
+    Password: customer123
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📡 LOGIN ENDPOINT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Method: POST
+  URL:    http://localhost:5000/api/auth/login
+  Header: Content-Type: application/json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 REQUEST BODY (Correct Format)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{
+  "email": "admin@optyshop.com",
+  "password": "admin123"
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ COMMON ERRORS (Don't Do This!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ❌ {email: admin@optyshop.com, password: password}
+  ❌ Using GET instead of POST
+  ❌ Wrong password ("password" instead of "admin123")
+  ❌ Missing quotes in JSON
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ QUICK TEST (Browser Console)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+fetch('http://localhost:5000/api/auth/login', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    email: 'admin@optyshop.com',
+    password: 'admin123'
+  })
+}).then(r => r.json()).then(console.log)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

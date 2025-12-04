@@ -5,7 +5,9 @@ const {
   getOrders,
   getOrder,
   updateOrderStatus,
-  cancelOrder
+  cancelOrder,
+  processRefund,
+  assignTechnician
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -19,6 +21,8 @@ router.put('/:id/cancel', cancelOrder);
 
 // Admin only routes
 router.put('/:id/status', authorize('admin'), updateOrderStatus);
+router.post('/:id/refund', authorize('admin'), processRefund);
+router.put('/:id/assign-technician', authorize('admin'), assignTechnician);
 
 module.exports = router;
 
