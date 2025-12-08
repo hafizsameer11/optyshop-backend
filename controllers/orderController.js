@@ -311,3 +311,91 @@ exports.assignTechnician = asyncHandler(async (req, res) => {
 
   return success(res, 'Technician assigned successfully', { order: updatedOrder });
 });
+
+// @desc    Get all orders (Admin)
+// @route   GET /api/admin/orders
+// @access  Private/Admin
+exports.getAllOrdersAdmin = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, status, payment_status } = req.query;
+  const skip = (page - 1) * limit;
+
+  const where = {};
+  if (status) where.status = status;
+  if (payment_status) where.payment_status = payment_status;
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                images: true
+              }
+            }
+          }
+        }
+      },
+      take: parseInt(limit),
+      skip: parseInt(skip),
+      orderBy: { created_at: 'desc' }
+    }),
+    prisma.order.count({ where })
+  ]);
+
+  return success(res, 'Orders retrieved successfully', {
+    orders,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit)
+    }
+  });
+});
+
+// @desc    Get single order detail (Admin)
+// @route   GET /api/admin/orders/:id
+// @access  Private/Admin
+exports.getAdminOrderDetail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const order = await prisma.order.findUnique({
+    where: { id: parseInt(id) },
+    include: {
+      user: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          email: true,
+          phone: true
+        }
+      },
+      items: {
+        include: {
+          product: true
+        }
+      },
+      prescription: true
+    }
+  });
+
+  if (!order) {
+    return error(res, 'Order not found', 404);
+  }
+
+  return success(res, 'Order retrieved successfully', { order });
+});

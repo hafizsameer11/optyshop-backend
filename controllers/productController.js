@@ -2,6 +2,128 @@ const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 
+const FRAME_SHAPES = [
+  'round',
+  'square',
+  'oval',
+  'cat_eye',
+  'aviator',
+  'rectangle',
+  'wayfarer',
+  'geometric'
+];
+
+const FRAME_MATERIALS = [
+  'acetate',
+  'metal',
+  'tr90',
+  'titanium',
+  'wood',
+  'mixed'
+];
+
+const GENDERS = ['men', 'women', 'unisex', 'kids'];
+const LENS_TYPE_ENUMS = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic'];
+const LENS_INDEX_OPTIONS = [1.56, 1.61, 1.67, 1.74];
+
+const fallbackCategories = [
+  { id: 1, name: 'Eyeglasses', slug: 'eyeglasses' },
+  { id: 2, name: 'Sunglasses', slug: 'sunglasses' },
+  { id: 3, name: 'Contact Lenses', slug: 'contact-lenses' }
+];
+
+const fallbackLensTypes = [
+  { id: 1, name: 'Blue Light Lens', slug: 'blue-light', index: 1.56, price_adjustment: 25 },
+  { id: 2, name: 'Photochromic', slug: 'photochromic', index: 1.61, price_adjustment: 40 }
+];
+
+const fallbackLensCoatings = [
+  { id: 1, name: 'AR Coating', slug: 'ar', type: 'ar', price_adjustment: 15 },
+  { id: 2, name: 'UV Protection', slug: 'uv', type: 'uv', price_adjustment: 10 },
+  { id: 3, name: 'Blue Light', slug: 'blue-light', type: 'blue_light', price_adjustment: 18 }
+];
+
+const fallbackFrameSizes = [
+  { id: 1, size_label: 'Small', lens_width: 48, bridge_width: 18, temple_length: 140 },
+  { id: 2, size_label: 'Medium', lens_width: 52, bridge_width: 19, temple_length: 143 },
+  { id: 3, size_label: 'Large', lens_width: 55, bridge_width: 20, temple_length: 145 }
+];
+
+const normalizeDecimals = (value) => parseFloat(Number(value || 0).toFixed(2));
+
+// @desc    Get product form options (dropdowns, presets)
+// @route   GET /api/products/options
+// @access  Public (can also be used by admin UI)
+exports.getProductFormOptions = asyncHandler(async (req, res) => {
+  const [categories, lensTypes, lensCoatings, frameSizes] = await Promise.all([
+    prisma.category.findMany({
+      where: { is_active: true },
+      select: { id: true, name: true, slug: true },
+      orderBy: { sort_order: 'asc' }
+    }),
+    prisma.lensType.findMany({
+      where: { is_active: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        index: true,
+        thickness_factor: true,
+        price_adjustment: true
+      },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.lensCoating.findMany({
+      where: { is_active: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        type: true,
+        price_adjustment: true
+      },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.frameSize.findMany({
+      take: 15,
+      orderBy: { size_label: 'asc' },
+      select: {
+        id: true,
+        size_label: true,
+        lens_width: true,
+        bridge_width: true,
+        temple_length: true,
+        frame_width: true,
+        frame_height: true
+      }
+    })
+  ]);
+
+  const payload = {
+    categories: categories.length ? categories : fallbackCategories,
+    frameShapes: FRAME_SHAPES,
+    frameMaterials: FRAME_MATERIALS,
+    genders: GENDERS,
+    lensTypes: (lensTypes.length ? lensTypes : fallbackLensTypes).map((lt) => ({
+      ...lt,
+      index: normalizeDecimals(lt.index),
+      thickness_factor: lt.thickness_factor !== undefined && lt.thickness_factor !== null
+        ? normalizeDecimals(lt.thickness_factor)
+        : null,
+      price_adjustment: normalizeDecimals(lt.price_adjustment)
+    })),
+    lensCoatings: (lensCoatings.length ? lensCoatings : fallbackLensCoatings).map((lc) => ({
+      ...lc,
+      price_adjustment: normalizeDecimals(lc.price_adjustment)
+    })),
+    lensIndexOptions: LENS_INDEX_OPTIONS,
+    frameSizes: frameSizes.length ? frameSizes : fallbackFrameSizes,
+    lensTypeEnums: LENS_TYPE_ENUMS
+  };
+
+  return success(res, 'Product form options retrieved successfully', payload);
+});
+
 // @desc    Get all products with filters
 // @route   GET /api/products
 // @access  Public

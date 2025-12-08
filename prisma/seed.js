@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { caseStudies, blogArticles, jobs, formConfigs } = require('../data/dynamicContent');
 
 const prisma = new PrismaClient();
 
@@ -23,6 +24,11 @@ async function main() {
   await prisma.lensType.deleteMany();
   await prisma.lensCoating.deleteMany();
   await prisma.simulationConfig.deleteMany();
+  await prisma.formSubmission.deleteMany();
+  await prisma.formConfig.deleteMany();
+  await prisma.caseStudy.deleteMany();
+  await prisma.blogArticle.deleteMany();
+  await prisma.job.deleteMany();
 
   // Create Admin User
   console.log('👤 Creating admin user...');
@@ -54,6 +60,74 @@ async function main() {
       email_verified: true
     }
   });
+
+  // Seed dynamic content (case studies, blog, jobs, form configs)
+  console.log('📰 Seeding case studies, blog articles, jobs, and form configs...');
+
+  if (caseStudies?.length) {
+    await prisma.caseStudy.createMany({
+      data: caseStudies.map((item) => ({
+        slug: item.slug,
+        title: item.title,
+        hero_title: item.heroTitle,
+        hero_subtitle: item.heroSubtitle || null,
+        category: item.category || null,
+        person: item.person || {},
+        image_url: item.image || null,
+        content: item.content || null,
+        tags: item.tags || [],
+        is_published: true,
+      })),
+    });
+  }
+
+  if (blogArticles?.length) {
+    await prisma.blogArticle.createMany({
+      data: blogArticles.map((item) => ({
+        slug: item.slug,
+        title: item.title,
+        category: item.category || null,
+        snippet: item.snippet || null,
+        summary: item.summary || null,
+        content: item.content || '',
+        read_time: item.readTime || null,
+        header_image: item.headerImage || null,
+        key_points: item.keyPoints || [],
+        published_at: item.date ? new Date(item.date) : new Date(),
+        is_published: true,
+      })),
+    });
+  }
+
+  if (jobs?.length) {
+    await prisma.job.createMany({
+      data: jobs.map((job) => ({
+        slug: job.slug || null,
+        title: job.title,
+        department: job.department || null,
+        location: job.location || null,
+        description: job.description || null,
+        requirements: job.requirements || [],
+        apply_url: job.applyUrl || null,
+        is_active: job.isActive !== false,
+      })),
+    });
+  }
+
+  const formConfigValues = formConfigs ? Object.values(formConfigs) : [];
+  if (formConfigValues.length) {
+    await prisma.formConfig.createMany({
+      data: formConfigValues.map((config) => ({
+        name: config.name,
+        title: config.title || null,
+        description: config.description || null,
+        fields: config.fields || [],
+        cta_text: config.ctaText || null,
+        meta: config.meta || {},
+        is_active: true,
+      })),
+    });
+  }
 
   // Create Categories
   console.log('📁 Creating categories...');

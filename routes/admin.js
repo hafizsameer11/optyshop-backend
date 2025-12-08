@@ -5,7 +5,6 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
-  getAllOrders,
   getAllUsers,
   updateUser,
   createCategory,
@@ -22,6 +21,10 @@ const {
   deleteLensCoating,
   bulkUploadProducts
 } = require('../controllers/adminController');
+const {
+  getAllOrdersAdmin,
+  getAdminOrderDetail
+} = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadMultiple, uploadSingle, uploadFields } = require('../middleware/upload');
 const {
@@ -66,7 +69,8 @@ router.put('/lens-coatings/:id', updateLensCoating);
 router.delete('/lens-coatings/:id', deleteLensCoating);
 
 // Orders
-router.get('/orders', getAllOrders);
+router.get('/orders', getAllOrdersAdmin);
+router.get('/orders/:id', getAdminOrderDetail);
 
 // Users
 router.get('/users', getAllUsers);

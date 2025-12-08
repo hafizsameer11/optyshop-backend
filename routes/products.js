@@ -5,7 +5,8 @@ const {
   getProduct,
   getProductBySlug,
   getFeaturedProducts,
-  getRelatedProducts
+  getRelatedProducts,
+  getProductFormOptions
 } = require('../controllers/productController');
 const {
   validateProductQuery,
@@ -15,8 +16,9 @@ const {
 // Public routes
 router.get('/', validateProductQuery, getProducts);
 router.get('/featured', getFeaturedProducts);
-router.get('/:id', validateProductId, getProduct);
+router.get('/options', getProductFormOptions);
 router.get('/slug/:slug', getProductBySlug);
+router.get('/:id', validateProductId, getProduct);
 router.get('/:id/related', validateProductId, getRelatedProducts);
 
 module.exports = router;

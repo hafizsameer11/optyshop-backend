@@ -591,6 +591,96 @@ model BlogPost {
   @@map("blog_posts")
 }
 
+// Dynamic frontend content
+model CaseStudy {
+  id            Int      @id @default(autoincrement())
+  slug          String   @unique @db.VarChar(150)
+  title         String   @db.VarChar(255)
+  hero_title    String   @db.VarChar(255)
+  hero_subtitle String?  @db.VarChar(255)
+  category      String?  @db.VarChar(100)
+  person        Json?
+  image_url     String?  @db.VarChar(500)
+  content       String?  @db.Text
+  tags          Json?    @default("[]")
+  is_published  Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([is_published])
+  @@map("case_studies")
+}
+
+model BlogArticle {
+  id           Int      @id @default(autoincrement())
+  title        String   @db.VarChar(255)
+  slug         String   @unique @db.VarChar(255)
+  category     String?  @db.VarChar(100)
+  snippet      String?  @db.VarChar(500)
+  summary      String?  @db.VarChar(1000)
+  content      String   @db.Text
+  read_time    Int?
+  header_image String?  @db.VarChar(500)
+  key_points   Json?    @default("[]")
+  published_at DateTime?
+  is_published Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([is_published, published_at])
+  @@map("blog_articles")
+}
+
+model Job {
+  id           Int      @id @default(autoincrement())
+  slug         String?  @unique @db.VarChar(255)
+  title        String   @db.VarChar(255)
+  department   String?  @db.VarChar(100)
+  location     String?  @db.VarChar(150)
+  description  String?  @db.Text
+  requirements Json?    @default("[]")
+  apply_url    String?  @db.VarChar(500)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([is_active])
+  @@map("jobs")
+}
+
+model FormConfig {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  title       String?  @db.VarChar(255)
+  description String?  @db.VarChar(500)
+  fields      Json
+  cta_text    String?  @db.VarChar(150)
+  meta        Json?    @default("{}")
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  submissions FormSubmission[]
+
+  @@map("form_configs")
+}
+
+model FormSubmission {
+  id             Int        @id @default(autoincrement())
+  form_name      String     @db.VarChar(100)
+  form_config_id Int?
+  payload        Json
+  meta           Json?      @default("{}")
+  created_at     DateTime   @default(now())
+
+  formConfig FormConfig? @relation(fields: [form_config_id], references: [id], onDelete: SetNull)
+
+  @@index([form_config_id])
+  @@index([form_name])
+  @@map("form_submissions")
+}
+
 // CMS: FAQs
 model Faq {
   id          Int      @id @default(autoincrement())

@@ -21,6 +21,11 @@ const adminRoutes = require('./routes/admin');
 const marketingRoutes = require('./routes/marketing');
 const cmsRoutes = require('./routes/cms');
 const analyticsRoutes = require('./routes/analytics');
+const overviewRoutes = require('./routes/overview');
+const caseStudyRoutes = require('./routes/caseStudies');
+const blogRoutes = require('./routes/blog');
+const jobRoutes = require('./routes/jobs');
+const formRoutes = require('./routes/forms');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -87,7 +92,12 @@ app.get('/api', (req, res) => {
       prescriptions: '/api/prescriptions',
       simulations: '/api/simulations',
       categories: '/api/categories',
-      admin: '/api/admin'
+      admin: '/api/admin',
+      overview: '/api/overview',
+      caseStudies: '/api/case-studies',
+      blog: '/api/blog',
+      jobs: '/api/jobs',
+      forms: '/api/forms'
     },
     timestamp: new Date().toISOString()
   });
@@ -105,6 +115,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/marketing', marketingRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/overview', overviewRoutes);
+app.use('/api/case-studies', caseStudyRoutes);
+app.use('/api/blog', blogRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/forms', formRoutes);
 
 // 404 handler
 app.use((req, res) => {

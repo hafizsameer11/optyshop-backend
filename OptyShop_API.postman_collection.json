@@ -272,6 +272,24 @@
 					}
 				},
 				{
+					"name": "Get Product Form Options",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/products/options",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"options"
+							]
+						}
+					}
+				},
+				{
 					"name": "Get Product by ID",
 					"request": {
 						"method": "GET",
@@ -651,6 +669,102 @@
 							]
 						}
 					}
+				},
+				{
+					"name": "Update Order Status (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"shipped\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"1",
+								"status"
+							]
+						}
+					}
+				},
+				{
+					"name": "Process Refund (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 99.99,\n  \"reason\": \"Customer requested refund\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/1/refund",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"1",
+								"refund"
+							]
+						}
+					}
+				},
+				{
+					"name": "Assign Technician (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"technician_name\": \"John Doe\",\n  \"technician_id\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/1/assign-technician",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"1",
+								"assign-technician"
+							]
+						}
+					}
 				}
 			]
 		},
@@ -782,6 +896,61 @@
 								"api",
 								"prescriptions",
 								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Validate Prescription (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"od_sphere\": -2.50,\n  \"os_sphere\": -2.25,\n  \"od_cylinder\": -0.75,\n  \"os_cylinder\": -0.50,\n  \"pd_binocular\": 64\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/prescriptions/validate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions",
+								"validate"
+							]
+						}
+					}
+				},
+				{
+					"name": "Verify Prescription (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/prescriptions/1/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"prescriptions",
+								"1",
+								"verify"
 							]
 						}
 					}
@@ -927,6 +1096,33 @@
 					}
 				},
 				{
+					"name": "Calculate Base Curve",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"spherePower\": -3.00,\n  \"cylinderPower\": -0.75\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/simulations/base-curve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"base-curve"
+							]
+						}
+					}
+				},
+				{
 					"name": "Photochromic Simulator",
 					"request": {
 						"method": "POST",
@@ -979,6 +1175,580 @@
 							]
 						}
 					}
+				},
+				{
+					"name": "Get Simulation Config (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/simulations/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"config"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Simulation Config (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"config_key\": \"pd_calculation_method\",\n  \"config_value\": \"binocular\",\n  \"description\": \"Default PD calculation method\",\n  \"category\": \"optical\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/simulations/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"config"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get VTO Assets (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-assets?type=model",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-assets"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "model"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create VTO Asset (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "name",
+									"value": "Face Model 1",
+									"type": "text"
+								},
+								{
+									"key": "asset_type",
+									"value": "model",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "3D face model for VTO",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-assets",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-assets"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete VTO Asset (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-assets/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-assets",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get VTO Configs (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-configs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-configs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create VTO Config (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Default VTO Config\",\n  \"settings\": {\n    \"cameraDistance\": 50,\n    \"lightingIntensity\": 0.8\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-configs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-configs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update VTO Config (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"settings\": {\n    \"cameraDistance\": 60\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-configs/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-configs",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete VTO Config (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/simulations/vto-configs/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"simulations",
+								"vto-configs",
+								"1"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Case Studies",
+			"item": [
+				{
+					"name": "Get All Case Studies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/case-studies",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"case-studies"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Case Study by Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/case-studies/warby-parker-success",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"case-studies",
+								"warby-parker-success"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Blog",
+			"item": [
+				{
+					"name": "Get All Blog Articles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blog",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blog"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Blog Article by Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blog/future-of-optical-retail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blog",
+								"future-of-optical-retail"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Jobs",
+			"item": [
+				{
+					"name": "Get All Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Job by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"1"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Forms",
+			"item": [
+				{
+					"name": "Get Contact Form Config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/contact",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"contact"
+							]
+						}
+					}
+				},
+				{
+					"name": "Submit Contact Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"country\": \"USA\",\n  \"company\": \"Example Corp\",\n  \"message\": \"I'm interested in your products\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forms/contact/submissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"contact",
+								"submissions"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Demo Form Config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/demo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"demo"
+							]
+						}
+					}
+				},
+				{
+					"name": "Submit Demo Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"John Doe\",\n  \"company\": \"Example Corp\",\n  \"teamSize\": \"10-50\",\n  \"focus\": \"ecommerce\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forms/demo/submissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"demo",
+								"submissions"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Pricing Form Config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/pricing",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"pricing"
+							]
+						}
+					}
+				},
+				{
+					"name": "Submit Pricing Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"company\": \"Example Corp\",\n  \"monthlyTraffic\": \"10000+\",\n  \"skuCount\": \"100-500\",\n  \"priority\": \"high\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forms/pricing/submissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"pricing",
+								"submissions"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Job Application Form Config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/job-application",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"job-application"
+							]
+						}
+					}
+				},
+				{
+					"name": "Submit Job Application Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"linkedIn\": \"https://linkedin.com/in/johndoe\",\n  \"portfolio\": \"https://johndoe.com\",\n  \"coverLetter\": \"I am passionate about optical technology...\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forms/job-application/submissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"job-application",
+								"submissions"
+							]
+						}
+					}
 				}
 			]
 		},
@@ -996,7 +1766,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/admin/dashboard",
+							"raw": "{{base_url}}/api/admin/dashboard?range=30",
 							"host": [
 								"{{base_url}}"
 							],
@@ -1004,6 +1774,12 @@
 								"api",
 								"admin",
 								"dashboard"
+							],
+							"query": [
+								{
+									"key": "range",
+									"value": "30"
+								}
 							]
 						}
 					}
@@ -1118,7 +1894,41 @@
 					}
 				},
 				{
-					"name": "Get All Orders",
+					"name": "Bulk Upload Products",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/products/bulk-upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"products",
+								"bulk-upload"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Orders (Admin)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1151,25 +1961,17 @@
 					}
 				},
 				{
-					"name": "Update Order Status",
+					"name": "Get Order Detail (Admin)",
 					"request": {
-						"method": "PUT",
+						"method": "GET",
 						"header": [
 							{
 								"key": "Authorization",
 								"value": "Bearer {{admin_token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"status\": \"shipped\"\n}"
-						},
 						"url": {
-							"raw": "{{base_url}}/api/admin/orders/1/status",
+							"raw": "{{base_url}}/api/admin/orders/1",
 							"host": [
 								"{{base_url}}"
 							],
@@ -1177,8 +1979,7 @@
 								"api",
 								"admin",
 								"orders",
-								"1",
-								"status"
+								"1"
 							]
 						}
 					}
@@ -1280,40 +2081,6 @@
 					}
 				},
 				{
-					"name": "Bulk Upload Products",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": []
-								}
-							]
-						},
-						"url": {
-							"raw": "{{base_url}}/api/admin/products/bulk-upload",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"products",
-								"bulk-upload"
-							]
-						}
-					}
-				},
-				{
 					"name": "Update Category",
 					"request": {
 						"method": "PUT",
@@ -1385,7 +2152,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Medium\",\n  \"width_mm\": 135\n}"
+							"raw": "{\n  \"product_id\": 1,\n  \"lens_width\": 52.00,\n  \"bridge_width\": 18.00,\n  \"temple_length\": 140.00,\n  \"size_label\": \"Medium\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/frame-sizes",
@@ -1416,7 +2183,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"width_mm\": 138\n}"
+							"raw": "{\n  \"lens_width\": 54.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/frame-sizes/1",
@@ -1472,7 +2239,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Single Vision\",\n  \"description\": \"Standard single vision lens\"\n}"
+							"raw": "{\n  \"name\": \"High Index 1.67\",\n  \"slug\": \"high-index-167\",\n  \"description\": \"Thinner lens for higher prescriptions\",\n  \"index\": 1.67,\n  \"price_adjustment\": 50.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/lens-types",
@@ -1503,7 +2270,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"description\": \"Updated description\"\n}"
+							"raw": "{\n  \"price_adjustment\": 60.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/lens-types/1",
@@ -1559,7 +2326,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Anti-Reflective\",\n  \"price\": 30.00\n}"
+							"raw": "{\n  \"name\": \"Anti-Reflective Coating\",\n  \"slug\": \"ar-coating\",\n  \"type\": \"ar\",\n  \"description\": \"Reduces glare and reflections\",\n  \"price_adjustment\": 30.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/lens-coatings",
@@ -1590,7 +2357,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"price\": 35.00\n}"
+							"raw": "{\n  \"price_adjustment\": 35.00\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/admin/lens-coatings/1",
@@ -1633,6 +2400,963 @@
 			]
 		},
 		{
+			"name": "Marketing (Admin)",
+			"item": [
+				{
+					"name": "Get All Coupons",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/marketing/coupons",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"coupons"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Coupon",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"SAVE20\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 20,\n  \"valid_from\": \"2024-01-01\",\n  \"valid_until\": \"2024-12-31\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/marketing/coupons",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"coupons"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Coupon",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"discount_value\": 25\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/marketing/coupons/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"coupons",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Coupon",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/marketing/coupons/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"coupons",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Campaigns",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/marketing/campaigns",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"campaigns"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Campaign",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Summer Sale 2024\",\n  \"description\": \"Big summer discounts\",\n  \"start_date\": \"2024-06-01\",\n  \"end_date\": \"2024-08-31\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/marketing/campaigns",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"campaigns"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Campaign",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Updated campaign description\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/marketing/campaigns/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"campaigns",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Campaign",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/marketing/campaigns/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"marketing",
+								"campaigns",
+								"1"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "CMS",
+			"item": [
+				{
+					"name": "Get Banners",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cms/banners",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"banners"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Banner (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "title",
+									"value": "Welcome Banner",
+									"type": "text"
+								},
+								{
+									"key": "sort_order",
+									"value": "0",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/banners",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"banners"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Banner (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated Banner",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/banners/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"banners",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Banner (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cms/banners/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"banners",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Blog Posts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cms/blog",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"blog"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Blog Post (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "thumbnail",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "title",
+									"value": "New Blog Post",
+									"type": "text"
+								},
+								{
+									"key": "content",
+									"value": "Post content here",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/blog",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"blog"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Blog Post (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated Blog Post",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/blog/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"blog",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Blog Post (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cms/blog/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"blog",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get FAQs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cms/faqs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"faqs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create FAQ (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"What is your return policy?\",\n  \"answer\": \"We offer 30-day returns\",\n  \"category\": \"returns\",\n  \"sort_order\": 0\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/faqs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"faqs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update FAQ (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"answer\": \"Updated answer\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/faqs/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"faqs",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete FAQ (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cms/faqs/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"faqs",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Pages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cms/pages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"pages"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Page (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"About Us\",\n  \"content\": \"Page content\",\n  \"slug\": \"about-us\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/pages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"pages"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Page (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated content\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/pages/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"pages",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Page (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cms/pages/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"pages",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Testimonials",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cms/testimonials",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"testimonials"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Testimonial (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "author_name",
+									"value": "John Doe",
+									"type": "text"
+								},
+								{
+									"key": "content",
+									"value": "Great service!",
+									"type": "text"
+								},
+								{
+									"key": "rating",
+									"value": "5",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/testimonials",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"testimonials"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Testimonial (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "rating",
+									"value": "4",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cms/testimonials/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"testimonials",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Testimonial (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/cms/testimonials/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cms",
+								"testimonials",
+								"1"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Analytics (Admin)",
+			"item": [
+				{
+					"name": "Get Sales Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/analytics/sales?period=month",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"sales"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "month"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get VTO Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/analytics/vto",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"vto"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Conversion Rates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/analytics/conversion",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"conversion"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Admin Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/analytics/logs/admin",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"logs",
+								"admin"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get API Error Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/analytics/logs/errors",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"logs",
+								"errors"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Overview (Admin)",
+			"item": [
+				{
+					"name": "Get Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/overview",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"overview"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
 			"name": "Health Check",
 			"item": [
 				{
@@ -1647,6 +3371,22 @@
 							],
 							"path": [
 								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "API Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api"
 							]
 						}
 					}
