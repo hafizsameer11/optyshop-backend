@@ -53,33 +53,22 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration - Allow all origins
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow all origins
-    callback(null, true);
-  },
-  credentials: true,
+// CORS configuration - Allow all origins (completely open)
+app.use(cors({
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-HTTP-Method-Override'],
-  exposedHeaders: ['Authorization'],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
-};
-app.use(cors(corsOptions));
+  allowedHeaders: '*',
+  exposedHeaders: '*',
+  credentials: false,
+  optionsSuccessStatus: 200
+}));
 
-// Additional CORS headers middleware to ensure all responses have CORS headers
+// Additional CORS headers middleware - set headers on all responses
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-HTTP-Method-Override');
-  res.setHeader('Access-Control-Expose-Headers', 'Authorization');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', '*');
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
@@ -94,15 +83,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // CORS headers for static files (uploads) - Allow all origins
 app.use('/uploads', (req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
