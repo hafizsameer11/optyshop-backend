@@ -52,6 +52,10 @@ RUN mkdir -p /app/uploads && \
     chown -R nodejs:nodejs /app/uploads && \
     chmod -R 755 /app/uploads
 
+# Declare volume for uploads persistence (must be configured in Dokploy)
+# This directory should be mounted as a volume to persist files across container rebuilds
+VOLUME ["/app/uploads"]
+
 # Switch to non-root user
 USER nodejs
 
