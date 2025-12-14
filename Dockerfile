@@ -47,6 +47,11 @@ COPY --from=builder --chown=nodejs:nodejs /app/node_modules/@prisma ./node_modul
 # Copy application code
 COPY --chown=nodejs:nodejs . .
 
+# Create uploads directory with proper permissions (before switching user)
+RUN mkdir -p /app/uploads && \
+    chown -R nodejs:nodejs /app/uploads && \
+    chmod -R 755 /app/uploads
+
 # Switch to non-root user
 USER nodejs
 
