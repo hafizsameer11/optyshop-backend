@@ -12,7 +12,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies (including devDependencies for Prisma CLI)
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -34,7 +34,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --chown=nodejs:nodejs package*.json ./
 
 # Install production dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
 
 # Install Prisma CLI (needed for migrations) before switching user
 RUN npm install prisma@6.19.0 --no-save && npm cache clean --force
