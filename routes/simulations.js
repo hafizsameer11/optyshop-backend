@@ -43,7 +43,7 @@ router.post('/ar-coating', simulateARCoating);
 
 // Admin Routes (Protected)
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'staff'));
 
 // Simulation Config
 router.get('/config', getSimulationConfig);

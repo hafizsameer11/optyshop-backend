@@ -34,10 +34,22 @@ exports.validateCreateProduct = [
     .isLength({ min: 3, max: 100 })
     .withMessage('SKU must be between 3 and 100 characters'),
   body('category_id')
-    .isInt({ min: 1 })
+    .custom((value) => {
+      const num = parseInt(value, 10);
+      if (isNaN(num) || num < 1) {
+        throw new Error('Valid category ID is required');
+      }
+      return true;
+    })
     .withMessage('Valid category ID is required'),
   body('price')
-    .isFloat({ min: 0 })
+    .custom((value) => {
+      const num = parseFloat(value);
+      if (isNaN(num) || num < 0) {
+        throw new Error('Price must be a positive number');
+      }
+      return true;
+    })
     .withMessage('Price must be a positive number'),
   body('frame_shape')
     .optional()

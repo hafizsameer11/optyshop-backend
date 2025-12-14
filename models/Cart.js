@@ -15,11 +15,27 @@ const Cart = sequelize.define('Cart', {
       model: 'users',
       key: 'id'
     }
+  },
+  coupon_code: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'Applied coupon code'
+  },
+  shipping_info: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Shipping information as JSON string'
+  },
+  payment_info: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Payment information as JSON string (encrypted)'
   }
 }, {
   tableName: 'carts',
   indexes: [
-    { fields: ['user_id'] }
+    { fields: ['user_id'] },
+    { fields: ['coupon_code'] }
   ]
 });
 

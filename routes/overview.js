@@ -5,7 +5,7 @@ const { protect, authorize } = require('../middleware/auth');
 
 // Overview routes require admin access
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'staff'));
 
 router.get('/', getOverview);
 

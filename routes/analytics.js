@@ -11,7 +11,7 @@ const { protect, authorize } = require('../middleware/auth');
 
 // All analytics routes require admin access
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'staff'));
 
 // Analytics
 router.get('/sales', getSalesAnalytics);

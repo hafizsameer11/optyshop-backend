@@ -20,9 +20,9 @@ router.get('/:id', getOrder);
 router.put('/:id/cancel', cancelOrder);
 
 // Admin only routes
-router.put('/:id/status', authorize('admin'), updateOrderStatus);
-router.post('/:id/refund', authorize('admin'), processRefund);
-router.put('/:id/assign-technician', authorize('admin'), assignTechnician);
+router.put('/:id/status', authorize('admin', 'staff'), updateOrderStatus);
+router.post('/:id/refund', authorize('admin', 'staff'), processRefund);
+router.put('/:id/assign-technician', authorize('admin', 'staff'), assignTechnician);
 
 module.exports = router;
 

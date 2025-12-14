@@ -23,6 +23,8 @@ async function main() {
   await prisma.category.deleteMany();
   await prisma.lensType.deleteMany();
   await prisma.lensCoating.deleteMany();
+  await prisma.prescriptionLensVariant.deleteMany();
+  await prisma.prescriptionLensType.deleteMany();
   await prisma.simulationConfig.deleteMany();
   await prisma.formSubmission.deleteMany();
   await prisma.formConfig.deleteMany();
@@ -72,10 +74,10 @@ async function main() {
         hero_title: item.heroTitle,
         hero_subtitle: item.heroSubtitle || null,
         category: item.category || null,
-        person: item.person || {},
+        person: item.person ? JSON.stringify(item.person) : null,
         image_url: item.image || null,
         content: item.content || null,
-        tags: item.tags || [],
+        tags: item.tags ? JSON.stringify(item.tags) : null,
         is_published: true,
       })),
     });
@@ -92,7 +94,7 @@ async function main() {
         content: item.content || '',
         read_time: item.readTime || null,
         header_image: item.headerImage || null,
-        key_points: item.keyPoints || [],
+        key_points: item.keyPoints ? JSON.stringify(item.keyPoints) : null,
         published_at: item.date ? new Date(item.date) : new Date(),
         is_published: true,
       })),
@@ -107,7 +109,7 @@ async function main() {
         department: job.department || null,
         location: job.location || null,
         description: job.description || null,
-        requirements: job.requirements || [],
+        requirements: job.requirements ? JSON.stringify(job.requirements) : null,
         apply_url: job.applyUrl || null,
         is_active: job.isActive !== false,
       })),
@@ -121,9 +123,9 @@ async function main() {
         name: config.name,
         title: config.title || null,
         description: config.description || null,
-        fields: config.fields || [],
+        fields: config.fields ? JSON.stringify(config.fields) : null,
         cta_text: config.ctaText || null,
-        meta: config.meta || {},
+        meta: config.meta ? JSON.stringify(config.meta) : null,
         is_active: true,
       })),
     });
@@ -211,6 +213,87 @@ async function main() {
     }
   });
 
+  // Create Prescription Lens Types
+  console.log('👓 Creating prescription lens types...');
+  const distanceVision = await prisma.prescriptionLensType.create({
+    data: {
+      name: 'Distance Vision',
+      slug: 'distance-vision',
+      description: 'For distance (Thin, anti-glare, blue-cut options)',
+      prescription_type: 'single_vision',
+      base_price: 60.00,
+      is_active: true,
+      sort_order: 1
+    }
+  });
+
+  const nearVision = await prisma.prescriptionLensType.create({
+    data: {
+      name: 'Near Vision',
+      slug: 'near-vision',
+      description: 'For near/reading (Thin, anti-glare, blue-cut options)',
+      prescription_type: 'single_vision',
+      base_price: 60.00,
+      is_active: true,
+      sort_order: 2
+    }
+  });
+
+  const progressive = await prisma.prescriptionLensType.create({
+    data: {
+      name: 'Progressive',
+      slug: 'progressive',
+      description: 'Progressives (For two powers in same lenses)',
+      prescription_type: 'progressive',
+      base_price: 60.00,
+      is_active: true,
+      sort_order: 3
+    }
+  });
+
+  // Create Prescription Lens Variants for Progressive
+  console.log('🔍 Creating progressive lens variants...');
+  await prisma.prescriptionLensVariant.createMany({
+    data: [
+      {
+        prescription_lens_type_id: progressive.id,
+        name: 'Premium Progressive',
+        slug: 'premium-progressive',
+        description: 'High-quality progressive lenses with advanced technology',
+        price: 150.00,
+        is_recommended: true,
+        viewing_range: 'Wide',
+        use_cases: 'Maximum comfort & balanced vision',
+        is_active: true,
+        sort_order: 1
+      },
+      {
+        prescription_lens_type_id: progressive.id,
+        name: 'Standard Progressive',
+        slug: 'standard-progressive',
+        description: 'Standard progressive lenses for everyday use',
+        price: 100.00,
+        is_recommended: false,
+        viewing_range: 'Standard',
+        use_cases: 'Perfect for everyday tasks',
+        is_active: true,
+        sort_order: 2
+      },
+      {
+        prescription_lens_type_id: progressive.id,
+        name: 'Basic Progressive',
+        slug: 'basic-progressive',
+        description: 'Affordable progressive lens option',
+        price: 75.00,
+        is_recommended: false,
+        viewing_range: 'Basic',
+        use_cases: 'Budget-friendly option',
+        is_active: true,
+        sort_order: 3
+      }
+    ]
+  });
+
   // Create Lens Coatings
   console.log('✨ Creating lens coatings...');
   const coatingAR = await prisma.lensCoating.create({
@@ -271,17 +354,17 @@ async function main() {
       compare_at_price: 159.99,
       stock_quantity: 50,
       stock_status: 'in_stock',
-      images: [
+      images: JSON.stringify([
         'https://example.com/images/round-frame-1.jpg',
         'https://example.com/images/round-frame-2.jpg'
-      ],
+      ]),
       frame_shape: 'round',
       frame_material: 'acetate',
       frame_color: 'Black',
       gender: 'unisex',
       lens_type: 'prescription',
-      lens_index_options: [1.56, 1.61, 1.67, 1.74],
-      treatment_options: ['ar', 'blue_light', 'uv', 'scratch'],
+      lens_index_options: JSON.stringify([1.56, 1.61, 1.67, 1.74]),
+      treatment_options: JSON.stringify(['ar', 'blue_light', 'uv', 'scratch']),
       is_featured: true,
       is_active: true,
       rating: 4.5,
@@ -301,10 +384,10 @@ async function main() {
       compare_at_price: 119.99,
       stock_quantity: 30,
       stock_status: 'in_stock',
-      images: [
+      images: JSON.stringify([
         'https://example.com/images/aviator-1.jpg',
         'https://example.com/images/aviator-2.jpg'
-      ],
+      ]),
       frame_shape: 'aviator',
       frame_material: 'metal',
       frame_color: 'Gold',
@@ -328,15 +411,15 @@ async function main() {
       price: 49.99,
       stock_quantity: 75,
       stock_status: 'in_stock',
-      images: [
+      images: JSON.stringify([
         'https://example.com/images/reading-1.jpg'
-      ],
+      ]),
       frame_shape: 'square',
       frame_material: 'tr90',
       frame_color: 'Tortoise',
       gender: 'unisex',
       lens_type: 'reading',
-      treatment_options: ['blue_light', 'uv'],
+      treatment_options: JSON.stringify(['blue_light', 'uv']),
       is_featured: false,
       is_active: true,
       rating: 4.2,
@@ -356,17 +439,17 @@ async function main() {
       compare_at_price: 179.99,
       stock_quantity: 25,
       stock_status: 'in_stock',
-      images: [
+      images: JSON.stringify([
         'https://example.com/images/cateye-1.jpg',
         'https://example.com/images/cateye-2.jpg'
-      ],
+      ]),
       frame_shape: 'cat_eye',
       frame_material: 'acetate',
       frame_color: 'Red',
       gender: 'women',
       lens_type: 'prescription',
-      lens_index_options: [1.56, 1.61, 1.67],
-      treatment_options: ['ar', 'blue_light', 'uv', 'scratch'],
+      lens_index_options: JSON.stringify([1.56, 1.61, 1.67]),
+      treatment_options: JSON.stringify(['ar', 'blue_light', 'uv', 'scratch']),
       is_featured: true,
       is_active: true,
       rating: 4.7,
@@ -532,33 +615,33 @@ async function main() {
     data: [
       {
         config_key: 'pd_calculator_default',
-        config_value: {
+        config_value: JSON.stringify({
           near_pd_offset: 3,
           min_pd: 50,
           max_pd: 80
-        },
+        }),
         description: 'Default PD calculator settings',
         category: 'pd_calculator',
         is_active: true
       },
       {
         config_key: 'lens_thickness_formula',
-        config_value: {
+        config_value: JSON.stringify({
           formula: 'edge_thickness = (frame_diameter² × lens_power) / (2000 × index)',
           min_diameter: 30,
           max_diameter: 80
-        },
+        }),
         description: 'Lens thickness calculation formula',
         category: 'lens_thickness',
         is_active: true
       },
       {
         config_key: 'photochromic_settings',
-        config_value: {
+        config_value: JSON.stringify({
           min_opacity: 0.1,
           max_opacity: 0.8,
           transition_time: 30
-        },
+        }),
         description: 'Photochromic lens simulation settings',
         category: 'photochromic',
         is_active: true

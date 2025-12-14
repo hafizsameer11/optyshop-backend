@@ -1,22 +1,11 @@
+// This file is deprecated - routes moved:
+// - Public routes: /api/banners, /api/faqs, /api/pages/:slug
+// - Admin routes: /api/admin/banners, /api/admin/blog-posts, /api/admin/faqs, /api/admin/pages
+// - Testimonials still here for now (not in spec, keeping for backward compatibility)
+
 const express = require('express');
 const router = express.Router();
 const {
-    getBanners,
-    createBanner,
-    updateBanner,
-    deleteBanner,
-    getBlogPosts,
-    createBlogPost,
-    updateBlogPost,
-    deleteBlogPost,
-    getFaqs,
-    createFaq,
-    updateFaq,
-    deleteFaq,
-    getPages,
-    createPage,
-    updatePage,
-    deletePage,
     getTestimonials,
     createTestimonial,
     updateTestimonial,
@@ -25,36 +14,13 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSingle } = require('../middleware/upload');
 
-// Public routes (GET only)
-router.get('/banners', getBanners);
-router.get('/blog', getBlogPosts);
-router.get('/faqs', getFaqs);
-router.get('/pages', getPages);
+// Public route (GET only)
 router.get('/testimonials', getTestimonials);
+router.get('/banners', require('../controllers/cmsController').getBanners);
 
 // Admin routes (Protected)
 router.use(protect);
-router.use(authorize('admin'));
-
-// Banners
-router.post('/banners', uploadSingle('image'), createBanner);
-router.put('/banners/:id', uploadSingle('image'), updateBanner);
-router.delete('/banners/:id', deleteBanner);
-
-// Blog Posts
-router.post('/blog', uploadSingle('thumbnail'), createBlogPost);
-router.put('/blog/:id', uploadSingle('thumbnail'), updateBlogPost);
-router.delete('/blog/:id', deleteBlogPost);
-
-// FAQs
-router.post('/faqs', createFaq);
-router.put('/faqs/:id', updateFaq);
-router.delete('/faqs/:id', deleteFaq);
-
-// Pages
-router.post('/pages', createPage);
-router.put('/pages/:id', updatePage);
-router.delete('/pages/:id', deletePage);
+router.use(authorize('admin', 'staff'));
 
 // Testimonials
 router.post('/testimonials', uploadSingle('avatar'), createTestimonial);

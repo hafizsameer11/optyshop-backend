@@ -3,6 +3,16 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 
+// Helper function to parse JSON strings in order items
+const parseOrderItems = (items) => {
+  if (!items) return items;
+  return items.map(item => ({
+    ...item,
+    lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
+    customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null
+  }));
+};
+
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
@@ -41,6 +51,21 @@ exports.createOrder = asyncHandler(async (req, res) => {
     const itemTotal = parseFloat(product.price) * item.quantity;
     subtotal += itemTotal;
 
+    // Convert lens_coatings and customization arrays to JSON strings if needed
+    let lensCoatingsValue = null;
+    if (item.lens_coatings) {
+      lensCoatingsValue = Array.isArray(item.lens_coatings) 
+        ? JSON.stringify(item.lens_coatings) 
+        : JSON.stringify([item.lens_coatings]);
+    }
+
+    let customizationValue = null;
+    if (item.customization) {
+      customizationValue = typeof item.customization === 'string' 
+        ? item.customization 
+        : JSON.stringify(item.customization);
+    }
+
     orderItems.push({
       product_id: item.product_id,
       product_name: product.name,
@@ -49,10 +74,36 @@ exports.createOrder = asyncHandler(async (req, res) => {
       unit_price: product.price,
       total_price: itemTotal.toFixed(2),
       lens_index: item.lens_index || null,
-      lens_coatings: item.lens_coatings || [],
+      lens_coatings: lensCoatingsValue,
       frame_size_id: item.frame_size_id || null,
-      customization: item.customization || null
+      customization: customizationValue
     });
+  }
+
+  // Validate prescription_id if provided
+  let validPrescriptionId = null;
+  if (prescription_id !== null && prescription_id !== undefined && prescription_id !== '' && prescription_id !== 'null') {
+    const prescriptionIdInt = parseInt(prescription_id);
+    
+    if (isNaN(prescriptionIdInt) || prescriptionIdInt <= 0) {
+      return error(res, `Invalid prescription ID: ${prescription_id}`, 400);
+    }
+    
+    const prescription = await prisma.prescription.findUnique({
+      where: { id: prescriptionIdInt },
+      select: { id: true, user_id: true }
+    });
+    
+    if (!prescription) {
+      return error(res, `Prescription with ID ${prescription_id} not found`, 404);
+    }
+    
+    // Optional: Verify prescription belongs to the current user
+    if (prescription.user_id !== req.user.id) {
+      return error(res, 'Prescription does not belong to the current user', 403);
+    }
+    
+    validPrescriptionId = prescriptionIdInt;
   }
 
   // Calculate tax (example: 10%)
@@ -61,22 +112,78 @@ exports.createOrder = asyncHandler(async (req, res) => {
   const discount = 0; // Apply discount codes here
   const total = subtotal + tax + shipping - discount;
 
+  // Map and validate payment_method
+  let validPaymentMethod = null;
+  if (payment_method) {
+    const paymentMethodMap = {
+      'card': 'stripe',
+      'credit_card': 'stripe',
+      'debit_card': 'stripe',
+      'stripe': 'stripe',
+      'paypal': 'paypal',
+      'cod': 'cod',
+      'cash_on_delivery': 'cod',
+      'cash': 'cod'
+    };
+    
+    const mappedMethod = paymentMethodMap[payment_method.toLowerCase()] || payment_method.toLowerCase();
+    const validMethods = ['stripe', 'paypal', 'cod'];
+    
+    if (validMethods.includes(mappedMethod)) {
+      validPaymentMethod = mappedMethod;
+    }
+  }
+
+  // Convert addresses to JSON strings - Prisma expects String, not Object
+  if (!shipping_address) {
+    return error(res, 'Shipping address is required', 400);
+  }
+  
+  // Always convert to JSON string if it's an object (check for plain objects, not arrays or null)
+  let shippingAddressString;
+  if (shipping_address && typeof shipping_address === 'object' && !Array.isArray(shipping_address) && shipping_address.constructor === Object) {
+    shippingAddressString = JSON.stringify(shipping_address);
+  } else if (typeof shipping_address === 'string') {
+    shippingAddressString = shipping_address;
+  } else {
+    shippingAddressString = JSON.stringify(shipping_address);
+  }
+
+  // Handle billing address - use shipping address as fallback if not provided
+  const billingAddressToUse = billing_address || shipping_address;
+  let billingAddressString;
+  if (billingAddressToUse && typeof billingAddressToUse === 'object' && !Array.isArray(billingAddressToUse) && billingAddressToUse.constructor === Object) {
+    billingAddressString = JSON.stringify(billingAddressToUse);
+  } else if (typeof billingAddressToUse === 'string') {
+    billingAddressString = billingAddressToUse;
+  } else {
+    billingAddressString = JSON.stringify(billingAddressToUse);
+  }
+  
+  // Ensure we have strings, not objects
+  if (typeof shippingAddressString !== 'string') {
+    shippingAddressString = JSON.stringify(shippingAddressString);
+  }
+  if (typeof billingAddressString !== 'string') {
+    billingAddressString = JSON.stringify(billingAddressString);
+  }
+
   // Create order with items
   const order = await prisma.order.create({
     data: {
       order_number: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
       user_id: req.user.id,
-      prescription_id: prescription_id || null,
+      prescription_id: validPrescriptionId, // Will be null if not provided or invalid
       status: 'pending',
       payment_status: 'pending',
-      payment_method: payment_method || null,
+      payment_method: validPaymentMethod,
       subtotal: subtotal.toFixed(2),
       tax: tax.toFixed(2),
       shipping: shipping.toFixed(2),
       discount: discount.toFixed(2),
       total: total.toFixed(2),
-      shipping_address,
-      billing_address: billing_address || shipping_address,
+      shipping_address: shippingAddressString,
+      billing_address: billingAddressString,
       notes: notes || null,
       items: {
         create: orderItems
@@ -119,7 +226,13 @@ exports.createOrder = asyncHandler(async (req, res) => {
     await prisma.cartItem.deleteMany({ where: { cart_id: cart.id } });
   }
 
-  return success(res, 'Order created successfully', { order }, 201);
+  // Parse JSON strings in order items
+  const parsedOrder = {
+    ...order,
+    items: parseOrderItems(order.items)
+  };
+
+  return success(res, 'Order created successfully', { order: parsedOrder }, 201);
 });
 
 // @desc    Get user orders
@@ -156,8 +269,14 @@ exports.getOrders = asyncHandler(async (req, res) => {
     prisma.order.count({ where })
   ]);
 
+  // Parse JSON strings in order items
+  const parsedOrders = orders.map(order => ({
+    ...order,
+    items: parseOrderItems(order.items)
+  }));
+
   return success(res, 'Orders retrieved successfully', {
-    orders,
+    orders: parsedOrders,
     pagination: {
       total,
       page: parseInt(page),
@@ -192,7 +311,13 @@ exports.getOrder = asyncHandler(async (req, res) => {
     return error(res, 'Order not found', 404);
   }
 
-  return success(res, 'Order retrieved successfully', { order });
+  // Parse JSON strings in order items
+  const parsedOrder = {
+    ...order,
+    items: parseOrderItems(order.items)
+  };
+
+  return success(res, 'Order retrieved successfully', { order: parsedOrder });
 });
 
 // @desc    Update order status (Admin only)
@@ -205,6 +330,15 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
   const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
   if (!validStatuses.includes(status)) {
     return error(res, 'Invalid status', 400);
+  }
+
+  // Check if order exists
+  const existingOrder = await prisma.order.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!existingOrder) {
+    return error(res, 'Order not found', 404);
   }
 
   const updateData = { status };
@@ -355,8 +489,14 @@ exports.getAllOrdersAdmin = asyncHandler(async (req, res) => {
     prisma.order.count({ where })
   ]);
 
+  // Parse JSON strings in order items
+  const parsedOrders = orders.map(order => ({
+    ...order,
+    items: parseOrderItems(order.items)
+  }));
+
   return success(res, 'Orders retrieved successfully', {
-    orders,
+    orders: parsedOrders,
     pagination: {
       total,
       page: parseInt(page),
@@ -397,5 +537,11 @@ exports.getAdminOrderDetail = asyncHandler(async (req, res) => {
     return error(res, 'Order not found', 404);
   }
 
-  return success(res, 'Order retrieved successfully', { order });
+  // Parse JSON strings in order items
+  const parsedOrder = {
+    ...order,
+    items: parseOrderItems(order.items)
+  };
+
+  return success(res, 'Order retrieved successfully', { order: parsedOrder });
 });

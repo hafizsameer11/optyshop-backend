@@ -1,6 +1,3 @@
-// This is your Prisma schema file for OptyShop
-// Learn more: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,40 +7,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User Model
 model User {
-  id                    Int       @id @default(autoincrement())
-  email                 String    @unique @db.VarChar(255)
-  password              String    @db.VarChar(255)
-  first_name            String    @db.VarChar(100)
-  last_name             String    @db.VarChar(100)
-  phone                 String?   @db.VarChar(20)
-  role                  UserRole  @default(customer)
-  is_active             Boolean   @default(true)
-  email_verified        Boolean   @default(false)
-  avatar                String?   @db.VarChar(500)
-  refresh_token         String?   @db.Text
-  reset_password_token  String?   @db.VarChar(255)
+  id                     Int                @id @default(autoincrement())
+  email                  String             @unique @db.VarChar(255)
+  password               String             @db.VarChar(255)
+  first_name             String             @db.VarChar(100)
+  last_name              String             @db.VarChar(100)
+  phone                  String?            @db.VarChar(20)
+  role                   UserRole           @default(customer)
+  is_active              Boolean            @default(true)
+  email_verified         Boolean            @default(false)
+  avatar                 String?            @db.VarChar(500)
+  refresh_token          String?            @db.Text
+  reset_password_token   String?            @db.VarChar(255)
   reset_password_expires DateTime?
-  created_at            DateTime  @default(now())
-  updated_at            DateTime  @updatedAt
-
-  orders        Order[]
-  prescriptions Prescription[]
-  reviews       Review[]
-  cart          Cart?
-  adminActivityLogs AdminActivityLog[]
-  analyticsEvents   AnalyticsEvent[]
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @updatedAt
+  adminActivityLogs      AdminActivityLog[]
+  analyticsEvents        AnalyticsEvent[]
+  cart                   Cart?
+  orders                 Order[]
+  prescriptions          Prescription[]
+  reviews                Review[]
+  transactions           Transaction[]
 
   @@map("users")
 }
 
-enum UserRole {
-  customer
-  admin
-}
-
-// Category Model
 model Category {
   id          Int       @id @default(autoincrement())
   name        String    @unique @db.VarChar(100)
@@ -54,56 +44,53 @@ model Category {
   sort_order  Int       @default(0)
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
-
-  products Product[]
+  products    Product[]
 
   @@map("categories")
 }
 
-// Product Model
 model Product {
-  id                Int            @id @default(autoincrement())
-  name              String         @db.VarChar(255)
-  slug              String         @unique @db.VarChar(255)
-  sku               String         @unique @db.VarChar(100)
-  description       String?        @db.Text
-  short_description String?        @db.VarChar(500)
-  product_type      ProductType    @default(frame)
-  category_id       Int
-  price             Decimal        @db.Decimal(10, 2) @default(0.00)
-  compare_at_price  Decimal?       @db.Decimal(10, 2)
-  cost_price        Decimal?       @db.Decimal(10, 2)
-  stock_quantity    Int            @default(0)
-  stock_status      StockStatus    @default(in_stock)
-  images            Json?          @default("[]")
-  frame_shape       FrameShape?
-  frame_material    FrameMaterial?
-  frame_color       String?        @db.VarChar(100)
-  gender            Gender         @default(unisex)
-  lens_type         LensTypeEnum?
-  lens_index_options Json?         @default("[1.56, 1.61, 1.67, 1.74]")
-  treatment_options Json?          @default("[]")
-  model_3d_url      String?        @db.VarChar(500)
-  try_on_image      String?        @db.VarChar(500)
-  is_featured       Boolean        @default(false)
-  is_active         Boolean        @default(true)
-  meta_title        String?        @db.VarChar(255)
-  meta_description  String?        @db.Text
-  meta_keywords     String?        @db.VarChar(255)
-  rating            Decimal        @db.Decimal(3, 2) @default(0.00)
-  review_count      Int            @default(0)
-  view_count        Int            @default(0)
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-
-  category    Category      @relation(fields: [category_id], references: [id])
-  orderItems  OrderItem[]
-  cartItems   CartItem[]
-  reviews     Review[]
-  frameSizes  FrameSize[]
-  lensTypes   ProductLensType[]
-  lensCoatings ProductLensCoating[]
-  variants    ProductVariant[]
+  id                 Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(255)
+  slug               String               @unique @db.VarChar(255)
+  sku                String               @unique @db.VarChar(100)
+  description        String?              @db.Text
+  short_description  String?              @db.VarChar(500)
+  category_id        Int
+  price              Decimal              @default(0.00) @db.Decimal(10, 2)
+  compare_at_price   Decimal?             @db.Decimal(10, 2)
+  cost_price         Decimal?             @db.Decimal(10, 2)
+  stock_quantity     Int                  @default(0)
+  stock_status       StockStatus          @default(in_stock)
+  images             String?              @db.LongText
+  frame_shape        FrameShape?
+  frame_material     FrameMaterial?
+  frame_color        String?              @db.VarChar(100)
+  gender             Gender               @default(unisex)
+  lens_type          LensTypeEnum?
+  lens_index_options String?              @db.LongText
+  treatment_options  String?              @db.LongText
+  model_3d_url       String?              @db.VarChar(500)
+  try_on_image       String?              @db.VarChar(500)
+  is_featured        Boolean              @default(false)
+  is_active          Boolean              @default(true)
+  meta_title         String?              @db.VarChar(255)
+  meta_description   String?              @db.Text
+  rating             Decimal              @default(0.00) @db.Decimal(3, 2)
+  review_count       Int                  @default(0)
+  view_count         Int                  @default(0)
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  meta_keywords      String?              @db.VarChar(255)
+  product_type       ProductType          @default(frame)
+  cartItems          CartItem[]
+  frameSizes         FrameSize[]
+  orderItems         OrderItem[]
+  lensCoatings       ProductLensCoating[]
+  lensTypes          ProductLensType[]
+  variants           ProductVariant[]
+  category           Category             @relation(fields: [category_id], references: [id])
+  reviews            Review[]
 
   @@index([category_id])
   @@index([slug])
@@ -112,6 +99,857 @@ model Product {
   @@index([frame_material])
   @@index([is_active, is_featured])
   @@map("products")
+}
+
+model FrameSize {
+  id            Int      @id @default(autoincrement())
+  product_id    Int
+  lens_width    Decimal  @db.Decimal(5, 2)
+  bridge_width  Decimal  @db.Decimal(5, 2)
+  temple_length Decimal  @db.Decimal(5, 2)
+  frame_width   Decimal? @db.Decimal(5, 2)
+  frame_height  Decimal? @db.Decimal(5, 2)
+  size_label    String?  @db.VarChar(50)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  product       Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("frame_sizes")
+}
+
+model LensType {
+  id               Int               @id @default(autoincrement())
+  name             String            @unique @db.VarChar(100)
+  slug             String            @unique @db.VarChar(100)
+  description      String?           @db.Text
+  index            Decimal           @db.Decimal(3, 2)
+  thickness_factor Decimal?          @db.Decimal(5, 2)
+  price_adjustment Decimal           @default(0.00) @db.Decimal(10, 2)
+  is_active        Boolean           @default(true)
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+  lensPackages     LensPackage[]
+  products         ProductLensType[]
+
+  @@map("lens_types")
+}
+
+model LensCoating {
+  id               Int                  @id @default(autoincrement())
+  name             String               @unique @db.VarChar(100)
+  slug             String               @unique @db.VarChar(100)
+  type             CoatingType
+  description      String?              @db.Text
+  price_adjustment Decimal              @default(0.00) @db.Decimal(10, 2)
+  is_active        Boolean              @default(true)
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+  products         ProductLensCoating[]
+
+  @@map("lens_coatings")
+}
+
+model ProductLensType {
+  id           Int      @id @default(autoincrement())
+  product_id   Int
+  lens_type_id Int
+  lensType     LensType @relation(fields: [lens_type_id], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, lens_type_id])
+  @@index([lens_type_id], map: "product_lens_types_lens_type_id_fkey")
+  @@map("product_lens_types")
+}
+
+model ProductLensCoating {
+  id              Int         @id @default(autoincrement())
+  product_id      Int
+  lens_coating_id Int
+  lensCoating     LensCoating @relation(fields: [lens_coating_id], references: [id], onDelete: Cascade)
+  product         Product     @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, lens_coating_id])
+  @@index([lens_coating_id], map: "product_lens_coatings_lens_coating_id_fkey")
+  @@map("product_lens_coatings")
+}
+
+model Prescription {
+  id                Int              @id @default(autoincrement())
+  user_id           Int
+  prescription_type PrescriptionType @default(single_vision)
+  od_sphere         Decimal?         @db.Decimal(5, 2)
+  od_cylinder       Decimal?         @db.Decimal(5, 2)
+  od_axis           Int?
+  od_add            Decimal?         @db.Decimal(5, 2)
+  os_sphere         Decimal?         @db.Decimal(5, 2)
+  os_cylinder       Decimal?         @db.Decimal(5, 2)
+  os_axis           Int?
+  os_add            Decimal?         @db.Decimal(5, 2)
+  pd_binocular      Decimal?         @db.Decimal(5, 2)
+  pd_monocular_od   Decimal?         @db.Decimal(5, 2)
+  pd_monocular_os   Decimal?         @db.Decimal(5, 2)
+  pd_near           Decimal?         @db.Decimal(5, 2)
+  ph_od             Decimal?         @db.Decimal(5, 2)
+  ph_os             Decimal?         @db.Decimal(5, 2)
+  doctor_name       String?          @db.VarChar(255)
+  doctor_license    String?          @db.VarChar(100)
+  prescription_date DateTime?
+  expiry_date       DateTime?
+  notes             String?          @db.Text
+  is_active         Boolean          @default(true)
+  is_verified       Boolean          @default(false)
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+  orders            Order[]
+  cartItems         CartItem[]
+  user              User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([is_active])
+  @@map("prescriptions")
+}
+
+model Cart {
+  id            Int        @id @default(autoincrement())
+  user_id       Int        @unique
+  coupon_code   String?    @db.VarChar(50)
+  shipping_info String?    @db.LongText
+  payment_info  String?    @db.LongText
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  items         CartItem[]
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([coupon_code])
+  @@map("carts")
+}
+
+model CartItem {
+  id              Int           @id @default(autoincrement())
+  cart_id         Int
+  product_id      Int
+  quantity        Int           @default(1)
+  lens_index      Decimal?      @db.Decimal(3, 2)
+  lens_coatings   String?       @db.LongText
+  frame_size_id   Int?
+  customization   String?       @db.LongText
+  unit_price      Decimal       @db.Decimal(10, 2)
+  prescription_id Int?
+  // Lens configuration fields
+  lens_type       String?       @db.VarChar(50) // 'distance_vision', 'near_vision', 'progressive'
+  prescription_data String?     @db.LongText // JSON: PD, OD (SPH, CYL, AXIS), OS (SPH, CYL, AXIS)
+  progressive_variant_id Int?   // Reference to PrescriptionLensVariant
+  lens_thickness_material_id Int? // Reference to LensThicknessMaterial
+  lens_thickness_option_id Int?  // Reference to LensThicknessOption
+  treatment_ids   String?       @db.LongText // JSON array of treatment IDs
+  photochromic_color_id Int?     // Reference to LensColor for photochromic
+  prescription_sun_color_id Int? // Reference to LensColor for prescription lenses sun
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  cart            Cart          @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  prescription    Prescription? @relation(fields: [prescription_id], references: [id])
+  progressiveVariant PrescriptionLensVariant? @relation(fields: [progressive_variant_id], references: [id])
+  lensThicknessMaterial LensThicknessMaterial? @relation(fields: [lens_thickness_material_id], references: [id])
+  lensThicknessOption LensThicknessOption? @relation(fields: [lens_thickness_option_id], references: [id])
+  photochromicColor LensColor? @relation("PhotochromicColor", fields: [photochromic_color_id], references: [id])
+  prescriptionSunColor LensColor? @relation("PrescriptionSunColor", fields: [prescription_sun_color_id], references: [id])
+
+  @@unique([cart_id, product_id, lens_index, frame_size_id])
+  @@index([cart_id])
+  @@index([product_id])
+  @@index([prescription_id])
+  @@index([progressive_variant_id])
+  @@index([lens_thickness_material_id])
+  @@index([lens_thickness_option_id])
+  @@index([photochromic_color_id])
+  @@index([prescription_sun_color_id])
+  @@map("cart_items")
+}
+
+model Order {
+  id               Int            @id @default(autoincrement())
+  order_number     String         @unique @db.VarChar(50)
+  user_id          Int
+  prescription_id  Int?
+  status           OrderStatus    @default(pending)
+  payment_status   PaymentStatus  @default(pending)
+  payment_method   PaymentMethod?
+  payment_id       String?        @db.VarChar(255)
+  subtotal         Decimal        @default(0.00) @db.Decimal(10, 2)
+  tax              Decimal        @default(0.00) @db.Decimal(10, 2)
+  shipping         Decimal        @default(0.00) @db.Decimal(10, 2)
+  discount         Decimal        @default(0.00) @db.Decimal(10, 2)
+  total            Decimal        @default(0.00) @db.Decimal(10, 2)
+  shipping_address String         @db.LongText
+  billing_address  String?        @db.LongText
+  notes            String?        @db.Text
+  shipped_at       DateTime?
+  delivered_at     DateTime?
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+  items            OrderItem[]
+  transactions     Transaction[]
+  prescription     Prescription?  @relation(fields: [prescription_id], references: [id])
+  user             User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([order_number])
+  @@index([status])
+  @@index([payment_status])
+  @@index([prescription_id], map: "orders_prescription_id_fkey")
+  @@map("orders")
+}
+
+model OrderItem {
+  id            Int      @id @default(autoincrement())
+  order_id      Int
+  product_id    Int
+  product_name  String   @db.VarChar(255)
+  product_sku   String   @db.VarChar(100)
+  quantity      Int      @default(1)
+  unit_price    Decimal  @db.Decimal(10, 2)
+  total_price   Decimal  @db.Decimal(10, 2)
+  lens_index    Decimal? @db.Decimal(3, 2)
+  lens_coatings String?  @db.LongText
+  frame_size_id Int?
+  customization String?  @db.LongText
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  order         Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@index([product_id])
+  @@map("order_items")
+}
+
+model Transaction {
+  id                  Int               @id @default(autoincrement())
+  transaction_number  String            @unique @db.VarChar(50)
+  order_id            Int
+  user_id             Int
+  type                TransactionType   @default(payment)
+  status              TransactionStatus @default(pending)
+  payment_method      PaymentMethod
+  amount              Decimal            @db.Decimal(10, 2)
+  currency            String             @default("USD") @db.VarChar(3)
+  gateway_transaction_id String?         @db.VarChar(255)
+  gateway_response     String?           @db.LongText
+  gateway_fee         Decimal?           @db.Decimal(10, 2)
+  net_amount          Decimal?           @db.Decimal(10, 2)
+  description         String?            @db.Text
+  metadata            String?            @db.LongText
+  processed_at        DateTime?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+  order               Order              @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  user                User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@index([user_id])
+  @@index([transaction_number])
+  @@index([status])
+  @@index([type])
+  @@index([gateway_transaction_id])
+  @@index([created_at])
+  @@map("transactions")
+}
+
+model ShippingMethod {
+  id              Int                 @id @default(autoincrement())
+  name            String              @db.VarChar(100)
+  slug            String              @unique @db.VarChar(100)
+  type            ShippingMethodType
+  description     String?             @db.Text
+  price           Decimal              @default(0.00) @db.Decimal(10, 2)
+  estimated_days Int?
+  is_active       Boolean              @default(true)
+  sort_order      Int                  @default(0)
+  icon            String?              @db.VarChar(500)
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+
+  @@index([is_active])
+  @@index([type])
+  @@map("shipping_methods")
+}
+
+model LensOption {
+  id              Int                 @id @default(autoincrement())
+  name            String              @db.VarChar(100)
+  slug            String              @unique @db.VarChar(100)
+  type            LensOptionType
+  description     String?             @db.Text
+  base_price      Decimal              @default(0.00) @db.Decimal(10, 2)
+  is_active       Boolean              @default(true)
+  sort_order      Int                  @default(0)
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+  finishes        LensFinish[]
+  colors          LensColor[]
+
+  @@index([is_active])
+  @@index([type])
+  @@map("lens_options")
+}
+
+model LensFinish {
+  id              Int                 @id @default(autoincrement())
+  lens_option_id  Int
+  name            String              @db.VarChar(100)
+  slug            String              @db.VarChar(100)
+  description     String?             @db.Text
+  price_adjustment Decimal             @default(0.00) @db.Decimal(10, 2)
+  is_active       Boolean              @default(true)
+  sort_order      Int                  @default(0)
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+  lensOption      LensOption          @relation(fields: [lens_option_id], references: [id], onDelete: Cascade)
+  colors          LensColor[]
+
+  @@unique([lens_option_id, slug])
+  @@index([lens_option_id])
+  @@index([is_active])
+  @@map("lens_finishes")
+}
+
+model LensColor {
+  id                      Int                  @id @default(autoincrement())
+  lens_option_id          Int?
+  lens_finish_id          Int?
+  prescription_lens_type_id Int?
+  name                    String               @db.VarChar(100)
+  color_code              String               @db.VarChar(50)
+  hex_code                String?              @db.VarChar(7)
+  image_url               String?              @db.VarChar(500)
+  price_adjustment        Decimal              @default(0.00) @db.Decimal(10, 2)
+  is_active               Boolean              @default(true)
+  sort_order              Int                  @default(0)
+  created_at              DateTime             @default(now())
+  updated_at              DateTime             @updatedAt
+  lensOption              LensOption?         @relation(fields: [lens_option_id], references: [id], onDelete: Cascade)
+  lensFinish              LensFinish?         @relation(fields: [lens_finish_id], references: [id], onDelete: Cascade)
+  prescriptionLensType    PrescriptionLensType? @relation(fields: [prescription_lens_type_id], references: [id], onDelete: Cascade)
+  photochromicCartItems   CartItem[]          @relation("PhotochromicColor")
+  prescriptionSunCartItems CartItem[]         @relation("PrescriptionSunColor")
+
+  @@index([lens_option_id])
+  @@index([lens_finish_id])
+  @@index([prescription_lens_type_id])
+  @@index([is_active])
+  @@map("lens_colors")
+}
+
+model LensTreatment {
+  id              Int                 @id @default(autoincrement())
+  name            String              @unique @db.VarChar(100)
+  slug            String              @unique @db.VarChar(100)
+  type            LensTreatmentType
+  description     String?             @db.Text
+  price           Decimal              @default(0.00) @db.Decimal(10, 2)
+  icon            String?             @db.VarChar(500)
+  is_active       Boolean              @default(true)
+  sort_order      Int                  @default(0)
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+
+  @@index([is_active])
+  @@index([type])
+  @@map("lens_treatments")
+}
+
+model PrescriptionLensType {
+  id                Int                        @id @default(autoincrement())
+  name              String                     @unique @db.VarChar(100)
+  slug              String                     @unique @db.VarChar(100)
+  description       String?                    @db.Text
+  prescription_type PrescriptionType
+  base_price        Decimal                    @default(60.00) @db.Decimal(10, 2)
+  is_active         Boolean                    @default(true)
+  sort_order        Int                        @default(0)
+  created_at        DateTime                   @default(now())
+  updated_at        DateTime                   @updatedAt
+  colors            LensColor[]
+  variants          PrescriptionLensVariant[]
+
+  @@index([is_active])
+  @@index([prescription_type])
+  @@map("prescription_lens_types")
+}
+
+model PrescriptionLensVariant {
+  id                      Int                  @id @default(autoincrement())
+  prescription_lens_type_id Int
+  name                    String               @db.VarChar(100)
+  slug                    String               @db.VarChar(100)
+  description             String?              @db.Text
+  price                   Decimal               @db.Decimal(10, 2)
+  is_recommended          Boolean               @default(false)
+  viewing_range           String?              @db.VarChar(100)
+  use_cases               String?              @db.Text
+  is_active               Boolean               @default(true)
+  sort_order              Int                  @default(0)
+  created_at              DateTime             @default(now())
+  updated_at              DateTime             @updatedAt
+  prescriptionLensType    PrescriptionLensType @relation(fields: [prescription_lens_type_id], references: [id], onDelete: Cascade)
+  cartItems               CartItem[]
+
+  @@unique([prescription_lens_type_id, slug])
+  @@index([prescription_lens_type_id])
+  @@index([is_active])
+  @@index([is_recommended])
+  @@map("prescription_lens_variants")
+}
+
+model Review {
+  id                   Int      @id @default(autoincrement())
+  user_id              Int
+  product_id           Int
+  order_id             Int?
+  rating               Int
+  title                String?  @db.VarChar(255)
+  comment              String?  @db.Text
+  images               String?  @db.LongText
+  is_verified_purchase Boolean  @default(false)
+  is_approved          Boolean  @default(false)
+  helpful_count        Int      @default(0)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+  product              Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  user                 User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([product_id])
+  @@index([rating])
+  @@index([is_approved])
+  @@map("reviews")
+}
+
+model SimulationConfig {
+  id           Int      @id @default(autoincrement())
+  config_key   String   @unique @db.VarChar(100)
+  config_value String   @db.LongText
+  description  String?  @db.Text
+  category     String?  @db.VarChar(50)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([config_key])
+  @@index([category])
+  @@map("simulation_configs")
+}
+
+model ProductVariant {
+  id              Int      @id @default(autoincrement())
+  product_id      Int
+  sku             String?  @db.VarChar(100)
+  size_label      String?  @db.VarChar(50)
+  color           String?  @db.VarChar(100)
+  material        String?  @db.VarChar(100)
+  additional_data String?  @db.LongText
+  stock_quantity  Int      @default(0)
+  price           Decimal? @db.Decimal(10, 2)
+  images          String?  @db.LongText
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  product         Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_variants")
+}
+
+model LensPackage {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(150)
+  slug         String    @unique @db.VarChar(150)
+  description  String?   @db.Text
+  base_index   Decimal   @db.Decimal(3, 2)
+  lens_type_id Int?
+  coatings     String?   @db.LongText
+  price        Decimal   @db.Decimal(10, 2)
+  price_rules  String?   @db.LongText
+  is_active    Boolean   @default(true)
+  sort_order   Int       @default(0)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  lensType     LensType? @relation(fields: [lens_type_id], references: [id])
+
+  @@index([lens_type_id])
+  @@map("lens_packages")
+}
+
+model Coupon {
+  id               Int          @id @default(autoincrement())
+  code             String       @unique @db.VarChar(50)
+  description      String?      @db.Text
+  discount_type    DiscountType
+  discount_value   Decimal      @db.Decimal(10, 2)
+  max_discount     Decimal?     @db.Decimal(10, 2)
+  min_order_amount Decimal?     @db.Decimal(10, 2)
+  usage_limit      Int?
+  usage_per_user   Int?
+  starts_at        DateTime?
+  ends_at          DateTime?
+  is_active        Boolean      @default(true)
+  applicable_to    String?      @db.VarChar(50)
+  conditions       String?      @db.LongText
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+
+  @@index([code])
+  @@index([is_active])
+  @@map("coupons")
+}
+
+model MarketingCampaign {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(150)
+  slug          String    @unique @db.VarChar(150)
+  description   String?   @db.Text
+  campaign_type String?   @db.VarChar(50)
+  config        String?   @db.LongText
+  is_active     Boolean   @default(false)
+  starts_at     DateTime?
+  ends_at       DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([is_active])
+  @@map("marketing_campaigns")
+}
+
+model Banner {
+  id         Int      @id @default(autoincrement())
+  title      String   @db.VarChar(150)
+  image_url  String   @db.VarChar(500)
+  link_url   String?  @db.VarChar(500)
+  position   String?  @db.VarChar(50)
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  meta       String?  @db.LongText
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([position])
+  @@map("banners")
+}
+
+model BlogPost {
+  id           Int       @id @default(autoincrement())
+  title        String    @db.VarChar(255)
+  slug         String    @unique @db.VarChar(255)
+  excerpt      String?   @db.VarChar(500)
+  content      String    @db.Text
+  thumbnail    String?   @db.VarChar(500)
+  tags         String?   @db.LongText
+  is_published Boolean   @default(false)
+  published_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([is_published, published_at])
+  @@map("blog_posts")
+}
+
+model CaseStudy {
+  id            Int      @id @default(autoincrement())
+  slug          String   @unique @db.VarChar(150)
+  title         String   @db.VarChar(255)
+  hero_title    String   @db.VarChar(255)
+  hero_subtitle String?  @db.VarChar(255)
+  category      String?  @db.VarChar(100)
+  person        String?  @db.LongText
+  image_url     String?  @db.VarChar(500)
+  content       String?  @db.Text
+  tags          String?  @db.LongText
+  is_published  Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([is_published])
+  @@map("case_studies")
+}
+
+model BlogArticle {
+  id           Int       @id @default(autoincrement())
+  title        String    @db.VarChar(255)
+  slug         String    @unique @db.VarChar(255)
+  category     String?   @db.VarChar(100)
+  snippet      String?   @db.VarChar(500)
+  summary      String?   @db.VarChar(1000)
+  content      String    @db.Text
+  read_time    Int?
+  header_image String?   @db.VarChar(500)
+  key_points   String?   @db.LongText
+  published_at DateTime?
+  is_published Boolean   @default(true)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([is_published, published_at])
+  @@map("blog_articles")
+}
+
+model Job {
+  id           Int              @id @default(autoincrement())
+  slug         String?          @unique @db.VarChar(255)
+  title        String           @db.VarChar(255)
+  department   String?          @db.VarChar(100)
+  location     String?          @db.VarChar(150)
+  description  String?          @db.Text
+  requirements String?          @db.LongText
+  apply_url    String?          @db.VarChar(500)
+  is_active    Boolean          @default(true)
+  created_at   DateTime         @default(now())
+  updated_at   DateTime         @updatedAt
+  applications JobApplication[]
+
+  @@index([is_active])
+  @@map("jobs")
+}
+
+model FormConfig {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique @db.VarChar(100)
+  title       String?          @db.VarChar(255)
+  description String?          @db.VarChar(500)
+  fields      String           @db.LongText
+  cta_text    String?          @db.VarChar(150)
+  meta        String?          @db.LongText
+  is_active   Boolean          @default(true)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+  submissions FormSubmission[]
+
+  @@map("form_configs")
+}
+
+model FormSubmission {
+  id             Int         @id @default(autoincrement())
+  form_name      String      @db.VarChar(100)
+  form_config_id Int?
+  payload        String      @db.LongText
+  meta           String?     @db.LongText
+  created_at     DateTime    @default(now())
+  formConfig     FormConfig? @relation(fields: [form_config_id], references: [id])
+
+  @@index([form_config_id])
+  @@index([form_name])
+  @@map("form_submissions")
+}
+
+model DemoRequest {
+  id                Int      @id @default(autoincrement())
+  email             String   @db.VarChar(255)
+  name              String   @db.VarChar(100)
+  surname           String   @db.VarChar(100)
+  village           String   @db.VarChar(100)
+  company_name      String   @db.VarChar(150)
+  website_url       String?  @db.VarChar(500)
+  frames_in_catalog String?  @db.VarChar(50)
+  message           String?  @db.Text
+  created_at        DateTime @default(now())
+
+  @@map("demo_requests")
+}
+
+model ContactRequest {
+  id           Int      @id @default(autoincrement())
+  email        String   @db.VarChar(255)
+  first_name   String   @db.VarChar(100)
+  last_name    String   @db.VarChar(100)
+  country      String   @db.VarChar(100)
+  company_name String   @db.VarChar(150)
+  message      String   @db.Text
+  created_at   DateTime @default(now())
+
+  @@map("contact_requests")
+}
+
+model CredentialsRequest {
+  id           Int      @id @default(autoincrement())
+  email        String   @db.VarChar(255)
+  first_name   String   @db.VarChar(100)
+  last_name    String   @db.VarChar(100)
+  phone_number String   @db.VarChar(50)
+  created_at   DateTime @default(now())
+
+  @@map("credentials_requests")
+}
+
+model SupportRequest {
+  id                  Int      @id @default(autoincrement())
+  email               String   @db.VarChar(255)
+  first_name          String   @db.VarChar(100)
+  last_name           String   @db.VarChar(100)
+  phone_number        String?  @db.VarChar(50)
+  solutions_concerned String?  @db.LongText
+  message             String   @db.Text
+  attachments         String?  @db.LongText
+  created_at          DateTime @default(now())
+
+  @@map("support_requests")
+}
+
+model JobApplication {
+  id                Int               @id @default(autoincrement())
+  job_id            Int?
+  first_name        String            @db.VarChar(100)
+  last_name         String            @db.VarChar(100)
+  email             String            @db.VarChar(255)
+  phone_number      String            @db.VarChar(50)
+  linkedin_profile  String?           @db.VarChar(500)
+  portfolio_website String?           @db.VarChar(500)
+  resume_cv         String            @db.VarChar(500)
+  cover_letter_file String?           @db.VarChar(500)
+  why_join_message  String            @db.Text
+  status            ApplicationStatus @default(pending)
+  notes             String?           @db.Text
+  reviewed_at       DateTime?
+  reviewed_by       Int?
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  job               Job?              @relation(fields: [job_id], references: [id])
+
+  @@index([job_id])
+  @@index([email])
+  @@index([status])
+  @@map("job_applications")
+}
+
+model Faq {
+  id         Int      @id @default(autoincrement())
+  question   String   @db.VarChar(500)
+  answer     String   @db.Text
+  category   String?  @db.VarChar(100)
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([category])
+  @@map("faqs")
+}
+
+model Page {
+  id           Int      @id @default(autoincrement())
+  title        String   @db.VarChar(255)
+  slug         String   @unique @db.VarChar(255)
+  content      String   @db.Text
+  page_type    String?  @db.VarChar(50)
+  is_published Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([slug])
+  @@map("pages")
+}
+
+model Testimonial {
+  id            Int      @id @default(autoincrement())
+  customer_name String   @db.VarChar(150)
+  text          String   @db.Text
+  rating        Int?
+  avatar_url    String?  @db.VarChar(500)
+  is_featured   Boolean  @default(false)
+  sort_order    Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("testimonials")
+}
+
+model VtoAsset {
+  id            Int          @id @default(autoincrement())
+  name          String       @db.VarChar(150)
+  asset_type    VtoAssetType
+  file_url      String       @db.VarChar(500)
+  thumbnail_url String?      @db.VarChar(500)
+  description   String?      @db.Text
+  metadata      String?      @db.LongText
+  is_active     Boolean      @default(true)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  @@index([asset_type])
+  @@map("vto_assets")
+}
+
+model VtoConfig {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  slug        String   @unique @db.VarChar(150)
+  description String?  @db.Text
+  settings    String   @db.LongText
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([slug])
+  @@map("vto_configs")
+}
+
+model AdminActivityLog {
+  id            Int      @id @default(autoincrement())
+  admin_id      Int?
+  action        String   @db.VarChar(100)
+  resource_type String?  @db.VarChar(100)
+  resource_id   Int?
+  ip_address    String?  @db.VarChar(45)
+  user_agent    String?  @db.VarChar(255)
+  success       Boolean  @default(true)
+  details       String?  @db.LongText
+  created_at    DateTime @default(now())
+  admin         User?    @relation(fields: [admin_id], references: [id])
+
+  @@index([admin_id])
+  @@index([resource_type, resource_id])
+  @@map("admin_activity_logs")
+}
+
+model ApiErrorLog {
+  id            Int      @id @default(autoincrement())
+  path          String   @db.VarChar(255)
+  method        String   @db.VarChar(10)
+  status_code   Int
+  error_message String?  @db.Text
+  request_id    String?  @db.VarChar(100)
+  meta          String?  @db.LongText
+  created_at    DateTime @default(now())
+
+  @@index([path])
+  @@index([status_code])
+  @@map("api_error_logs")
+}
+
+model AnalyticsEvent {
+  id         Int      @id @default(autoincrement())
+  event_type String   @db.VarChar(100)
+  user_id    Int?
+  session_id String?  @db.VarChar(100)
+  device     String?  @db.VarChar(100)
+  country    String?  @db.VarChar(100)
+  data       String?  @db.LongText
+  created_at DateTime @default(now())
+  user       User?    @relation(fields: [user_id], references: [id])
+
+  @@index([event_type])
+  @@index([created_at])
+  @@index([user_id], map: "analytics_events_user_id_fkey")
+  @@map("analytics_events")
+}
+
+enum UserRole {
+  customer
+  admin
+  staff
 }
 
 enum ProductType {
@@ -162,61 +1000,6 @@ enum LensTypeEnum {
   photochromic
 }
 
-// FrameSize Model
-model FrameSize {
-  id           Int      @id @default(autoincrement())
-  product_id   Int
-  lens_width   Decimal  @db.Decimal(5, 2)
-  bridge_width Decimal  @db.Decimal(5, 2)
-  temple_length Decimal @db.Decimal(5, 2)
-  frame_width  Decimal? @db.Decimal(5, 2)
-  frame_height Decimal? @db.Decimal(5, 2)
-  size_label   String?  @db.VarChar(50)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([product_id])
-  @@map("frame_sizes")
-}
-
-// LensType Model
-model LensType {
-  id              Int      @id @default(autoincrement())
-  name            String   @unique @db.VarChar(100)
-  slug            String   @unique @db.VarChar(100)
-  description     String?  @db.Text
-  index           Decimal  @db.Decimal(3, 2)
-  thickness_factor Decimal? @db.Decimal(5, 2)
-  price_adjustment Decimal  @db.Decimal(10, 2) @default(0.00)
-  is_active       Boolean  @default(true)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  products ProductLensType[]
-  lensPackages LensPackage[]
-
-  @@map("lens_types")
-}
-
-// LensCoating Model
-model LensCoating {
-  id              Int      @id @default(autoincrement())
-  name            String   @unique @db.VarChar(100)
-  slug            String   @unique @db.VarChar(100)
-  type            CoatingType
-  description     String?  @db.Text
-  price_adjustment Decimal  @db.Decimal(10, 2) @default(0.00)
-  is_active       Boolean  @default(true)
-  created_at      DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  products ProductLensCoating[]
-
-  @@map("lens_coatings")
-}
-
 enum CoatingType {
   ar
   blue_light
@@ -226,150 +1009,11 @@ enum CoatingType {
   polarized
 }
 
-// Product-LensType Many-to-Many
-model ProductLensType {
-  id          Int      @id @default(autoincrement())
-  product_id  Int
-  lens_type_id Int
-
-  product   Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  lensType  LensType @relation(fields: [lens_type_id], references: [id], onDelete: Cascade)
-
-  @@unique([product_id, lens_type_id])
-  @@map("product_lens_types")
-}
-
-// Product-LensCoating Many-to-Many
-model ProductLensCoating {
-  id             Int      @id @default(autoincrement())
-  product_id     Int
-  lens_coating_id Int
-
-  product     Product     @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  lensCoating LensCoating @relation(fields: [lens_coating_id], references: [id], onDelete: Cascade)
-
-  @@unique([product_id, lens_coating_id])
-  @@map("product_lens_coatings")
-}
-
-// Prescription Model
-model Prescription {
-  id                Int                @id @default(autoincrement())
-  user_id           Int
-  prescription_type PrescriptionType   @default(single_vision)
-  // Right Eye (OD)
-  od_sphere         Decimal?           @db.Decimal(5, 2)
-  od_cylinder        Decimal?           @db.Decimal(5, 2)
-  od_axis            Int?
-  od_add             Decimal?           @db.Decimal(5, 2)
-  // Left Eye (OS)
-  os_sphere         Decimal?           @db.Decimal(5, 2)
-  os_cylinder       Decimal?           @db.Decimal(5, 2)
-  os_axis           Int?
-  os_add            Decimal?           @db.Decimal(5, 2)
-  // Pupillary Distance
-  pd_binocular      Decimal?           @db.Decimal(5, 2)
-  pd_monocular_od    Decimal?           @db.Decimal(5, 2)
-  pd_monocular_os    Decimal?           @db.Decimal(5, 2)
-  pd_near           Decimal?           @db.Decimal(5, 2)
-  // Pupillary Height
-  ph_od             Decimal?           @db.Decimal(5, 2)
-  ph_os             Decimal?           @db.Decimal(5, 2)
-  // Additional Info
-  doctor_name       String?            @db.VarChar(255)
-  doctor_license    String?            @db.VarChar(100)
-  prescription_date DateTime?
-  expiry_date       DateTime?
-  notes             String?            @db.Text
-  is_active         Boolean            @default(true)
-  is_verified       Boolean            @default(false)
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
-
-  user   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  orders Order[]
-
-  @@index([user_id])
-  @@index([is_active])
-  @@map("prescriptions")
-}
-
 enum PrescriptionType {
   single_vision
   bifocal
   trifocal
   progressive
-}
-
-// Cart Model
-model Cart {
-  id         Int       @id @default(autoincrement())
-  user_id    Int       @unique
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-
-  user  User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  items CartItem[]
-
-  @@index([user_id])
-  @@map("carts")
-}
-
-// CartItem Model
-model CartItem {
-  id            Int      @id @default(autoincrement())
-  cart_id       Int
-  product_id    Int
-  quantity      Int      @default(1)
-  lens_index    Decimal? @db.Decimal(3, 2)
-  lens_coatings Json?    @default("[]")
-  frame_size_id Int?
-  customization Json?
-  unit_price    Decimal  @db.Decimal(10, 2)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  cart    Cart    @relation(fields: [cart_id], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([cart_id])
-  @@index([product_id])
-  @@unique([cart_id, product_id, lens_index, frame_size_id])
-  @@map("cart_items")
-}
-
-// Order Model
-model Order {
-  id              Int           @id @default(autoincrement())
-  order_number    String        @unique @db.VarChar(50)
-  user_id         Int
-  prescription_id Int?
-  status          OrderStatus   @default(pending)
-  payment_status  PaymentStatus @default(pending)
-  payment_method  PaymentMethod?
-  payment_id      String?       @db.VarChar(255)
-  subtotal        Decimal       @db.Decimal(10, 2) @default(0.00)
-  tax             Decimal       @db.Decimal(10, 2) @default(0.00)
-  shipping        Decimal       @db.Decimal(10, 2) @default(0.00)
-  discount        Decimal       @db.Decimal(10, 2) @default(0.00)
-  total           Decimal       @db.Decimal(10, 2) @default(0.00)
-  shipping_address Json
-  billing_address Json?
-  notes           String?       @db.Text
-  shipped_at      DateTime?
-  delivered_at    DateTime?
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
-
-  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prescription Prescription? @relation(fields: [prescription_id], references: [id], onDelete: SetNull)
-  items       OrderItem[]
-
-  @@index([user_id])
-  @@index([order_number])
-  @@index([status])
-  @@index([payment_status])
-  @@map("orders")
 }
 
 enum OrderStatus {
@@ -389,358 +1033,40 @@ enum PaymentStatus {
   refunded
 }
 
+enum ApplicationStatus {
+  pending
+  accepted
+  rejected
+}
+
 enum PaymentMethod {
   stripe
   paypal
   cod
 }
 
-// OrderItem Model
-model OrderItem {
-  id             Int      @id @default(autoincrement())
-  order_id       Int
-  product_id     Int
-  product_name   String   @db.VarChar(255)
-  product_sku    String   @db.VarChar(100)
-  quantity       Int      @default(1)
-  unit_price     Decimal  @db.Decimal(10, 2)
-  total_price    Decimal  @db.Decimal(10, 2)
-  lens_index     Decimal? @db.Decimal(3, 2)
-  lens_coatings  Json?    @default("[]")
-  frame_size_id  Int?
-  customization  Json?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([order_id])
-  @@index([product_id])
-  @@map("order_items")
+enum TransactionType {
+  payment
+  refund
+  partial_refund
+  chargeback
+  reversal
 }
 
-// Review Model
-model Review {
-  id                Int      @id @default(autoincrement())
-  user_id           Int
-  product_id        Int
-  order_id           Int?
-  rating            Int
-  title             String?   @db.VarChar(255)
-  comment           String?   @db.Text
-  images            Json?    @default("[]")
-  is_verified_purchase Boolean @default(false)
-  is_approved       Boolean  @default(false)
-  helpful_count     Int      @default(0)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([user_id])
-  @@index([product_id])
-  @@index([rating])
-  @@index([is_approved])
-  @@map("reviews")
-}
-
-// SimulationConfig Model
-model SimulationConfig {
-  id          Int      @id @default(autoincrement())
-  config_key  String   @unique @db.VarChar(100)
-  config_value Json
-  description String?  @db.Text
-  category    String?   @db.VarChar(50)
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([config_key])
-  @@index([category])
-  @@map("simulation_configs")
-}
-
-// Product Variant Model - for sizes, colors, materials
-model ProductVariant {
-  id             Int       @id @default(autoincrement())
-  product_id     Int
-  sku            String?   @db.VarChar(100)
-  size_label     String?   @db.VarChar(50)
-  color          String?   @db.VarChar(100)
-  material       String?   @db.VarChar(100)
-  additional_data Json?    @default("{}") // any extra attributes
-  stock_quantity Int       @default(0)
-  price          Decimal?  @db.Decimal(10, 2)
-  images         Json?     @default("[]")
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
-
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([product_id])
-  @@map("product_variants")
-}
-
-// Lens Packages & Pricing Rules
-model LensPackage {
-  id               Int      @id @default(autoincrement())
-  name             String   @db.VarChar(150)
-  slug             String   @unique @db.VarChar(150)
-  description      String?  @db.Text
-  base_index       Decimal  @db.Decimal(3, 2)
-  lens_type_id     Int?
-  coatings         Json?    @default("[]") // list of coating ids or descriptors
-  price            Decimal  @db.Decimal(10, 2)
-  price_rules      Json?    @default("{}") // rules based on index, power, etc.
-  is_active        Boolean  @default(true)
-  sort_order       Int      @default(0)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-
-  lensType LensType? @relation(fields: [lens_type_id], references: [id], onDelete: SetNull)
-
-  @@index([lens_type_id])
-  @@map("lens_packages")
-}
-
-// Coupons / Discounts
-model Coupon {
-  id               Int          @id @default(autoincrement())
-  code             String       @unique @db.VarChar(50)
-  description      String?      @db.Text
-  discount_type    DiscountType
-  discount_value   Decimal      @db.Decimal(10, 2)
-  max_discount     Decimal?     @db.Decimal(10, 2)
-  min_order_amount Decimal?     @db.Decimal(10, 2)
-  usage_limit      Int?         // total usage limit
-  usage_per_user   Int?         // usage per user
-  starts_at        DateTime?
-  ends_at          DateTime?
-  is_active        Boolean      @default(true)
-  applicable_to    String?      @db.VarChar(50) // e.g. 'order','lens_package','product'
-  conditions       Json?        @default("{}")  // JSON rules (e.g. specific products/categories)
-  created_at       DateTime     @default(now())
-  updated_at       DateTime     @updatedAt
-
-  @@index([code])
-  @@index([is_active])
-  @@map("coupons")
+enum TransactionStatus {
+  pending
+  processing
+  completed
+  failed
+  cancelled
+  refunded
 }
 
 enum DiscountType {
   percentage
   fixed_amount
   free_shipping
-  bogo // buy one get one
-}
-
-// Simple Marketing Campaign model (seasonal sales, first-time discount, etc.)
-model MarketingCampaign {
-  id           Int      @id @default(autoincrement())
-  name         String   @db.VarChar(150)
-  slug         String   @unique @db.VarChar(150)
-  description  String?  @db.Text
-  campaign_type String? @db.VarChar(50) // e.g. 'seasonal','flash_sale'
-  config       Json?    @default("{}")  // e.g. discount rules, target segments
-  is_active    Boolean  @default(false)
-  starts_at    DateTime?
-  ends_at      DateTime?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  @@index([slug])
-  @@index([is_active])
-  @@map("marketing_campaigns")
-}
-
-// CMS: Homepage banners
-model Banner {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(150)
-  image_url   String   @db.VarChar(500)
-  link_url    String?  @db.VarChar(500)
-  position    String?  @db.VarChar(50) // e.g. 'homepage_hero','homepage_secondary'
-  sort_order  Int      @default(0)
-  is_active   Boolean  @default(true)
-  meta        Json?    @default("{}")
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([position])
-  @@map("banners")
-}
-
-// CMS: Blog articles
-model BlogPost {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(255)
-  slug        String   @unique @db.VarChar(255)
-  excerpt     String?  @db.VarChar(500)
-  content     String   @db.Text
-  thumbnail   String?  @db.VarChar(500)
-  tags        Json?    @default("[]")
-  is_published Boolean @default(false)
-  published_at DateTime?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([slug])
-  @@index([is_published, published_at])
-  @@map("blog_posts")
-}
-
-// Dynamic frontend content
-model CaseStudy {
-  id            Int      @id @default(autoincrement())
-  slug          String   @unique @db.VarChar(150)
-  title         String   @db.VarChar(255)
-  hero_title    String   @db.VarChar(255)
-  hero_subtitle String?  @db.VarChar(255)
-  category      String?  @db.VarChar(100)
-  person        Json?
-  image_url     String?  @db.VarChar(500)
-  content       String?  @db.Text
-  tags          Json?    @default("[]")
-  is_published  Boolean  @default(true)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  @@index([is_published])
-  @@map("case_studies")
-}
-
-model BlogArticle {
-  id           Int      @id @default(autoincrement())
-  title        String   @db.VarChar(255)
-  slug         String   @unique @db.VarChar(255)
-  category     String?  @db.VarChar(100)
-  snippet      String?  @db.VarChar(500)
-  summary      String?  @db.VarChar(1000)
-  content      String   @db.Text
-  read_time    Int?
-  header_image String?  @db.VarChar(500)
-  key_points   Json?    @default("[]")
-  published_at DateTime?
-  is_published Boolean  @default(true)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  @@index([slug])
-  @@index([is_published, published_at])
-  @@map("blog_articles")
-}
-
-model Job {
-  id           Int      @id @default(autoincrement())
-  slug         String?  @unique @db.VarChar(255)
-  title        String   @db.VarChar(255)
-  department   String?  @db.VarChar(100)
-  location     String?  @db.VarChar(150)
-  description  String?  @db.Text
-  requirements Json?    @default("[]")
-  apply_url    String?  @db.VarChar(500)
-  is_active    Boolean  @default(true)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  @@index([is_active])
-  @@map("jobs")
-}
-
-model FormConfig {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(100)
-  title       String?  @db.VarChar(255)
-  description String?  @db.VarChar(500)
-  fields      Json
-  cta_text    String?  @db.VarChar(150)
-  meta        Json?    @default("{}")
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  submissions FormSubmission[]
-
-  @@map("form_configs")
-}
-
-model FormSubmission {
-  id             Int        @id @default(autoincrement())
-  form_name      String     @db.VarChar(100)
-  form_config_id Int?
-  payload        Json
-  meta           Json?      @default("{}")
-  created_at     DateTime   @default(now())
-
-  formConfig FormConfig? @relation(fields: [form_config_id], references: [id], onDelete: SetNull)
-
-  @@index([form_config_id])
-  @@index([form_name])
-  @@map("form_submissions")
-}
-
-// CMS: FAQs
-model Faq {
-  id          Int      @id @default(autoincrement())
-  question    String   @db.VarChar(500)
-  answer      String   @db.Text
-  category    String?  @db.VarChar(100)
-  sort_order  Int      @default(0)
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([category])
-  @@map("faqs")
-}
-
-// CMS: Policy / Static pages
-model Page {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(255)
-  slug        String   @unique @db.VarChar(255)
-  content     String   @db.Text
-  page_type   String?  @db.VarChar(50) // e.g. 'refund','privacy','shipping'
-  is_published Boolean @default(false)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([slug])
-  @@map("pages")
-}
-
-// CMS: Testimonials
-model Testimonial {
-  id          Int      @id @default(autoincrement())
-  customer_name String @db.VarChar(150)
-  text        String   @db.Text
-  rating      Int?     // optional rating
-  avatar_url  String?  @db.VarChar(500)
-  is_featured Boolean  @default(false)
-  sort_order  Int      @default(0)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@map("testimonials")
-}
-
-// VTO Assets (3D models, masks, env maps, etc.)
-model VtoAsset {
-  id          Int        @id @default(autoincrement())
-  name        String     @db.VarChar(150)
-  asset_type  VtoAssetType
-  file_url    String     @db.VarChar(500)
-  thumbnail_url String?  @db.VarChar(500)
-  description String?    @db.Text
-  metadata    Json?      @default("{}") // alignment params, scale, etc.
-  is_active   Boolean    @default(true)
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
-
-  @@index([asset_type])
-  @@map("vto_assets")
+  bogo
 }
 
 enum VtoAssetType {
@@ -750,72 +1076,64 @@ enum VtoAssetType {
   environment_map
 }
 
-// VTO / Simulator configuration presets
-model VtoConfig {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(150)
-  slug        String   @unique @db.VarChar(150)
-  description String?  @db.Text
-  settings    Json     // AR alignment, face mesh offsets, lighting, etc.
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([slug])
-  @@map("vto_configs")
+enum ShippingMethodType {
+  standard
+  express
+  overnight
+  international
+  free
 }
 
-// System & Audit Logs
-model AdminActivityLog {
-  id            Int      @id @default(autoincrement())
-  admin_id      Int?
-  action        String   @db.VarChar(100) // e.g. 'product_updated'
-  resource_type String?  @db.VarChar(100) // e.g. 'Product','Order'
-  resource_id   Int?
-  ip_address    String?  @db.VarChar(45)
-  user_agent    String?  @db.VarChar(255)
-  success       Boolean  @default(true)
-  details       Json?    @default("{}")
-  created_at    DateTime @default(now())
-
-  admin User? @relation(fields: [admin_id], references: [id], onDelete: SetNull)
-
-  @@index([admin_id])
-  @@index([resource_type, resource_id])
-  @@map("admin_activity_logs")
+enum LensOptionType {
+  classic
+  mirror
+  gradient
+  polarized
+  photochromic
+  transitions
+  eyeqlenz
+  standard
+  blokz_photochromic
 }
 
-// API error / failed requests
-model ApiErrorLog {
-  id            Int      @id @default(autoincrement())
-  path          String   @db.VarChar(255)
-  method        String   @db.VarChar(10)
-  status_code   Int
-  error_message String?  @db.Text
-  request_id    String?  @db.VarChar(100)
-  meta          Json?    @default("{}")
-  created_at    DateTime @default(now())
-
-  @@index([path])
-  @@index([status_code])
-  @@map("api_error_logs")
+enum LensTreatmentType {
+  scratch_proof
+  anti_glare
+  blue_light_anti_glare
+  uv_protection
+  photochromic
+  polarized
+  anti_reflective
 }
 
-// Simple analytics events (VTO usage, failed checkouts, etc.)
-model AnalyticsEvent {
-  id          Int      @id @default(autoincrement())
-  event_type  String   @db.VarChar(100) // e.g. 'vto_used','checkout_failed'
-  user_id     Int?
-  session_id  String?  @db.VarChar(100)
-  device      String?  @db.VarChar(100)
-  country     String?  @db.VarChar(100)
-  data        Json?    @default("{}")
-  created_at  DateTime @default(now())
+model LensThicknessMaterial {
+  id              Int                 @id @default(autoincrement())
+  name            String              @unique @db.VarChar(100)
+  slug            String              @unique @db.VarChar(100)
+  description     String?             @db.Text
+  price           Decimal              @default(0.00) @db.Decimal(10, 2)
+  is_active       Boolean              @default(true)
+  sort_order      Int                  @default(0)
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+  cartItems       CartItem[]
 
-  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
-
-  @@index([event_type])
-  @@index([created_at])
-  @@map("analytics_events")
+  @@index([is_active])
+  @@map("lens_thickness_materials")
 }
 
+model LensThicknessOption {
+  id              Int                 @id @default(autoincrement())
+  name            String              @unique @db.VarChar(100)
+  slug            String              @unique @db.VarChar(100)
+  description     String?             @db.Text
+  thickness_value Decimal?             @db.Decimal(5, 2)
+  is_active       Boolean              @default(true)
+  sort_order      Int                  @default(0)
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+  cartItems       CartItem[]
+
+  @@index([is_active])
+  @@map("lens_thickness_options")
+}

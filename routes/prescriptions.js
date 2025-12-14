@@ -21,8 +21,8 @@ router.put('/:id', updatePrescription);
 router.delete('/:id', deletePrescription);
 
 // Admin only routes
-router.post('/validate', authorize('admin'), validatePrescription);
-router.put('/:id/verify', authorize('admin'), verifyPrescription);
+router.post('/validate', authorize('admin', 'staff'), validatePrescription);
+router.put('/:id/verify', authorize('admin', 'staff'), verifyPrescription);
 
 module.exports = router;
 

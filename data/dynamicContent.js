@@ -160,6 +160,56 @@ const formConfigs = {
       { id: 'portfolio', label: 'Portfolio / GitHub', type: 'url', required: false },
       { id: 'coverLetter', label: 'Cover letter', type: 'textarea', required: false }
     ]
+  },
+  credentials: {
+    name: 'credentials',
+    title: 'Request Your Credentials',
+    description: 'Request access credentials for our platform.',
+    ctaText: 'Submit your request',
+    fields: [
+      { id: 'email', label: 'Email', type: 'email', required: true, placeholder: 'your.email@example.com' },
+      { id: 'firstName', label: 'First Name', type: 'text', required: true },
+      { id: 'lastName', label: 'Last name', type: 'text', required: true },
+      { id: 'phoneNumber', label: 'Phone Number', type: 'tel', required: true, placeholder: '+1 234 567 8900' }
+    ]
+  },
+  support: {
+    name: 'support',
+    title: 'Get in touch with our support team',
+    description: 'We\'re here to help. Send us your questions or issues.',
+    ctaText: 'Send your message',
+    fields: [
+      { id: 'email', label: 'Email', type: 'email', required: true, placeholder: 'your.email@example.com' },
+      { id: 'firstName', label: 'First Name', type: 'text', required: true },
+      { id: 'lastName', label: 'Last name', type: 'text', required: true },
+      { id: 'phoneNumber', label: 'Phone Number', type: 'tel', required: false, placeholder: '+1 234 567 8900' },
+      {
+        id: 'solutionsConcerned',
+        label: 'Solutions concerned',
+        type: 'checkbox',
+        required: false,
+        description: 'Select the solution(s) related to your support request.',
+        options: [
+          { value: 'virtual-try-on', label: 'Virtual Try-On (Website/Instore/Storefront/Advertising)' },
+          { value: 'digital-frames', label: 'Digital Frames (Database/Photo Studio/3D Studio/Model Studio)' },
+          { value: 'optical-fit', label: 'Optical Fit (Fittingbox Metrix/Lens Simulator)' },
+          { value: 'open-innovation', label: 'Open Innovation' },
+          { value: 'other', label: 'Other' }
+        ]
+      },
+      { id: 'message', label: 'Message', type: 'textarea', required: true, placeholder: 'Let us know how we can help you, please detail your request in a few lines.' },
+      {
+        id: 'attachments',
+        label: 'Attachments',
+        type: 'file',
+        required: false,
+        description: 'Please send us a screenshot or any relevant document that could help us process your request faster (5 files max. 100Mb max per file).',
+        accept: 'image/*,application/pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.zip,.rar',
+        multiple: true,
+        maxFiles: 5,
+        maxSize: 100 * 1024 * 1024 // 100MB
+      }
+    ]
   }
 };
 

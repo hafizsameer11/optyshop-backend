@@ -58,12 +58,22 @@ const CartItem = sequelize.define('CartItem', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     comment: 'Price at time of adding to cart'
+  },
+  prescription_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'prescriptions',
+      key: 'id'
+    },
+    comment: 'Prescription ID if applicable'
   }
 }, {
   tableName: 'cart_items',
   indexes: [
     { fields: ['cart_id'] },
     { fields: ['product_id'] },
+    { fields: ['prescription_id'] },
     { 
       unique: true,
       fields: ['cart_id', 'product_id', 'lens_index', 'frame_size_id'],

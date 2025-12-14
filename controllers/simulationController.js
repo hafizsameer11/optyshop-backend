@@ -144,10 +144,26 @@ exports.getSimulationConfig = asyncHandler(async (req, res) => {
 exports.updateSimulationConfig = asyncHandler(async (req, res) => {
   const { config_key, config_value, description, category } = req.body;
 
+  // Convert config_value to JSON string if it's not already
+  let jsonValue;
+  if (typeof config_value === 'string') {
+    // Try to parse it first to validate it's valid JSON
+    try {
+      JSON.parse(config_value);
+      jsonValue = config_value; // Already valid JSON string
+    } catch (e) {
+      // Not valid JSON, stringify the plain string
+      jsonValue = JSON.stringify(config_value);
+    }
+  } else {
+    // If it's an object/array, stringify it
+    jsonValue = JSON.stringify(config_value);
+  }
+
   const config = await prisma.simulationConfig.upsert({
     where: { config_key },
-    update: { config_value, description, category },
-    create: { config_key, config_value, description, category }
+    update: { config_value: jsonValue, description, category },
+    create: { config_key, config_value: jsonValue, description, category }
   });
 
   return success(res, 'Simulation config updated', { config });
@@ -161,7 +177,29 @@ exports.updateSimulationConfig = asyncHandler(async (req, res) => {
 exports.getVtoAssets = asyncHandler(async (req, res) => {
   const { type } = req.query;
   const where = { is_active: true };
-  if (type) where.asset_type = type;
+  
+  if (type) {
+    // Map common aliases to enum values
+    const typeMap = {
+      'model': 'frame_3d',
+      'frame': 'frame_3d',
+      'mesh': 'face_mesh',
+      'mask': 'occlusion_mask',
+      'environment': 'environment_map',
+      'env': 'environment_map'
+    };
+    
+    // Use mapped value if exists, otherwise use the original value
+    const mappedType = typeMap[type.toLowerCase()] || type.toLowerCase();
+    
+    // Validate it's a valid enum value
+    const validTypes = ['frame_3d', 'face_mesh', 'occlusion_mask', 'environment_map'];
+    if (validTypes.includes(mappedType)) {
+      where.asset_type = mappedType;
+    } else {
+      return error(res, `Invalid asset type. Valid types are: ${validTypes.join(', ')}`, 400);
+    }
+  }
 
   const assets = await prisma.vtoAsset.findMany({ where });
   return success(res, 'VTO assets retrieved', { assets });
@@ -174,15 +212,48 @@ exports.createVtoAsset = asyncHandler(async (req, res) => {
   if (!req.file) return error(res, 'File is required', 400);
 
   const { name, asset_type, description, metadata } = req.body;
+  
+  // Validate name - generate from filename if not provided
+  let assetName = name;
+  if (!assetName || assetName.trim() === '') {
+    // Generate name from filename
+    const filename = req.file.originalname || req.file.filename || 'asset';
+    assetName = filename.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+    if (!assetName) {
+      assetName = `VTO Asset ${Date.now()}`;
+    }
+  }
+  
+  // Validate asset_type
+  const validTypes = ['frame_3d', 'face_mesh', 'occlusion_mask', 'environment_map'];
+  if (!asset_type || !validTypes.includes(asset_type)) {
+    return error(res, `Invalid asset type. Valid types are: ${validTypes.join(', ')}`, 400);
+  }
+  
   const url = await uploadToS3(req.file, 'vto-assets');
+
+  // Handle metadata - convert to JSON string if it's an object
+  let metadataValue = null;
+  if (metadata) {
+    if (typeof metadata === 'string') {
+      try {
+        JSON.parse(metadata);
+        metadataValue = metadata; // Already valid JSON string
+      } catch {
+        metadataValue = JSON.stringify({ value: metadata });
+      }
+    } else {
+      metadataValue = JSON.stringify(metadata);
+    }
+  }
 
   const asset = await prisma.vtoAsset.create({
     data: {
-      name,
+      name: assetName,
       asset_type,
       file_url: url,
-      description,
-      metadata: metadata ? JSON.parse(metadata) : {}
+      description: description || null,
+      metadata: metadataValue
     }
   });
 
@@ -223,6 +294,12 @@ exports.createVtoConfig = asyncHandler(async (req, res) => {
   if (!configData.slug) {
     configData.slug = configData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   }
+  
+  // Convert settings object to JSON string if it's an object
+  if (configData.settings && typeof configData.settings === 'object') {
+    configData.settings = JSON.stringify(configData.settings);
+  }
+  
   const config = await prisma.vtoConfig.create({ data: configData });
   return success(res, 'VTO config created', { config }, 201);
 });
@@ -232,9 +309,25 @@ exports.createVtoConfig = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.updateVtoConfig = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const data = { ...req.body };
+  
+  // Check if config exists
+  const existingConfig = await prisma.vtoConfig.findUnique({
+    where: { id: parseInt(id) }
+  });
+  
+  if (!existingConfig) {
+    return error(res, 'VTO config not found', 404);
+  }
+  
+  // Convert settings object to JSON string if it's an object
+  if (data.settings && typeof data.settings === 'object') {
+    data.settings = JSON.stringify(data.settings);
+  }
+  
   const config = await prisma.vtoConfig.update({
     where: { id: parseInt(id) },
-    data: req.body
+    data
   });
   return success(res, 'VTO config updated', { config });
 });
@@ -244,6 +337,16 @@ exports.updateVtoConfig = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.deleteVtoConfig = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  
+  // Check if config exists
+  const existingConfig = await prisma.vtoConfig.findUnique({
+    where: { id: parseInt(id) }
+  });
+  
+  if (!existingConfig) {
+    return error(res, 'VTO config not found', 404);
+  }
+  
   await prisma.vtoConfig.delete({ where: { id: parseInt(id) } });
   return success(res, 'VTO config deleted');
 });

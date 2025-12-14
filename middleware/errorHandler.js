@@ -3,8 +3,14 @@ const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log error
-  console.error(err);
+  // Log error with more details
+  console.error('❌ Error:', {
+    message: err.message,
+    name: err.name,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method
+  });
 
   // Sequelize validation error
   if (err.name === 'SequelizeValidationError') {
@@ -47,6 +53,29 @@ const errorHandler = (err, req, res, next) => {
     error = {
       statusCode: 401,
       message
+    };
+  }
+
+  // Prisma unique constraint errors
+  if (err.code === 'P2002') {
+    const target = err.meta?.target;
+    let field = 'field';
+    if (Array.isArray(target) && target.length > 0) {
+      field = target[0].replace(/_/g, ' ');
+    }
+    error = {
+      statusCode: 400,
+      message: `A record with this ${field} already exists. Please use a different value.`
+    };
+  }
+
+  // S3/Upload errors - provide user-friendly message
+  if (error.message && error.message.includes('S3') || error.message.includes('upload')) {
+    error = {
+      statusCode: 500,
+      message: error.message.includes('not configured') 
+        ? 'File upload is not configured. Please configure AWS S3 or contact administrator.'
+        : 'File upload failed. Please try again or contact administrator.'
     };
   }
 

@@ -22,7 +22,7 @@ const generateRefreshToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { email, password, first_name, last_name, phone } = req.body;
+    const { email, password, first_name, last_name, phone, role } = req.body;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -33,17 +33,64 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Validate role - prevent public registration from creating admin users
+    // Allow admin registration only if ALLOW_ADMIN_REGISTRATION env variable is set to 'true'
+    const allowAdminRegistration = process.env.ALLOW_ADMIN_REGISTRATION === 'true';
+    const allowedRoles = allowAdminRegistration ? ["admin", "customer"] : ["customer"];
+    
+    // Set final role - use provided role or default to customer
+    // Normalize role: trim whitespace and convert to lowercase
+    let finalRole = role ? String(role).trim().toLowerCase() : "customer";
+    
+    // If role is provided but empty after trimming, default to customer
+    if (!finalRole || finalRole === "") {
+      finalRole = "customer";
+    }
+    
+    // Security: Reject admin role during public registration (unless explicitly allowed via env)
+    if (finalRole === "admin" && !allowAdminRegistration) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot register as admin. Admin users must be created by existing admins via /api/admin/users endpoint. Set ALLOW_ADMIN_REGISTRATION=true in .env for testing.',
+        debug: {
+          providedRole: role,
+          finalRole: finalRole,
+          allowAdminRegistration: allowAdminRegistration,
+          envValue: process.env.ALLOW_ADMIN_REGISTRATION
+        }
+      });
+    }
+    
+    // Validate role is in allowed list
+    if (!allowedRoles.includes(finalRole)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role "${finalRole}". Allowed roles for registration: ${allowedRoles.join(", ")}`
+      });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Debug logging (remove in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Registration Debug:', {
+        providedRole: role,
+        finalRole: finalRole,
+        allowAdminRegistration: allowAdminRegistration,
+        envValue: process.env.ALLOW_ADMIN_REGISTRATION
+      });
+    }
+
+    // Create user with explicit role
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         first_name,
         last_name,
-        phone
+        phone,
+        role: finalRole // Explicitly set role (customer or admin based on validation)
       }
     });
 

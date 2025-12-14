@@ -196,6 +196,15 @@ exports.validatePrescription = asyncHandler(async (req, res) => {
 exports.verifyPrescription = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
+  // Check if prescription exists
+  const existingPrescription = await prisma.prescription.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!existingPrescription) {
+    return error(res, 'Prescription not found', 404);
+  }
+
   const prescription = await prisma.prescription.update({
     where: { id: parseInt(id) },
     data: { is_verified: true }

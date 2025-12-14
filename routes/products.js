@@ -9,6 +9,10 @@ const {
   getProductFormOptions
 } = require('../controllers/productController');
 const {
+  getProductConfiguration,
+  getLensTypes
+} = require('../controllers/productConfigurationController');
+const {
   validateProductQuery,
   validateProductId
 } = require('../validators/productValidator');
@@ -17,9 +21,11 @@ const {
 router.get('/', validateProductQuery, getProducts);
 router.get('/featured', getFeaturedProducts);
 router.get('/options', getProductFormOptions);
+router.get('/configuration/lens-types', getLensTypes);
 router.get('/slug/:slug', getProductBySlug);
 router.get('/:id', validateProductId, getProduct);
 router.get('/:id/related', validateProductId, getRelatedProducts);
+router.get('/:id/configuration', validateProductId, getProductConfiguration);
 
 module.exports = router;
 

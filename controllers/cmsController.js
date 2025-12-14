@@ -5,7 +5,17 @@ const { uploadToS3, deleteFromS3 } = require('../config/aws');
 
 // ==================== BANNERS ====================
 
+// Public version - only active banners
 exports.getBanners = asyncHandler(async (req, res) => {
+    const banners = await prisma.banner.findMany({
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+    });
+    return success(res, 'Banners retrieved', { banners });
+});
+
+// Admin version - all banners
+exports.getBannersAdmin = asyncHandler(async (req, res) => {
     const banners = await prisma.banner.findMany({
         orderBy: { sort_order: 'asc' }
     });
@@ -16,11 +26,20 @@ exports.createBanner = asyncHandler(async (req, res) => {
     if (!req.file) return error(res, 'Image is required', 400);
 
     const url = await uploadToS3(req.file, 'cms/banners');
+    const data = { ...req.body };
+    
+    // Convert string booleans to actual booleans
+    if (data.is_active !== undefined) {
+        data.is_active = data.is_active === 'true' || data.is_active === true;
+    }
+    if (data.sort_order !== undefined) {
+        data.sort_order = parseInt(data.sort_order || 0);
+    }
+    
     const banner = await prisma.banner.create({
         data: {
-            ...req.body,
-            image_url: url,
-            sort_order: parseInt(req.body.sort_order || 0)
+            ...data,
+            image_url: url
         }
     });
 
@@ -35,7 +54,14 @@ exports.updateBanner = asyncHandler(async (req, res) => {
         const url = await uploadToS3(req.file, 'cms/banners');
         data.image_url = url;
     }
-    if (data.sort_order) data.sort_order = parseInt(data.sort_order);
+    
+    // Convert string booleans to actual booleans
+    if (data.is_active !== undefined) {
+        data.is_active = data.is_active === 'true' || data.is_active === true;
+    }
+    if (data.sort_order !== undefined) {
+        data.sort_order = parseInt(data.sort_order || 0);
+    }
 
     const banner = await prisma.banner.update({
         where: { id: parseInt(id) },
@@ -58,7 +84,8 @@ exports.deleteBanner = asyncHandler(async (req, res) => {
 
 // ==================== BLOG POSTS ====================
 
-exports.getBlogPosts = asyncHandler(async (req, res) => {
+// Admin version - all blog posts
+exports.getBlogPostsAdmin = asyncHandler(async (req, res) => {
     const posts = await prisma.blogPost.findMany({
         orderBy: { created_at: 'desc' }
     });
@@ -77,6 +104,16 @@ exports.createBlogPost = asyncHandler(async (req, res) => {
         data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     }
 
+    // Convert string booleans to actual booleans
+    if (data.is_published !== undefined) {
+        data.is_published = data.is_published === 'true' || data.is_published === true;
+    }
+
+    // Convert tags array to JSON string if it's an array
+    if (Array.isArray(data.tags)) {
+        data.tags = JSON.stringify(data.tags);
+    }
+
     const post = await prisma.blogPost.create({ data });
     return success(res, 'Blog post created', { post }, 201);
 });
@@ -88,6 +125,16 @@ exports.updateBlogPost = asyncHandler(async (req, res) => {
     if (req.file) {
         const url = await uploadToS3(req.file, 'cms/blog');
         data.thumbnail = url;
+    }
+
+    // Convert string booleans to actual booleans
+    if (data.is_published !== undefined) {
+        data.is_published = data.is_published === 'true' || data.is_published === true;
+    }
+
+    // Convert tags array to JSON string if it's an array
+    if (Array.isArray(data.tags)) {
+        data.tags = JSON.stringify(data.tags);
     }
 
     const post = await prisma.blogPost.update({
@@ -106,7 +153,17 @@ exports.deleteBlogPost = asyncHandler(async (req, res) => {
 
 // ==================== FAQs ====================
 
+// Public version - only active FAQs
 exports.getFaqs = asyncHandler(async (req, res) => {
+    const faqs = await prisma.faq.findMany({
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+    });
+    return success(res, 'FAQs retrieved', { faqs });
+});
+
+// Admin version - all FAQs
+exports.getFaqsAdmin = asyncHandler(async (req, res) => {
     const faqs = await prisma.faq.findMany({
         orderBy: { sort_order: 'asc' }
     });
@@ -114,19 +171,31 @@ exports.getFaqs = asyncHandler(async (req, res) => {
 });
 
 exports.createFaq = asyncHandler(async (req, res) => {
-    const faq = await prisma.faq.create({
-        data: {
-            ...req.body,
-            sort_order: parseInt(req.body.sort_order || 0)
-        }
-    });
+    const data = { ...req.body };
+    
+    // Convert string booleans to actual booleans
+    if (data.is_active !== undefined) {
+        data.is_active = data.is_active === 'true' || data.is_active === true;
+    }
+    if (data.sort_order !== undefined) {
+        data.sort_order = parseInt(data.sort_order || 0);
+    }
+    
+    const faq = await prisma.faq.create({ data });
     return success(res, 'FAQ created', { faq }, 201);
 });
 
 exports.updateFaq = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = { ...req.body };
-    if (data.sort_order) data.sort_order = parseInt(data.sort_order);
+    
+    // Convert string booleans to actual booleans
+    if (data.is_active !== undefined) {
+        data.is_active = data.is_active === 'true' || data.is_active === true;
+    }
+    if (data.sort_order !== undefined) {
+        data.sort_order = parseInt(data.sort_order || 0);
+    }
 
     const faq = await prisma.faq.update({
         where: { id: parseInt(id) },
@@ -143,8 +212,25 @@ exports.deleteFaq = asyncHandler(async (req, res) => {
 
 // ==================== PAGES ====================
 
-exports.getPages = asyncHandler(async (req, res) => {
-    const pages = await prisma.page.findMany();
+// Public version - get page by slug
+exports.getPageBySlug = asyncHandler(async (req, res) => {
+    const { slug } = req.params;
+    const page = await prisma.page.findUnique({
+        where: { slug, is_published: true }
+    });
+    
+    if (!page) {
+        return error(res, 'Page not found', 404);
+    }
+    
+    return success(res, 'Page retrieved', { page });
+});
+
+// Admin version - all pages
+exports.getPagesAdmin = asyncHandler(async (req, res) => {
+    const pages = await prisma.page.findMany({
+        orderBy: { created_at: 'desc' }
+    });
     return success(res, 'Pages retrieved', { pages });
 });
 
@@ -153,15 +239,28 @@ exports.createPage = asyncHandler(async (req, res) => {
     if (!data.slug) {
         data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     }
+    
+    // Convert string booleans to actual booleans
+    if (data.is_published !== undefined) {
+        data.is_published = data.is_published === 'true' || data.is_published === true;
+    }
+    
     const page = await prisma.page.create({ data });
     return success(res, 'Page created', { page }, 201);
 });
 
 exports.updatePage = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const data = { ...req.body };
+    
+    // Convert string booleans to actual booleans
+    if (data.is_published !== undefined) {
+        data.is_published = data.is_published === 'true' || data.is_published === true;
+    }
+    
     const page = await prisma.page.update({
         where: { id: parseInt(id) },
-        data: req.body
+        data
     });
     return success(res, 'Page updated', { page });
 });
@@ -187,8 +286,25 @@ exports.createTestimonial = asyncHandler(async (req, res) => {
         const url = await uploadToS3(req.file, 'cms/testimonials');
         data.avatar_url = url;
     }
-    if (data.rating) data.rating = parseInt(data.rating);
-    if (data.sort_order) data.sort_order = parseInt(data.sort_order);
+    // Remove avatar field if present (we use avatar_url instead)
+    if (data.avatar !== undefined) {
+        delete data.avatar;
+    }
+    // Map field names from request to Prisma schema
+    if (data.author_name) {
+        data.customer_name = data.author_name;
+        delete data.author_name;
+    }
+    if (data.content) {
+        data.text = data.content;
+        delete data.content;
+    }
+    // Convert string booleans to actual booleans
+    if (data.is_featured !== undefined) {
+        data.is_featured = data.is_featured === 'true' || data.is_featured === true;
+    }
+    if (data.rating !== undefined) data.rating = parseInt(data.rating);
+    if (data.sort_order !== undefined) data.sort_order = parseInt(data.sort_order || 0);
 
     const testimonial = await prisma.testimonial.create({ data });
     return success(res, 'Testimonial created', { testimonial }, 201);
@@ -196,13 +312,40 @@ exports.createTestimonial = asyncHandler(async (req, res) => {
 
 exports.updateTestimonial = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Check if testimonial exists
+    const existingTestimonial = await prisma.testimonial.findUnique({
+        where: { id: parseInt(id) }
+    });
+
+    if (!existingTestimonial) {
+        return error(res, 'Testimonial not found', 404);
+    }
+
     const data = { ...req.body };
     if (req.file) {
         const url = await uploadToS3(req.file, 'cms/testimonials');
         data.avatar_url = url;
     }
-    if (data.rating) data.rating = parseInt(data.rating);
-    if (data.sort_order) data.sort_order = parseInt(data.sort_order);
+    // Remove avatar field if present (we use avatar_url instead)
+    if (data.avatar !== undefined) {
+        delete data.avatar;
+    }
+    // Map field names from request to Prisma schema
+    if (data.author_name) {
+        data.customer_name = data.author_name;
+        delete data.author_name;
+    }
+    if (data.content) {
+        data.text = data.content;
+        delete data.content;
+    }
+    // Convert string booleans to actual booleans
+    if (data.is_featured !== undefined) {
+        data.is_featured = data.is_featured === 'true' || data.is_featured === true;
+    }
+    if (data.rating !== undefined) data.rating = parseInt(data.rating);
+    if (data.sort_order !== undefined) data.sort_order = parseInt(data.sort_order || 0);
 
     const testimonial = await prisma.testimonial.update({
         where: { id: parseInt(id) },
@@ -213,6 +356,16 @@ exports.updateTestimonial = asyncHandler(async (req, res) => {
 
 exports.deleteTestimonial = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Check if testimonial exists
+    const existingTestimonial = await prisma.testimonial.findUnique({
+        where: { id: parseInt(id) }
+    });
+
+    if (!existingTestimonial) {
+        return error(res, 'Testimonial not found', 404);
+    }
+
     await prisma.testimonial.delete({ where: { id: parseInt(id) } });
     return success(res, 'Testimonial deleted');
 });

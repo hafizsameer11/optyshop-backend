@@ -84,6 +84,11 @@ exports.authorize = (...roles) => {
   };
 };
 
+// Admin or staff authorization helper
+exports.authorizeAdmin = () => {
+  return authorize('admin', 'staff');
+};
+
 // Optional auth - doesn't fail if no token
 exports.optionalAuth = async (req, res, next) => {
   try {
