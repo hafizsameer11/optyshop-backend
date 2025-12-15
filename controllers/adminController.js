@@ -324,11 +324,14 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
 
   // Apply filters
   if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
-      { sku: { contains: search, mode: 'insensitive' } }
-    ];
+    const searchTerm = search.trim(); // Remove leading/trailing spaces
+    if (searchTerm) {
+      where.OR = [
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { not: null, contains: searchTerm, mode: 'insensitive' } },
+        { sku: { contains: searchTerm, mode: 'insensitive' } }
+      ];
+    }
   }
 
   if (category_id) {
@@ -338,6 +341,17 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   if (is_active !== undefined) {
     where.is_active = is_active === 'true' || is_active === true;
   }
+
+  // Validate sortBy field - only allow valid product fields
+  const validSortFields = [
+    'id', 'name', 'slug', 'sku', 'price', 'stock_quantity', 
+    'created_at', 'updated_at', 'rating', 'view_count', 
+    'is_active', 'is_featured', 'category_id'
+  ];
+  const validSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+  const validSortOrder = ['asc', 'desc'].includes(sortOrder.toLowerCase()) 
+    ? sortOrder.toLowerCase() 
+    : 'desc';
 
   const [products, total] = await Promise.all([
     prisma.product.findMany({
@@ -353,7 +367,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       },
       take: parseInt(limit),
       skip: skip,
-      orderBy: { [sortBy]: sortOrder.toLowerCase() }
+      orderBy: { [validSortBy]: validSortOrder }
     }),
     prisma.product.count({ where })
   ]);
