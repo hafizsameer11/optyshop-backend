@@ -51,6 +51,50 @@ exports.getAllSubCategories = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get single subcategory (Admin)
+// @route   GET /api/admin/subcategories/:id
+// @access  Private/Admin
+exports.getSubCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const subcategory = await prisma.subCategory.findUnique({
+    where: { id: parseInt(id) },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      children: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true,
+          is_active: true,
+          sort_order: true
+        },
+        orderBy: { sort_order: 'asc' }
+      }
+    }
+  });
+
+  if (!subcategory) {
+    return error(res, "Subcategory not found", 404);
+  }
+
+  return success(res, "Subcategory retrieved successfully", { subcategory });
+});
+
 exports.createSubCategory = asyncHandler(async (req, res) => {
   const { name, category_id, description, is_active, sort_order, parent_id } = req.body;
 
@@ -58,10 +102,25 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     return error(res, "Name and Category ID are required", 400);
   }
 
+  const categoryId = parseInt(category_id, 10);
+  if (isNaN(categoryId)) {
+    return error(res, "Invalid Category ID", 400);
+  }
+
+  // Verify category exists
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId }
+  });
+  if (!category) {
+    return error(res, `Category with ID ${categoryId} not found. Please create the category first.`, 404);
+  }
+  
+  console.log(`✅ Category found: ${category.name} (ID: ${categoryId})`);
+
   // Generate slug
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-  // Check if exists
+  // Check if subcategory with same slug exists
   const existing = await prisma.subCategory.findUnique({ where: { slug } });
   if (existing) {
     return error(res, "Subcategory with this name already exists", 400);
@@ -72,20 +131,52 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     imageUrl = await uploadToS3(req.file, "subcategories");
   }
 
-  const subcategory = await prisma.subCategory.create({
-    data: {
-      name,
-      slug,
-      category_id: parseInt(category_id),
-      parent_id: parent_id ? parseInt(parent_id) : null,
-      description,
-      is_active: is_active === 'true' || is_active === true,
-      sort_order: parseInt(sort_order) || 0,
-      image: imageUrl
-    }
+  // Double-check category exists right before create (defensive check)
+  const categoryExists = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { id: true, name: true }
   });
+  
+  if (!categoryExists) {
+    return error(res, `Category with ID ${categoryId} does not exist in the database. Please create the category first.`, 404);
+  }
 
-  return success(res, "Subcategory created successfully", { subcategory }, 201);
+  try {
+    const subcategory = await prisma.subCategory.create({
+      data: {
+        name,
+        slug,
+        category_id: categoryId,
+        parent_id: parent_id ? parseInt(parent_id, 10) : null,
+        description,
+        is_active: is_active === 'true' || is_active === true,
+        sort_order: parseInt(sort_order, 10) || 0,
+        image: imageUrl
+      }
+    });
+
+    return success(res, "Subcategory created successfully", { subcategory }, 201);
+  } catch (createError) {
+    console.error('❌ Subcategory creation error:', createError);
+    
+    // Check if it's a foreign key constraint error
+    if (createError.code === 'P2003' || createError.message?.includes('Foreign key constraint')) {
+      // One more verification - maybe category was deleted between checks?
+      const categoryCheck = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { id: true }
+      });
+      
+      if (!categoryCheck) {
+        return error(res, `Category with ID ${categoryId} was not found. The category may have been deleted.`, 404);
+      }
+      
+      return error(res, `Failed to create subcategory. Foreign key constraint violation. Please ensure category ID ${categoryId} exists and try again.`, 400);
+    }
+    
+    // Re-throw other errors to be handled by asyncHandler
+    throw createError;
+  }
 });
 
 exports.updateSubCategory = asyncHandler(async (req, res) => {
@@ -111,7 +202,22 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     data.slug = newSlug;
   }
 
-  if (category_id) data.category_id = parseInt(category_id);
+  if (category_id) {
+    const categoryId = parseInt(category_id, 10);
+    if (isNaN(categoryId)) {
+      return error(res, "Invalid Category ID", 400);
+    }
+    
+    // Verify category exists
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId }
+    });
+    if (!category) {
+      return error(res, `Category with ID ${categoryId} not found`, 404);
+    }
+    
+    data.category_id = categoryId;
+  }
 
   // Handle parent_id with cycle check
   if (parent_id !== undefined) {

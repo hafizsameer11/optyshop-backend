@@ -51,24 +51,20 @@ model Category {
 }
 
 model SubCategory {
-  id          Int           @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   category_id Int
-  parent_id   Int?
-  name        String        @unique @db.VarChar(100)
-  slug        String        @unique @db.VarChar(100)
-  description String?       @db.Text
-  image       String?       @db.VarChar(500)
-  is_active   Boolean       @default(true)
-  sort_order  Int           @default(0)
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @updatedAt
-  category    Category      @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  parent      SubCategory?  @relation("SubCategoryToSubCategory", fields: [parent_id], references: [id], onDelete: SetNull)
-  children    SubCategory[] @relation("SubCategoryToSubCategory")
+  name        String    @unique @db.VarChar(100)
+  slug        String    @unique @db.VarChar(100)
+  description String?   @db.Text
+  image       String?   @db.VarChar(500)
+  is_active   Boolean   @default(true)
+  sort_order  Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  category    Category  @relation(fields: [category_id], references: [id], onDelete: Cascade)
   products    Product[]
 
   @@index([category_id])
-  @@index([parent_id])
   @@map("subcategories")
 }
 
