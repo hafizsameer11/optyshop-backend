@@ -45,8 +45,31 @@ model Category {
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
   products    Product[]
+  subcategories SubCategory[]
 
   @@map("categories")
+}
+
+model SubCategory {
+  id          Int           @id @default(autoincrement())
+  category_id Int
+  parent_id   Int?
+  name        String        @unique @db.VarChar(100)
+  slug        String        @unique @db.VarChar(100)
+  description String?       @db.Text
+  image       String?       @db.VarChar(500)
+  is_active   Boolean       @default(true)
+  sort_order  Int           @default(0)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+  category    Category      @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  parent      SubCategory?  @relation("SubCategoryToSubCategory", fields: [parent_id], references: [id], onDelete: SetNull)
+  children    SubCategory[] @relation("SubCategoryToSubCategory")
+  products    Product[]
+
+  @@index([category_id])
+  @@index([parent_id])
+  @@map("subcategories")
 }
 
 model Product {
@@ -90,9 +113,12 @@ model Product {
   lensTypes          ProductLensType[]
   variants           ProductVariant[]
   category           Category             @relation(fields: [category_id], references: [id])
+  subCategory        SubCategory?         @relation(fields: [sub_category_id], references: [id])
+  sub_category_id    Int?
   reviews            Review[]
 
   @@index([category_id])
+  @@index([sub_category_id])
   @@index([slug])
   @@index([sku])
   @@index([frame_shape])

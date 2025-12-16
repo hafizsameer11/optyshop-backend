@@ -22,7 +22,17 @@ exports.getCategories = asyncHandler(async (req, res) => {
           images: true
         }
       }
-    } : false,
+    } : (req.query.includeSubcategories === 'true' ? {
+      subcategories: {
+        where: { is_active: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true
+        }
+      }
+    } : false),
     orderBy: [
       { sort_order: 'asc' },
       { name: 'asc' }
@@ -52,6 +62,16 @@ exports.getCategory = asyncHandler(async (req, res) => {
           frame_shape: true,
           frame_material: true
         }
+      },
+      subcategories: {
+        where: { is_active: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true
+        },
+        orderBy: { sort_order: 'asc' }
       }
     }
   });

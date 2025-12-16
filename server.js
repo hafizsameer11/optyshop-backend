@@ -18,6 +18,7 @@ const orderRoutes = require('./routes/orders');
 const prescriptionRoutes = require('./routes/prescriptions');
 const simulationRoutes = require('./routes/simulations');
 const categoryRoutes = require('./routes/categories');
+const subCategoryRoutes = require('./routes/subCategory');
 const adminRoutes = require('./routes/admin');
 const marketingRoutes = require('./routes/marketing');
 const cmsRoutes = require('./routes/cms');
@@ -65,7 +66,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', '*');
   res.header('Access-Control-Expose-Headers', '*');
   res.header('Access-Control-Max-Age', '86400'); // 24 hours
-  
+
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -213,6 +214,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/simulations', simulationRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/subcategories', subCategoryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/marketing', marketingRoutes); // Deprecated - kept for backward compatibility
 app.use('/api/cms', cmsRoutes); // Deprecated - kept for backward compatibility (testimonials only)

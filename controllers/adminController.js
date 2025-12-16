@@ -11,6 +11,163 @@ const bcrypt = require('bcryptjs');
 // @desc    Get dashboard statistics
 // @route   GET /api/admin/dashboard
 // @access  Private/Admin
+exports.getAllSubCategories = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 50, category_id, search } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const where = {};
+  if (category_id) where.category_id = parseInt(category_id);
+  if (search) where.name = { contains: search };
+
+  const [subcategories, total] = await Promise.all([
+    prisma.subCategory.findMany({
+      where,
+      include: {
+        category: {
+          select: { id: true, name: true }
+        },
+        parent: {
+          select: { id: true, name: true }
+        },
+        children: {
+          select: { id: true, name: true, slug: true, image: true, is_active: true }
+        }
+      },
+      take: parseInt(limit),
+      skip: parseInt(skip),
+      orderBy: { sort_order: 'asc' }
+    }),
+    prisma.subCategory.count({ where })
+  ]);
+
+  return success(res, "Subcategories retrieved successfully", {
+    subcategories,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit)
+    }
+  });
+});
+
+exports.createSubCategory = asyncHandler(async (req, res) => {
+  const { name, category_id, description, is_active, sort_order, parent_id } = req.body;
+
+  if (!name || !category_id) {
+    return error(res, "Name and Category ID are required", 400);
+  }
+
+  // Generate slug
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  // Check if exists
+  const existing = await prisma.subCategory.findUnique({ where: { slug } });
+  if (existing) {
+    return error(res, "Subcategory with this name already exists", 400);
+  }
+
+  let imageUrl = null;
+  if (req.file) {
+    imageUrl = await uploadToS3(req.file, "subcategories");
+  }
+
+  const subcategory = await prisma.subCategory.create({
+    data: {
+      name,
+      slug,
+      category_id: parseInt(category_id),
+      parent_id: parent_id ? parseInt(parent_id) : null,
+      description,
+      is_active: is_active === 'true' || is_active === true,
+      sort_order: parseInt(sort_order) || 0,
+      image: imageUrl
+    }
+  });
+
+  return success(res, "Subcategory created successfully", { subcategory }, 201);
+});
+
+exports.updateSubCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { name, category_id, description, is_active, sort_order, slug: newSlug, parent_id } = req.body;
+
+  const subcategory = await prisma.subCategory.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!subcategory) {
+    return error(res, "Subcategory not found", 404);
+  }
+
+  const data = {};
+  if (name) {
+    data.name = name;
+  }
+
+  if (newSlug && newSlug !== subcategory.slug) {
+    const existing = await prisma.subCategory.findUnique({ where: { slug: newSlug } });
+    if (existing) return error(res, "Slug already in use", 400);
+    data.slug = newSlug;
+  }
+
+  if (category_id) data.category_id = parseInt(category_id);
+
+  // Handle parent_id with cycle check
+  if (parent_id !== undefined) {
+    if (parent_id === 'null' || parent_id === null) {
+      data.parent_id = null;
+    } else {
+      const pid = parseInt(parent_id);
+      if (pid === parseInt(id)) {
+        return error(res, "Cannot set parent category to itself", 400);
+      }
+      data.parent_id = pid;
+    }
+  }
+
+  if (description !== undefined) data.description = description;
+  if (is_active !== undefined) data.is_active = is_active === 'true' || is_active === true;
+  if (sort_order !== undefined) data.sort_order = parseInt(sort_order);
+
+  if (req.file) {
+    if (subcategory.image) {
+      await deleteFromS3(subcategory.image);
+    }
+    data.image = await uploadToS3(req.file, "subcategories");
+  }
+
+  const updatedSubCategory = await prisma.subCategory.update({
+    where: { id: parseInt(id) },
+    data
+  });
+
+  return success(res, "Subcategory updated successfully", { subcategory: updatedSubCategory });
+});
+
+exports.deleteSubCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const subcategory = await prisma.subCategory.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!subcategory) {
+    return error(res, "Subcategory not found", 404);
+  }
+
+  if (subcategory.image) {
+    await deleteFromS3(subcategory.image);
+  }
+
+  await prisma.subCategory.delete({
+    where: { id: parseInt(id) }
+  });
+
+  return success(res, "Subcategory deleted successfully");
+});
+
+// @desc    Get dashboard statistics
 exports.getDashboardStats = asyncHandler(async (req, res) => {
   const rangeDays = parseInt(req.query.range || req.query.range_days || 30, 10);
   const now = new Date();
@@ -314,6 +471,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     limit = 50,
     search,
     category_id,
+    sub_category_id,
     is_active,
     sortBy = 'created_at',
     sortOrder = 'desc'
@@ -338,19 +496,24 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     where.category_id = parseInt(category_id);
   }
 
+  if (sub_category_id) {
+    where.sub_category_id = parseInt(sub_category_id);
+  }
+
+
   if (is_active !== undefined) {
     where.is_active = is_active === 'true' || is_active === true;
   }
 
   // Validate sortBy field - only allow valid product fields
   const validSortFields = [
-    'id', 'name', 'slug', 'sku', 'price', 'stock_quantity', 
-    'created_at', 'updated_at', 'rating', 'view_count', 
+    'id', 'name', 'slug', 'sku', 'price', 'stock_quantity',
+    'created_at', 'updated_at', 'rating', 'view_count',
     'is_active', 'is_featured', 'category_id'
   ];
   const validSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
-  const validSortOrder = ['asc', 'desc'].includes(sortOrder.toLowerCase()) 
-    ? sortOrder.toLowerCase() 
+  const validSortOrder = ['asc', 'desc'].includes(sortOrder.toLowerCase())
+    ? sortOrder.toLowerCase()
     : 'desc';
 
   const [products, total] = await Promise.all([
@@ -358,6 +521,13 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       where,
       include: {
         category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        subCategory: {
           select: {
             id: true,
             name: true,
@@ -425,6 +595,7 @@ exports.getProduct = asyncHandler(async (req, res) => {
     where: { id: parseInt(id) },
     include: {
       category: true,
+      subCategory: true,
       variants: true,
       frameSizes: true,
       lensTypes: {
@@ -585,11 +756,30 @@ exports.createProduct = asyncHandler(async (req, res) => {
       return error(res, `Category with ID ${productData.category_id} not found`, 404);
     }
 
+    // Validate sub_category_id if provided
+    if (productData.sub_category_id) {
+      productData.sub_category_id = parseInt(productData.sub_category_id, 10);
+      if (isNaN(productData.sub_category_id)) {
+        return error(res, "Invalid sub_category_id", 400);
+      }
+      // Verify subcategory exists and belongs to category
+      const subCategory = await prisma.subCategory.findUnique({
+        where: { id: productData.sub_category_id }
+      });
+      if (!subCategory) {
+        return error(res, `SubCategory with ID ${productData.sub_category_id} not found`, 404);
+      }
+      if (subCategory.category_id !== productData.category_id) {
+        return error(res, "SubCategory does not belong to the selected Category", 400);
+      }
+    }
+
+
     // Validate and normalize product_type enum
     const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'accessory'];
     if (productData.product_type !== undefined) {
       const productType = String(productData.product_type).toLowerCase().trim();
-      
+
       // Map common invalid values to valid ones
       const productTypeMap = {
         'lens': 'contact_lens',
@@ -601,13 +791,13 @@ exports.createProduct = asyncHandler(async (req, res) => {
         'sunglass': 'sunglasses',
         'accessories': 'accessory'
       };
-      
+
       const normalizedType = productTypeMap[productType] || productType;
-      
+
       if (!validProductTypes.includes(normalizedType)) {
         return error(res, `Invalid product_type "${productData.product_type}". Valid values are: ${validProductTypes.join(', ')}`, 400);
       }
-      
+
       productData.product_type = normalizedType;
     } else {
       // Default to 'frame' if not provided
@@ -618,7 +808,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (productData.stock_status !== undefined) {
       const validStockStatuses = ['in_stock', 'out_of_stock', 'backorder'];
       const stockStatus = String(productData.stock_status).toLowerCase().trim();
-      
+
       // Map common invalid values to valid ones
       const stockStatusMap = {
         'on_backorder': 'backorder',
@@ -631,13 +821,13 @@ exports.createProduct = asyncHandler(async (req, res) => {
         'out-of-stock': 'out_of_stock',
         'out of stock': 'out_of_stock'
       };
-      
+
       const normalizedStatus = stockStatusMap[stockStatus] || stockStatus;
-      
+
       if (!validStockStatuses.includes(normalizedStatus)) {
         return error(res, `Invalid stock_status "${productData.stock_status}". Valid values are: ${validStockStatuses.join(', ')}`, 400);
       }
-      
+
       productData.stock_status = normalizedStatus;
     }
 
@@ -645,11 +835,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (productData.gender !== undefined) {
       const validGenders = ['men', 'women', 'unisex', 'kids'];
       const gender = String(productData.gender).toLowerCase().trim();
-      
+
       if (!validGenders.includes(gender)) {
         return error(res, `Invalid gender "${productData.gender}". Valid values are: ${validGenders.join(', ')}`, 400);
       }
-      
+
       productData.gender = gender;
     }
 
@@ -657,18 +847,18 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (productData.frame_shape !== undefined && productData.frame_shape !== null && productData.frame_shape !== '') {
       const validFrameShapes = ['round', 'square', 'oval', 'cat_eye', 'aviator', 'rectangle', 'wayfarer', 'geometric'];
       const frameShape = String(productData.frame_shape).toLowerCase().trim();
-      
+
       const frameShapeMap = {
         'cat-eye': 'cat_eye',
         'cat eye': 'cat_eye'
       };
-      
+
       const normalizedShape = frameShapeMap[frameShape] || frameShape;
-      
+
       if (!validFrameShapes.includes(normalizedShape)) {
         return error(res, `Invalid frame_shape "${productData.frame_shape}". Valid values are: ${validFrameShapes.join(', ')}`, 400);
       }
-      
+
       productData.frame_shape = normalizedShape;
     }
 
@@ -676,11 +866,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
       const validFrameMaterials = ['acetate', 'metal', 'tr90', 'titanium', 'wood', 'mixed'];
       const frameMaterial = String(productData.frame_material).toLowerCase().trim();
-      
+
       if (!validFrameMaterials.includes(frameMaterial)) {
         return error(res, `Invalid frame_material "${productData.frame_material}". Valid values are: ${validFrameMaterials.join(', ')}`, 400);
       }
-      
+
       productData.frame_material = frameMaterial;
     }
 
@@ -688,18 +878,18 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (productData.lens_type !== undefined && productData.lens_type !== null && productData.lens_type !== '') {
       const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic'];
       const lensType = String(productData.lens_type).toLowerCase().trim();
-      
+
       if (!validLensTypes.includes(lensType)) {
         return error(res, `Invalid lens_type "${productData.lens_type}". Valid values are: ${validLensTypes.join(', ')}`, 400);
       }
-      
+
       productData.lens_type = lensType;
     }
 
     // Normalize images coming from form-data / JSON
     // Images are stored as JSON string in database, but we work with arrays in code
     let imagesArray = [];
-    
+
     // If images were uploaded as files, they're already in productData.images as an array
     if (req.files && req.files.images && Array.isArray(productData.images) && productData.images.length > 0) {
       // Images uploaded as files - already set as array in productData.images from S3 uploads
@@ -724,7 +914,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
         imagesArray = [];
       }
     }
-    
+
     // Convert images array to JSON string for database storage
     // Set to null if empty array (Prisma expects String or Null)
     productData.images = imagesArray.length > 0 ? JSON.stringify(imagesArray) : null;
@@ -832,15 +1022,15 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     let existingImages = [];
     if (product.images) {
       try {
-        existingImages = typeof product.images === 'string' 
-          ? JSON.parse(product.images) 
+        existingImages = typeof product.images === 'string'
+          ? JSON.parse(product.images)
           : (Array.isArray(product.images) ? product.images : []);
       } catch (e) {
         console.error("Error parsing existing images:", e);
         existingImages = [];
       }
     }
-    
+
     // Upload new images and add to existing
     const imageUrls = [...existingImages];
     for (const file of req.files.images) {
@@ -876,7 +1066,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (productData.product_type !== undefined) {
     const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'accessory'];
     const productType = String(productData.product_type).toLowerCase().trim();
-    
+
     // Map common invalid values to valid ones
     const productTypeMap = {
       'lens': 'contact_lens',
@@ -888,13 +1078,13 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       'sunglass': 'sunglasses',
       'accessories': 'accessory'
     };
-    
+
     const normalizedType = productTypeMap[productType] || productType;
-    
+
     if (!validProductTypes.includes(normalizedType)) {
       return error(res, `Invalid product_type "${productData.product_type}". Valid values are: ${validProductTypes.join(', ')}`, 400);
     }
-    
+
     productData.product_type = normalizedType;
   }
 
@@ -902,7 +1092,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (productData.stock_status !== undefined) {
     const validStockStatuses = ['in_stock', 'out_of_stock', 'backorder'];
     const stockStatus = String(productData.stock_status).toLowerCase().trim();
-    
+
     // Map common invalid values to valid ones
     const stockStatusMap = {
       'on_backorder': 'backorder',
@@ -915,13 +1105,13 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       'out-of-stock': 'out_of_stock',
       'out of stock': 'out_of_stock'
     };
-    
+
     const normalizedStatus = stockStatusMap[stockStatus] || stockStatus;
-    
+
     if (!validStockStatuses.includes(normalizedStatus)) {
       return error(res, `Invalid stock_status "${productData.stock_status}". Valid values are: ${validStockStatuses.join(', ')}`, 400);
     }
-    
+
     productData.stock_status = normalizedStatus;
   }
 
@@ -929,11 +1119,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (productData.gender !== undefined) {
     const validGenders = ['men', 'women', 'unisex', 'kids'];
     const gender = String(productData.gender).toLowerCase().trim();
-    
+
     if (!validGenders.includes(gender)) {
       return error(res, `Invalid gender "${productData.gender}". Valid values are: ${validGenders.join(', ')}`, 400);
     }
-    
+
     productData.gender = gender;
   }
 
@@ -941,18 +1131,18 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (productData.frame_shape !== undefined && productData.frame_shape !== null && productData.frame_shape !== '') {
     const validFrameShapes = ['round', 'square', 'oval', 'cat_eye', 'aviator', 'rectangle', 'wayfarer', 'geometric'];
     const frameShape = String(productData.frame_shape).toLowerCase().trim();
-    
+
     const frameShapeMap = {
       'cat-eye': 'cat_eye',
       'cat eye': 'cat_eye'
     };
-    
+
     const normalizedShape = frameShapeMap[frameShape] || frameShape;
-    
+
     if (!validFrameShapes.includes(normalizedShape)) {
       return error(res, `Invalid frame_shape "${productData.frame_shape}". Valid values are: ${validFrameShapes.join(', ')}`, 400);
     }
-    
+
     productData.frame_shape = normalizedShape;
   }
 
@@ -960,11 +1150,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
     const validFrameMaterials = ['acetate', 'metal', 'tr90', 'titanium', 'wood', 'mixed'];
     const frameMaterial = String(productData.frame_material).toLowerCase().trim();
-    
+
     if (!validFrameMaterials.includes(frameMaterial)) {
       return error(res, `Invalid frame_material "${productData.frame_material}". Valid values are: ${validFrameMaterials.join(', ')}`, 400);
     }
-    
+
     productData.frame_material = frameMaterial;
   }
 
@@ -972,11 +1162,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (productData.lens_type !== undefined && productData.lens_type !== null && productData.lens_type !== '') {
     const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic'];
     const lensType = String(productData.lens_type).toLowerCase().trim();
-    
+
     if (!validLensTypes.includes(lensType)) {
       return error(res, `Invalid lens_type "${productData.lens_type}". Valid values are: ${validLensTypes.join(', ')}`, 400);
     }
-    
+
     productData.lens_type = lensType;
   }
 
@@ -1003,10 +1193,34 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       return error(res, `Category with ID ${productData.category_id} not found`, 404);
     }
   }
+
+  // Validate sub_category_id if provided
+  if (productData.sub_category_id !== undefined) {
+    if (productData.sub_category_id === 'null' || productData.sub_category_id === null || productData.sub_category_id === '') {
+      productData.sub_category_id = null;
+    } else {
+      productData.sub_category_id = parseInt(productData.sub_category_id, 10);
+      if (isNaN(productData.sub_category_id)) {
+        return error(res, "Invalid sub_category_id", 400);
+      }
+      // Verify subcategory exists
+      const subCategory = await prisma.subCategory.findUnique({
+        where: { id: productData.sub_category_id }
+      });
+      if (!subCategory) {
+        return error(res, `SubCategory with ID ${productData.sub_category_id} not found`, 404);
+      }
+      // If getting category_id from update or existing product
+      const catId = productData.category_id || product.category_id;
+      if (subCategory.category_id !== catId) {
+        return error(res, "SubCategory does not belong to the product's Category", 400);
+      }
+    }
+  }
   // Normalize images - convert array to JSON string for database storage
   if (productData.images !== undefined) {
     let imagesArray = [];
-    
+
     if (Array.isArray(productData.images)) {
       // Already an array (from file uploads or direct array input)
       imagesArray = productData.images;
@@ -1022,7 +1236,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         }
       }
     }
-    
+
     // Convert images array to JSON string for database storage
     // Set to null if empty array (Prisma expects String or Null)
     productData.images = imagesArray.length > 0 ? JSON.stringify(imagesArray) : null;
@@ -1085,7 +1299,7 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
       imagesArray = product.images;
     }
   }
-  
+
   if (imagesArray.length > 0) {
     for (const imageUrl of imagesArray) {
       try {

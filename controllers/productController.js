@@ -155,6 +155,14 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }
 
+  // Filter by subCategory
+  if (req.query.subCategory) {
+    const subCategoryRecord = await prisma.subCategory.findUnique({ where: { slug: req.query.subCategory } });
+    if (subCategoryRecord) {
+      where.sub_category_id = subCategoryRecord.id;
+    }
+  }
+
   if (frameShape) where.frame_shape = frameShape;
   if (frameMaterial) where.frame_material = frameMaterial;
   if (lensType) where.lens_type = lensType;
@@ -183,6 +191,13 @@ exports.getProducts = asyncHandler(async (req, res) => {
       where,
       include: {
         category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        subCategory: {
           select: {
             id: true,
             name: true,

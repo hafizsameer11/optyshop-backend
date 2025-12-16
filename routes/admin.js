@@ -15,6 +15,10 @@ const {
   createCategory,
   updateCategory,
   deleteCategory,
+  getAllSubCategories,
+  createSubCategory,
+  updateSubCategory,
+  deleteSubCategory,
   getAllFrameSizes,
   getFrameSize,
   createFrameSize,
@@ -226,6 +230,12 @@ router.get('/categories/:id', getCategory);
 router.post('/categories', createCategory);
 router.put('/categories/:id', updateCategory);
 router.delete('/categories/:id', deleteCategory);
+
+// SubCategories
+router.get('/subcategories', getAllSubCategories);
+router.post('/subcategories', uploadSingle('image'), createSubCategory);
+router.put('/subcategories/:id', uploadSingle('image'), updateSubCategory);
+router.delete('/subcategories/:id', deleteSubCategory);
 
 // Coupons
 router.get('/coupons', getCoupons);
