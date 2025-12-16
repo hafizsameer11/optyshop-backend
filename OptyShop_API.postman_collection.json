@@ -2741,7 +2741,7 @@
 					  }
 					}
 				  },
-				  "description": "Update product details. You can update sub_category_id - it must belong to the product's category. Use GET /api/subcategories/by-category/:category_id to get available subcategories for a category."
+				  "description": "Update product details. You can update sub_category_id - it must belong to the product's category. Use GET /api/subcategories/by-category/:category_id to get available subcategories for a category.",
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products/1",
 					"host": [

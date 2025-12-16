@@ -1005,6 +1005,22 @@ exports.createProduct = asyncHandler(async (req, res) => {
     // Create the product first
     const product = await prisma.product.create({
       data: productData,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        subCategory: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
+      }
     });
 
     // Format images - parse JSON string to array for response
@@ -1038,7 +1054,23 @@ exports.createProduct = asyncHandler(async (req, res) => {
       // Fetch the product with variants to return
       const productWithVariants = await prisma.product.findUnique({
         where: { id: product.id },
-        include: { variants: true },
+        include: {
+          variants: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          },
+          subCategory: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          }
+        },
       });
 
       // Format images for product with variants
@@ -1262,6 +1294,9 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Determine the category ID that will be used (new category or existing)
+  const finalCategoryId = productData.category_id || product.category_id;
+  
   // Validate sub_category_id if provided
   if (productData.sub_category_id !== undefined) {
     if (productData.sub_category_id === 'null' || productData.sub_category_id === null || productData.sub_category_id === '') {
@@ -1278,10 +1313,21 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       if (!subCategory) {
         return error(res, `SubCategory with ID ${productData.sub_category_id} not found`, 404);
       }
-      // If getting category_id from update or existing product
-      const catId = productData.category_id || product.category_id;
-      if (subCategory.category_id !== catId) {
+      // Validate that subcategory belongs to the final category (new or existing)
+      if (subCategory.category_id !== finalCategoryId) {
         return error(res, "SubCategory does not belong to the product's Category", 400);
+      }
+    }
+  } else if (productData.category_id && productData.category_id !== product.category_id) {
+    // If category is being changed but sub_category_id is not provided,
+    // check if existing subcategory belongs to new category
+    if (product.sub_category_id) {
+      const existingSubCategory = await prisma.subCategory.findUnique({
+        where: { id: product.sub_category_id }
+      });
+      // If existing subcategory doesn't belong to new category, clear it
+      if (existingSubCategory && existingSubCategory.category_id !== finalCategoryId) {
+        productData.sub_category_id = null;
       }
     }
   }
@@ -1313,6 +1359,22 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   const updatedProduct = await prisma.product.update({
     where: { id: parseInt(id) },
     data: productData,
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
   });
 
   // Format images - parse JSON string to array for response
