@@ -24,13 +24,7 @@ exports.getAllSubCategories = asyncHandler(async (req, res) => {
       where,
       include: {
         category: {
-          select: { id: true, name: true }
-        },
-        parent: {
-          select: { id: true, name: true }
-        },
-        children: {
-          select: { id: true, name: true, slug: true, image: true, is_active: true }
+          select: { id: true, name: true, slug: true }
         }
       },
       take: parseInt(limit),
@@ -66,24 +60,6 @@ exports.getSubCategory = asyncHandler(async (req, res) => {
           name: true,
           slug: true
         }
-      },
-      parent: {
-        select: {
-          id: true,
-          name: true,
-          slug: true
-        }
-      },
-      children: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          image: true,
-          is_active: true,
-          sort_order: true
-        },
-        orderBy: { sort_order: 'asc' }
       }
     }
   });
@@ -96,7 +72,7 @@ exports.getSubCategory = asyncHandler(async (req, res) => {
 });
 
 exports.createSubCategory = asyncHandler(async (req, res) => {
-  const { name, category_id, description, is_active, sort_order, parent_id } = req.body;
+  const { name, category_id, description, is_active, sort_order } = req.body;
 
   if (!name || !category_id) {
     return error(res, "Name and Category ID are required", 400);
@@ -147,7 +123,6 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
         name,
         slug,
         category_id: categoryId,
-        parent_id: parent_id ? parseInt(parent_id, 10) : null,
         description,
         is_active: is_active === 'true' || is_active === true,
         sort_order: parseInt(sort_order, 10) || 0,
@@ -181,7 +156,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
 
 exports.updateSubCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, category_id, description, is_active, sort_order, slug: newSlug, parent_id } = req.body;
+  const { name, category_id, description, is_active, sort_order, slug: newSlug } = req.body;
 
   const subcategory = await prisma.subCategory.findUnique({
     where: { id: parseInt(id) }
@@ -217,19 +192,6 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     }
     
     data.category_id = categoryId;
-  }
-
-  // Handle parent_id with cycle check
-  if (parent_id !== undefined) {
-    if (parent_id === 'null' || parent_id === null) {
-      data.parent_id = null;
-    } else {
-      const pid = parseInt(parent_id);
-      if (pid === parseInt(id)) {
-        return error(res, "Cannot set parent category to itself", 400);
-      }
-      data.parent_id = pid;
-    }
   }
 
   if (description !== undefined) data.description = description;
