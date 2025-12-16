@@ -128,3 +128,41 @@ exports.getSubCategoryBySlug = asyncHandler(async (req, res) => {
 
     return success(res, 'Subcategory retrieved successfully', { subcategory });
 });
+
+// @desc    Get subcategories by category ID
+// @route   GET /api/subcategories/by-category/:category_id
+// @access  Public
+exports.getSubCategoriesByCategory = asyncHandler(async (req, res) => {
+    const { category_id } = req.params;
+
+    // Verify category exists
+    const category = await prisma.category.findUnique({
+        where: { id: parseInt(category_id) },
+        select: { id: true, name: true, slug: true }
+    });
+
+    if (!category) {
+        return error(res, 'Category not found', 404);
+    }
+
+    const subcategories = await prisma.subCategory.findMany({
+        where: {
+            category_id: parseInt(category_id),
+            is_active: true
+        },
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            image: true,
+            description: true,
+            sort_order: true
+        },
+        orderBy: { sort_order: 'asc' }
+    });
+
+    return success(res, 'Subcategories retrieved successfully', {
+        category,
+        subcategories
+    });
+});

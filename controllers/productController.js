@@ -55,10 +55,21 @@ const normalizeDecimals = (value) => parseFloat(Number(value || 0).toFixed(2));
 // @route   GET /api/products/options
 // @access  Public (can also be used by admin UI)
 exports.getProductFormOptions = asyncHandler(async (req, res) => {
-  const [categories, lensTypes, lensCoatings, frameSizes] = await Promise.all([
+  const [categories, subcategories, lensTypes, lensCoatings, frameSizes] = await Promise.all([
     prisma.category.findMany({
       where: { is_active: true },
       select: { id: true, name: true, slug: true },
+      orderBy: { sort_order: 'asc' }
+    }),
+    prisma.subCategory.findMany({
+      where: { is_active: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        category_id: true,
+        image: true
+      },
       orderBy: { sort_order: 'asc' }
     }),
     prisma.lensType.findMany({
@@ -99,8 +110,23 @@ exports.getProductFormOptions = asyncHandler(async (req, res) => {
     })
   ]);
 
+  // Group subcategories by category_id
+  const subcategoriesByCategory = {};
+  subcategories.forEach(subcat => {
+    if (!subcategoriesByCategory[subcat.category_id]) {
+      subcategoriesByCategory[subcat.category_id] = [];
+    }
+    subcategoriesByCategory[subcat.category_id].push({
+      id: subcat.id,
+      name: subcat.name,
+      slug: subcat.slug,
+      image: subcat.image
+    });
+  });
+
   const payload = {
     categories: categories.length ? categories : fallbackCategories,
+    subcategoriesByCategory: subcategoriesByCategory,
     frameShapes: FRAME_SHAPES,
     frameMaterials: FRAME_MATERIALS,
     genders: GENDERS,

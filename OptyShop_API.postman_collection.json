@@ -239,7 +239,8 @@
 					  "products",
 					  "options"
 					]
-				  }
+				  },
+				  "description": "Get all form options for product creation/editing including categories, subcategories (grouped by category), frame shapes, materials, genders, lens types, lens coatings, frame sizes, etc. The response includes 'subcategoriesByCategory' object where keys are category IDs and values are arrays of subcategories for that category."
 				}
 			  },
 			  {
@@ -485,6 +486,26 @@
 										"test-subcategory"
 									]
 								}
+							}
+						},
+						{
+							"name": "Get SubCategories by Category ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/subcategories/by-category/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"subcategories",
+										"by-category",
+										"1"
+									]
+								},
+								"description": "Get all active subcategories for a specific category. Useful for populating subcategory dropdown when a category is selected in product forms."
 							}
 						}
 					]
@@ -2670,7 +2691,7 @@
 						"key": "sub_category_id",
 						"value": "",
 						"type": "text",
-						"description": "Optional: Subcategory ID"
+						"description": "Optional: Subcategory ID. Must belong to the selected category. Use GET /api/subcategories/by-category/:category_id to get subcategories for a category, or GET /api/products/options to get all subcategories grouped by category."
 					  },
 					  {
 						"key": "price",
@@ -2713,8 +2734,14 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"price\": 129.99,\n  \"sub_category_id\": 1\n}"
+					"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"price\": 129.99,\n  \"sub_category_id\": 1\n}",
+					"options": {
+					  "raw": {
+						"language": "json"
+					  }
+					}
 				  },
+				  "description": "Update product details. You can update sub_category_id - it must belong to the product's category. Use GET /api/subcategories/by-category/:category_id to get available subcategories for a category."
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products/1",
 					"host": [
