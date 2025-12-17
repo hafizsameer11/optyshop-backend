@@ -127,29 +127,70 @@ if (process.env.NODE_ENV === 'development') {
 const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED !== 'false'; // Default: enabled
 const rateLimitWindow = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
 const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 10000 : 1000 // High limit for dev, reasonable for prod
+  process.env.NODE_ENV === 'development' ? 10000 : 10000 // Increased from 1000 to 10000 for production
 );
 
 // More lenient rate limiter for auth endpoints (especially /me which is called frequently)
 const authRateLimitMax = parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 50000 : 5000 // Very high limit for auth endpoints
+  process.env.NODE_ENV === 'development' ? 50000 : 50000 // Increased from 5000 to 50000 for production
 );
 const authRateLimitWindow = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
+
+// Helper function to get the real client IP (works behind proxy/load balancer)
+const getClientIP = (req) => {
+  // Check for forwarded IP headers (common in proxy/load balancer setups)
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    // x-forwarded-for can contain multiple IPs, take the first one
+    const ips = forwarded.split(',').map(ip => ip.trim());
+    return ips[0];
+  }
+  
+  // Check for other common proxy headers
+  if (req.headers['x-real-ip']) {
+    return req.headers['x-real-ip'];
+  }
+  
+  if (req.headers['cf-connecting-ip']) {
+    return req.headers['cf-connecting-ip'];
+  }
+  
+  // Fallback to Express's req.ip (works with trust proxy)
+  return req.ip || req.connection.remoteAddress;
+};
 
 if (rateLimitEnabled) {
   // General rate limiter for all API routes
   const limiter = rateLimit({
     windowMs: rateLimitWindow,
     max: rateLimitMax,
-    message: 'Too many requests from this IP, please try again later.',
+    message: {
+      success: false,
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil(rateLimitWindow / 1000)
+    },
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    // Use custom key generator to properly handle proxy scenarios
+    keyGenerator: (req) => {
+      return getClientIP(req);
+    },
     // Skip rate limiting for localhost in development
     skip: (req) => {
       if (process.env.NODE_ENV === 'development') {
-        return req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+        const ip = getClientIP(req);
+        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
       }
       return false;
+    },
+    // Handler for when limit is exceeded
+    handler: (req, res) => {
+      res.status(429).json({
+        success: false,
+        error: 'Too many requests from this IP, please try again later.',
+        retryAfter: Math.ceil(rateLimitWindow / 1000),
+        message: `Rate limit exceeded. Maximum ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes.`
+      });
     }
   });
 
@@ -157,14 +198,32 @@ if (rateLimitEnabled) {
   const authLimiter = rateLimit({
     windowMs: authRateLimitWindow,
     max: authRateLimitMax,
-    message: 'Too many requests from this IP, please try again later.',
+    message: {
+      success: false,
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil(authRateLimitWindow / 1000)
+    },
     standardHeaders: true,
     legacyHeaders: false,
+    // Use custom key generator to properly handle proxy scenarios
+    keyGenerator: (req) => {
+      return getClientIP(req);
+    },
     skip: (req) => {
       if (process.env.NODE_ENV === 'development') {
-        return req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+        const ip = getClientIP(req);
+        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
       }
       return false;
+    },
+    // Handler for when limit is exceeded
+    handler: (req, res) => {
+      res.status(429).json({
+        success: false,
+        error: 'Too many requests from this IP, please try again later.',
+        retryAfter: Math.ceil(authRateLimitWindow / 1000),
+        message: `Rate limit exceeded. Maximum ${authRateLimitMax} requests per ${authRateLimitWindow / 1000 / 60} minutes.`
+      });
     }
   });
 
