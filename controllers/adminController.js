@@ -1356,9 +1356,40 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     productData.images = imagesArray.length > 0 ? JSON.stringify(imagesArray) : null;
   }
 
+  // Remove non-Prisma fields that might be in the request
+  const fieldsToRemove = ['replace_images', 'variants'];
+  fieldsToRemove.forEach(field => {
+    delete productData[field];
+  });
+
+  // Convert category_id and sub_category_id to Prisma relation syntax if they exist
+  const updateData = { ...productData };
+  
+  // Handle category relation
+  if (updateData.category_id !== undefined) {
+    updateData.category = {
+      connect: { id: updateData.category_id }
+    };
+    delete updateData.category_id;
+  }
+  
+  // Handle subCategory relation
+  if (updateData.sub_category_id !== undefined) {
+    if (updateData.sub_category_id === null || updateData.sub_category_id === 'null' || updateData.sub_category_id === '') {
+      updateData.subCategory = {
+        disconnect: true
+      };
+    } else {
+      updateData.subCategory = {
+        connect: { id: updateData.sub_category_id }
+      };
+    }
+    delete updateData.sub_category_id;
+  }
+
   const updatedProduct = await prisma.product.update({
     where: { id: parseInt(id) },
-    data: productData,
+    data: updateData,
     include: {
       category: {
         select: {
