@@ -127,12 +127,17 @@ if (process.env.NODE_ENV === 'development') {
 const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED !== 'false'; // Default: enabled
 const rateLimitWindow = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
 const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 10000 : 10000 // Increased from 1000 to 10000 for production
+  process.env.NODE_ENV === 'development' ? 100000 : 100000 // Very high limit to handle frontend requests
+);
+
+// Separate limits for GET requests (read operations) - much more lenient
+const getRequestLimitMax = parseInt(process.env.GET_RATE_LIMIT_MAX_REQUESTS) || (
+  process.env.NODE_ENV === 'development' ? 200000 : 200000 // Very high limit for GET requests
 );
 
 // More lenient rate limiter for auth endpoints (especially /me which is called frequently)
 const authRateLimitMax = parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 50000 : 50000 // Increased from 5000 to 50000 for production
+  process.env.NODE_ENV === 'development' ? 100000 : 100000 // Very high limit for auth endpoints
 );
 const authRateLimitWindow = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
 
@@ -160,8 +165,42 @@ const getClientIP = (req) => {
 };
 
 if (rateLimitEnabled) {
-  // General rate limiter for all API routes
-  const limiter = rateLimit({
+  // Very lenient rate limiter for GET requests (read operations)
+  // GET requests are typically safe and frontend makes many of them
+  const getRequestLimiter = rateLimit({
+    windowMs: rateLimitWindow,
+    max: getRequestLimitMax,
+    message: {
+      success: false,
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil(rateLimitWindow / 1000)
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+      return getClientIP(req);
+    },
+    skip: (req) => {
+      // Only apply to GET requests
+      if (req.method !== 'GET') return true;
+      if (process.env.NODE_ENV === 'development') {
+        const ip = getClientIP(req);
+        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+      }
+      return false;
+    },
+    handler: (req, res) => {
+      res.status(429).json({
+        success: false,
+        error: 'Too many requests from this IP, please try again later.',
+        retryAfter: Math.ceil(rateLimitWindow / 1000),
+        message: `Rate limit exceeded. Maximum ${getRequestLimitMax} GET requests per ${rateLimitWindow / 1000 / 60} minutes.`
+      });
+    }
+  });
+
+  // General rate limiter for POST/PUT/DELETE/PATCH requests (write operations)
+  const writeRequestLimiter = rateLimit({
     windowMs: rateLimitWindow,
     max: rateLimitMax,
     message: {
@@ -169,27 +208,26 @@ if (rateLimitEnabled) {
       error: 'Too many requests from this IP, please try again later.',
       retryAfter: Math.ceil(rateLimitWindow / 1000)
     },
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    // Use custom key generator to properly handle proxy scenarios
+    standardHeaders: true,
+    legacyHeaders: false,
     keyGenerator: (req) => {
       return getClientIP(req);
     },
-    // Skip rate limiting for localhost in development
     skip: (req) => {
+      // Only apply to non-GET requests
+      if (req.method === 'GET') return true;
       if (process.env.NODE_ENV === 'development') {
         const ip = getClientIP(req);
         return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
       }
       return false;
     },
-    // Handler for when limit is exceeded
     handler: (req, res) => {
       res.status(429).json({
         success: false,
         error: 'Too many requests from this IP, please try again later.',
         retryAfter: Math.ceil(rateLimitWindow / 1000),
-        message: `Rate limit exceeded. Maximum ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes.`
+        message: `Rate limit exceeded. Maximum ${rateLimitMax} write requests per ${rateLimitWindow / 1000 / 60} minutes.`
       });
     }
   });
@@ -205,7 +243,6 @@ if (rateLimitEnabled) {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    // Use custom key generator to properly handle proxy scenarios
     keyGenerator: (req) => {
       return getClientIP(req);
     },
@@ -216,7 +253,6 @@ if (rateLimitEnabled) {
       }
       return false;
     },
-    // Handler for when limit is exceeded
     handler: (req, res) => {
       res.status(429).json({
         success: false,
@@ -227,15 +263,20 @@ if (rateLimitEnabled) {
     }
   });
 
-  // Apply lenient rate limiter to auth routes first (order matters)
+  // Apply rate limiters in order (most specific first)
+  // Auth endpoints get their own limiter
   app.use('/api/auth', authLimiter);
   
-  // Apply general rate limiter to all other API routes
-  app.use('/api/', limiter);
+  // Apply GET request limiter to all API routes (only affects GET requests)
+  app.use('/api/', getRequestLimiter);
+  
+  // Apply write request limiter to all API routes (only affects non-GET requests)
+  app.use('/api/', writeRequestLimiter);
   
   console.log(`✅ Rate limiting enabled:`);
   console.log(`   - Auth endpoints: ${authRateLimitMax} requests per ${authRateLimitWindow / 1000 / 60} minutes`);
-  console.log(`   - Other endpoints: ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
+  console.log(`   - GET requests: ${getRequestLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
+  console.log(`   - Write requests (POST/PUT/DELETE/PATCH): ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
 } else {
   console.log('⚠️  Rate limiting disabled');
 }
