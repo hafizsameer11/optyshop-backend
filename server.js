@@ -130,7 +130,14 @@ const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (
   process.env.NODE_ENV === 'development' ? 10000 : 1000 // High limit for dev, reasonable for prod
 );
 
+// More lenient rate limiter for auth endpoints (especially /me which is called frequently)
+const authRateLimitMax = parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || (
+  process.env.NODE_ENV === 'development' ? 50000 : 5000 // Very high limit for auth endpoints
+);
+const authRateLimitWindow = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
+
 if (rateLimitEnabled) {
+  // General rate limiter for all API routes
   const limiter = rateLimit({
     windowMs: rateLimitWindow,
     max: rateLimitMax,
@@ -146,8 +153,30 @@ if (rateLimitEnabled) {
     }
   });
 
+  // More lenient rate limiter for auth endpoints
+  const authLimiter = rateLimit({
+    windowMs: authRateLimitWindow,
+    max: authRateLimitMax,
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      if (process.env.NODE_ENV === 'development') {
+        return req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+      }
+      return false;
+    }
+  });
+
+  // Apply lenient rate limiter to auth routes first (order matters)
+  app.use('/api/auth', authLimiter);
+  
+  // Apply general rate limiter to all other API routes
   app.use('/api/', limiter);
-  console.log(`✅ Rate limiting enabled: ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
+  
+  console.log(`✅ Rate limiting enabled:`);
+  console.log(`   - Auth endpoints: ${authRateLimitMax} requests per ${authRateLimitWindow / 1000 / 60} minutes`);
+  console.log(`   - Other endpoints: ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
 } else {
   console.log('⚠️  Rate limiting disabled');
 }
