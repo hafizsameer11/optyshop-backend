@@ -201,6 +201,72 @@
 				}
 			  },
 			  {
+				"name": "Get Products by Category",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/products?category=prescription-glasses&page=1&limit=12",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "products"
+					],
+					"query": [
+					  {
+						"key": "category",
+						"value": "prescription-glasses",
+						"description": "Category slug (e.g., prescription-glasses, sunglasses)"
+					  },
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "12"
+					  }
+					]
+				  },
+				  "description": "Get all products filtered by category slug. You can combine with other filters like frameShape, frameMaterial, minPrice, maxPrice, etc."
+				}
+			  },
+			  {
+				"name": "Get Products by Subcategory",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/products?subCategory=men-frames&page=1&limit=12",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "products"
+					],
+					"query": [
+					  {
+						"key": "subCategory",
+						"value": "men-frames",
+						"description": "Subcategory slug"
+					  },
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "12"
+					  }
+					]
+				  },
+				  "description": "Get all products filtered by subcategory slug. You can combine with other filters like frameShape, frameMaterial, minPrice, maxPrice, etc."
+				}
+			  },
+			  {
 				"name": "Get Featured Products",
 				"request": {
 				  "method": "GET",
@@ -2905,6 +2971,84 @@
 				}
 			  },
 			  {
+				"name": "Get Products by Category (Admin)",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/products?category_id=1&page=1&limit=20",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "products"
+					],
+					"query": [
+					  {
+						"key": "category_id",
+						"value": "1",
+						"description": "Filter by category ID"
+					  },
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "20"
+					  }
+					]
+				  },
+				  "description": "Get all products filtered by category ID. Includes both active and inactive products (admin view)."
+				}
+			  },
+			  {
+				"name": "Get Products by Subcategory (Admin)",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/products?sub_category_id=1&page=1&limit=20",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "products"
+					],
+					"query": [
+					  {
+						"key": "sub_category_id",
+						"value": "1",
+						"description": "Filter by subcategory ID"
+					  },
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "20"
+					  }
+					]
+				  },
+				  "description": "Get all products filtered by subcategory ID. Includes both active and inactive products (admin view)."
+				}
+			  },
+			  {
 				"name": "Get Product (Admin)",
 				"request": {
 				  "method": "GET",
@@ -3229,6 +3373,168 @@
 					  "1"
 					]
 				  }
+				}
+			  },
+			  {
+				"name": "Get All SubCategories (Admin)",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories?page=1&limit=50&category_id=1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1",
+						"description": "Page number"
+					  },
+					  {
+						"key": "limit",
+						"value": "50",
+						"description": "Items per page"
+					  },
+					  {
+						"key": "category_id",
+						"value": "1",
+						"description": "Filter by category ID",
+						"disabled": true
+					  },
+					  {
+						"key": "search",
+						"value": "",
+						"description": "Search by name",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all subcategories. Includes both active and inactive subcategories (admin view)."
+				}
+			  },
+			  {
+				"name": "Get SubCategory (Admin)",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "1"
+					]
+				  }
+				}
+			  },
+			  {
+				"name": "Create SubCategory",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Men Frames\",\n  \"slug\": \"men-frames\",\n  \"category_id\": 1,\n  \"description\": \"Subcategory for men's frames\",\n  \"sort_order\": 1\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories"
+					]
+				  },
+				  "description": "Create a new subcategory. Must specify category_id that exists."
+				}
+			  },
+			  {
+				"name": "Update SubCategory",
+				"request": {
+				  "method": "PUT",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Updated SubCategory Name\",\n  \"is_active\": true,\n  \"sort_order\": 2\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "1"
+					]
+				  },
+				  "description": "Update subcategory details. You can update category_id, but it must be a valid category."
+				}
+			  },
+			  {
+				"name": "Delete SubCategory (Admin)",
+				"request": {
+				  "method": "DELETE",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "1"
+					]
+				  },
+				  "description": "Delete a subcategory. This will cascade delete all products in this subcategory if onDelete: Cascade is set."
 				}
 			  },
 			  {

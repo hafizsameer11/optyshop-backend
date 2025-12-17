@@ -6,7 +6,7 @@ const { success, error } = require('../utils/response');
 // @route   GET /api/subcategories
 // @access  Public
 exports.getSubCategories = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 50, category_id, search, includeChildren } = req.query;
+    const { page = 1, limit = 50, category_id, search } = req.query;
     const skip = (page - 1) * limit;
 
     const where = { is_active: true };
@@ -29,11 +29,7 @@ exports.getSubCategories = asyncHandler(async (req, res) => {
                         name: true,
                         slug: true
                     }
-                },
-                children: includeChildren === 'true' ? {
-                    where: { is_active: true },
-                    select: { id: true, name: true, slug: true, image: true }
-                } : false
+                }
             },
             orderBy: { sort_order: 'asc' },
             take: parseInt(limit),
@@ -67,13 +63,6 @@ exports.getSubCategory = asyncHandler(async (req, res) => {
                 name: true,
                 slug: true
             }
-        },
-        parent: {
-            select: { id: true, name: true, slug: true }
-        },
-        children: {
-            where: { is_active: true },
-            select: { id: true, name: true, slug: true, image: true }
         }
     };
 
