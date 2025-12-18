@@ -322,11 +322,51 @@ exports.getProduct = asyncHandler(async (req, res) => {
     data: { view_count: { increment: 1 } }
   });
 
+  // Parse contact lens options if they exist
+  let baseCurveOptions = null;
+  let diameterOptions = null;
+  let powersRange = null;
+  
+  if (product.base_curve_options) {
+    try {
+      baseCurveOptions = typeof product.base_curve_options === 'string' 
+        ? JSON.parse(product.base_curve_options) 
+        : product.base_curve_options;
+    } catch (e) {
+      // If parsing fails, treat as single value or array string
+      baseCurveOptions = product.base_curve_options;
+    }
+  }
+  
+  if (product.diameter_options) {
+    try {
+      diameterOptions = typeof product.diameter_options === 'string' 
+        ? JSON.parse(product.diameter_options) 
+        : product.diameter_options;
+    } catch (e) {
+      diameterOptions = product.diameter_options;
+    }
+  }
+  
+  if (product.powers_range) {
+    try {
+      powersRange = typeof product.powers_range === 'string' 
+        ? JSON.parse(product.powers_range) 
+        : product.powers_range;
+    } catch (e) {
+      powersRange = product.powers_range;
+    }
+  }
+
   // Transform lensTypes and lensCoatings to match expected format
   const transformedProduct = {
     ...product,
     lensTypes: product.lensTypes.map(plt => plt.lensType),
-    lensCoatings: product.lensCoatings.map(plc => plc.lensCoating)
+    lensCoatings: product.lensCoatings.map(plc => plc.lensCoating),
+    // Contact lens options (parsed from JSON strings)
+    base_curve_options: baseCurveOptions,
+    diameter_options: diameterOptions,
+    powers_range: powersRange
   };
 
   return success(res, 'Product retrieved successfully', { product: transformedProduct });
@@ -405,11 +445,50 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     data: { view_count: { increment: 1 } }
   });
 
+  // Parse contact lens options if they exist
+  let baseCurveOptions = null;
+  let diameterOptions = null;
+  let powersRange = null;
+  
+  if (product.base_curve_options) {
+    try {
+      baseCurveOptions = typeof product.base_curve_options === 'string' 
+        ? JSON.parse(product.base_curve_options) 
+        : product.base_curve_options;
+    } catch (e) {
+      baseCurveOptions = product.base_curve_options;
+    }
+  }
+  
+  if (product.diameter_options) {
+    try {
+      diameterOptions = typeof product.diameter_options === 'string' 
+        ? JSON.parse(product.diameter_options) 
+        : product.diameter_options;
+    } catch (e) {
+      diameterOptions = product.diameter_options;
+    }
+  }
+  
+  if (product.powers_range) {
+    try {
+      powersRange = typeof product.powers_range === 'string' 
+        ? JSON.parse(product.powers_range) 
+        : product.powers_range;
+    } catch (e) {
+      powersRange = product.powers_range;
+    }
+  }
+
   // Transform lensTypes and lensCoatings
   const transformedProduct = {
     ...product,
     lensTypes: product.lensTypes.map(plt => plt.lensType),
-    lensCoatings: product.lensCoatings.map(plc => plc.lensCoating)
+    lensCoatings: product.lensCoatings.map(plc => plc.lensCoating),
+    // Contact lens options (parsed from JSON strings)
+    base_curve_options: baseCurveOptions,
+    diameter_options: diameterOptions,
+    powers_range: powersRange
   };
 
   return success(res, 'Product retrieved successfully', { product: transformedProduct });
