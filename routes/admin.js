@@ -17,6 +17,10 @@ const {
   deleteCategory,
   getAllSubCategories,
   getSubCategory,
+  getSubCategoriesByParent,
+  getTopLevelSubCategories,
+  getNestedSubCategories,
+  getAvailableParentSubcategories,
   createSubCategory,
   updateSubCategory,
   deleteSubCategory,
@@ -234,8 +238,12 @@ router.delete('/categories/:id', deleteCategory);
 
 // Subcategories
 router.get('/subcategories', getAllSubCategories);
+router.get('/subcategories/top-level', getTopLevelSubCategories);
+router.get('/subcategories/nested', getNestedSubCategories);
+router.get('/subcategories/available-parents/:category_id', getAvailableParentSubcategories); // Get available parent subcategories for nested creation
+router.get('/subcategories/by-parent/:parent_id', getSubCategoriesByParent);
 router.get('/subcategories/:id', getSubCategory);
-router.post('/subcategories', uploadSingle('image'), createSubCategory);
+router.post('/subcategories', uploadSingle('image'), createSubCategory); // Supports nested subcategories via parent_id
 router.put('/subcategories/:id', uploadSingle('image'), updateSubCategory);
 router.delete('/subcategories/:id', deleteSubCategory);
 

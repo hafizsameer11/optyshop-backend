@@ -51,6 +51,17 @@ const fallbackFrameSizes = [
 
 const normalizeDecimals = (value) => parseFloat(Number(value || 0).toFixed(2));
 
+// Helper function to parse JSON option fields
+const parseJsonOption = (value) => {
+  if (!value) return null;
+  try {
+    return typeof value === 'string' ? JSON.parse(value) : value;
+  } catch (e) {
+    return value;
+  }
+};
+
+
 // @desc    Get product form options (dropdowns, presets)
 // @route   GET /api/products/options
 // @access  Public (can also be used by admin UI)
@@ -68,7 +79,17 @@ exports.getProductFormOptions = asyncHandler(async (req, res) => {
         name: true,
         slug: true,
         category_id: true,
+        parent_id: true,
         image: true
+      },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
       },
       orderBy: { sort_order: 'asc' }
     }),
@@ -110,9 +131,13 @@ exports.getProductFormOptions = asyncHandler(async (req, res) => {
     })
   ]);
 
-  // Group subcategories by category_id
+  // Group subcategories by category and by parent for hierarchical structure
   const subcategoriesByCategory = {};
+  const subcategoriesByParent = {};
+  const topLevelSubcategories = [];
+
   subcategories.forEach(subcat => {
+    // Group by category
     if (!subcategoriesByCategory[subcat.category_id]) {
       subcategoriesByCategory[subcat.category_id] = [];
     }
@@ -120,13 +145,51 @@ exports.getProductFormOptions = asyncHandler(async (req, res) => {
       id: subcat.id,
       name: subcat.name,
       slug: subcat.slug,
-      image: subcat.image
+      category_id: subcat.category_id,
+      parent_id: subcat.parent_id,
+      image: subcat.image,
+      parent: subcat.parent
     });
+
+    // If it's a top-level subcategory (no parent)
+    if (!subcat.parent_id) {
+      topLevelSubcategories.push({
+        id: subcat.id,
+        name: subcat.name,
+        slug: subcat.slug,
+        category_id: subcat.category_id,
+        image: subcat.image
+      });
+    } else {
+      // Group by parent for sub-subcategories
+      if (!subcategoriesByParent[subcat.parent_id]) {
+        subcategoriesByParent[subcat.parent_id] = [];
+      }
+      subcategoriesByParent[subcat.parent_id].push({
+        id: subcat.id,
+        name: subcat.name,
+        slug: subcat.slug,
+        category_id: subcat.category_id,
+        parent_id: subcat.parent_id,
+        image: subcat.image
+      });
+    }
   });
 
   const payload = {
     categories: categories.length ? categories : fallbackCategories,
-    subcategoriesByCategory: subcategoriesByCategory,
+    subcategories: subcategories.map(sub => ({
+      id: sub.id,
+      name: sub.name,
+      slug: sub.slug,
+      category_id: sub.category_id,
+      parent_id: sub.parent_id,
+      image: sub.image,
+      parent: sub.parent
+    })),
+    subcategoriesByCategory,
+    subcategoriesByParent,
+    topLevelSubcategories,
     frameShapes: FRAME_SHAPES,
     frameMaterials: FRAME_MATERIALS,
     genders: GENDERS,
@@ -181,11 +244,25 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }
 
-  // Filter by subCategory
+  // Filter by subCategory (including sub-subcategories if it's a parent)
   if (req.query.subCategory) {
-    const subCategoryRecord = await prisma.subCategory.findUnique({ where: { slug: req.query.subCategory } });
+    const subCategoryRecord = await prisma.subCategory.findUnique({ 
+      where: { slug: req.query.subCategory },
+      include: {
+        children: {
+          where: { is_active: true },
+          select: { id: true }
+        }
+      }
+    });
+    
     if (subCategoryRecord) {
-      where.sub_category_id = subCategoryRecord.id;
+      // If this subcategory has children (sub-subcategories), include products from both parent and children
+      const subcategoryIds = [subCategoryRecord.id];
+      if (subCategoryRecord.children && subCategoryRecord.children.length > 0) {
+        subcategoryIds.push(...subCategoryRecord.children.map(child => child.id));
+      }
+      where.sub_category_id = { in: subcategoryIds };
     }
   }
 
@@ -227,7 +304,17 @@ exports.getProducts = asyncHandler(async (req, res) => {
           select: {
             id: true,
             name: true,
-            slug: true
+            slug: true,
+            parent_id: true
+          },
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
           }
         }
       },
@@ -264,6 +351,13 @@ exports.getProduct = asyncHandler(async (req, res) => {
           name: true,
           slug: true,
           description: true
+        }
+      },
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
         }
       },
       frameSizes: {
@@ -323,40 +417,9 @@ exports.getProduct = asyncHandler(async (req, res) => {
   });
 
   // Parse contact lens options if they exist
-  let baseCurveOptions = null;
-  let diameterOptions = null;
-  let powersRange = null;
-  
-  if (product.base_curve_options) {
-    try {
-      baseCurveOptions = typeof product.base_curve_options === 'string' 
-        ? JSON.parse(product.base_curve_options) 
-        : product.base_curve_options;
-    } catch (e) {
-      // If parsing fails, treat as single value or array string
-      baseCurveOptions = product.base_curve_options;
-    }
-  }
-  
-  if (product.diameter_options) {
-    try {
-      diameterOptions = typeof product.diameter_options === 'string' 
-        ? JSON.parse(product.diameter_options) 
-        : product.diameter_options;
-    } catch (e) {
-      diameterOptions = product.diameter_options;
-    }
-  }
-  
-  if (product.powers_range) {
-    try {
-      powersRange = typeof product.powers_range === 'string' 
-        ? JSON.parse(product.powers_range) 
-        : product.powers_range;
-    } catch (e) {
-      powersRange = product.powers_range;
-    }
-  }
+  const baseCurveOptions = parseJsonOption(product.base_curve_options);
+  const diameterOptions = parseJsonOption(product.diameter_options);
+  const powersRange = parseJsonOption(product.powers_range);
 
   // Transform lensTypes and lensCoatings to match expected format
   const transformedProduct = {
@@ -387,6 +450,13 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
           name: true,
           slug: true,
           description: true
+        }
+      },
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
         }
       },
       frameSizes: {
@@ -512,6 +582,13 @@ exports.getFeaturedProducts = asyncHandler(async (req, res) => {
           name: true,
           slug: true
         }
+      },
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
       }
     },
     take: parseInt(limit),
@@ -544,6 +621,13 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
     },
     include: {
       category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      subCategory: {
         select: {
           id: true,
           name: true,

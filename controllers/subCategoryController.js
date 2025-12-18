@@ -29,6 +29,23 @@ exports.getSubCategories = asyncHandler(async (req, res) => {
                         name: true,
                         slug: true
                     }
+                },
+                parent: {
+                    select: {
+                        id: true,
+                        name: true,
+                        slug: true
+                    }
+                },
+                children: {
+                    where: { is_active: true },
+                    select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        image: true
+                    },
+                    orderBy: { sort_order: 'asc' }
                 }
             },
             orderBy: { sort_order: 'asc' },
@@ -38,8 +55,17 @@ exports.getSubCategories = asyncHandler(async (req, res) => {
         prisma.subCategory.count({ where })
     ]);
 
+    // Separate top-level and sub-subcategories
+    const topLevelSubcategories = subcategories.filter(sub => !sub.parent_id);
+    const subSubcategories = subcategories.filter(sub => sub.parent_id);
+
     return success(res, 'Subcategories retrieved successfully', {
-        subcategories,
+        subcategories: subcategories.map(sub => ({
+            ...sub,
+            parent_id: sub.parent_id || null
+        })),
+        topLevelSubcategories,
+        subSubcategories,
         pagination: {
             total,
             page: parseInt(page),
@@ -63,6 +89,23 @@ exports.getSubCategory = asyncHandler(async (req, res) => {
                 name: true,
                 slug: true
             }
+        },
+        parent: {
+            select: {
+                id: true,
+                name: true,
+                slug: true
+            }
+        },
+        children: {
+            where: { is_active: true },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                image: true
+            },
+            orderBy: { sort_order: 'asc' }
         }
     };
 
@@ -107,6 +150,23 @@ exports.getSubCategoryBySlug = asyncHandler(async (req, res) => {
                     name: true,
                     slug: true
                 }
+            },
+            parent: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            children: {
+                where: { is_active: true },
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    image: true
+                },
+                orderBy: { sort_order: 'asc' }
             }
         }
     });
@@ -137,15 +197,21 @@ exports.getSubCategoriesByCategory = asyncHandler(async (req, res) => {
     const subcategories = await prisma.subCategory.findMany({
         where: {
             category_id: parseInt(category_id),
+            parent_id: null, // Only top-level subcategories
             is_active: true
         },
-        select: {
-            id: true,
-            name: true,
-            slug: true,
-            image: true,
-            description: true,
-            sort_order: true
+        include: {
+            children: {
+                where: { is_active: true },
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    image: true,
+                    parent_id: true
+                },
+                orderBy: { sort_order: 'asc' }
+            }
         },
         orderBy: { sort_order: 'asc' }
     });
@@ -153,5 +219,279 @@ exports.getSubCategoriesByCategory = asyncHandler(async (req, res) => {
     return success(res, 'Subcategories retrieved successfully', {
         category,
         subcategories
+    });
+});
+
+
+
+// @desc    Get related categories based on subcategory
+// @route   GET /api/subcategories/:id/related-categories
+// @access  Public
+exports.getRelatedCategories = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Get the subcategory
+    const subcategory = await prisma.subCategory.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            }
+        }
+    });
+
+    if (!subcategory) {
+        return error(res, 'Subcategory not found', 404);
+    }
+
+    const relatedSubcategoryNames = [subcategory.name.toLowerCase()];
+
+    // Find all subcategories with similar names across different categories
+    const allSubcategories = await prisma.subCategory.findMany({
+        where: {
+            is_active: true,
+            category_id: { not: subcategory.category_id }
+        },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    image: true
+                }
+            }
+        }
+    });
+
+    // Group by category and find matches
+    const categoryMap = new Map();
+    
+    allSubcategories.forEach(sub => {
+        const subName = sub.name.toLowerCase();
+        const isMatch = relatedSubcategoryNames.some(name => 
+            name.includes(subName) || subName.includes(name) ||
+            name.split(' ').some(word => subName.includes(word)) ||
+            subName.split(' ').some(word => name.includes(word))
+        );
+        
+        if (isMatch) {
+            const categoryId = sub.category.id;
+            if (!categoryMap.has(categoryId)) {
+                categoryMap.set(categoryId, {
+                    ...sub.category,
+                    matchingSubcategories: []
+                });
+            }
+            categoryMap.get(categoryId).matchingSubcategories.push({
+                id: sub.id,
+                name: sub.name,
+                slug: sub.slug
+            });
+        }
+    });
+
+    const relatedCategories = Array.from(categoryMap.values());
+
+    return success(res, 'Related categories retrieved successfully', {
+        subcategory: {
+            id: subcategory.id,
+            name: subcategory.name,
+            slug: subcategory.slug,
+            category: subcategory.category
+        },
+        relatedCategories
+    });
+});
+
+// @desc    Get nested subcategories with their products (for website)
+// @route   GET /api/subcategories/:id/products
+// @access  Public
+exports.getSubCategoryProducts = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { page = 1, limit = 12, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get the subcategory with children
+    const subcategory = await prisma.subCategory.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            parent: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            children: {
+                where: { is_active: true },
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            }
+        }
+    });
+
+    if (!subcategory) {
+        return error(res, 'Subcategory not found', 404);
+    }
+
+    // Get products for this subcategory (including sub-subcategories if it's a parent)
+    const subcategoryIds = [parseInt(id)];
+    if (subcategory.children && subcategory.children.length > 0) {
+        subcategoryIds.push(...subcategory.children.map(child => child.id));
+    }
+
+    // Valid sort fields
+    const validSortFields = ['created_at', 'price', 'name', 'rating', 'updated_at'];
+    const validSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const validSortOrder = ['asc', 'desc'].includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'desc';
+
+    const [products, total] = await Promise.all([
+        prisma.product.findMany({
+            where: {
+                sub_category_id: { in: subcategoryIds },
+                is_active: true
+            },
+            include: {
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        slug: true
+                    }
+                },
+                subCategory: {
+                    select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        parent_id: true
+                    },
+                    include: {
+                        parent: {
+                            select: {
+                                id: true,
+                                name: true,
+                                slug: true
+                            }
+                        }
+                    }
+                }
+            },
+            take: parseInt(limit),
+            skip: skip,
+            orderBy: { [validSortBy]: validSortOrder }
+        }),
+        prisma.product.count({
+            where: {
+                sub_category_id: { in: subcategoryIds },
+                is_active: true
+            }
+        })
+    ]);
+
+    // Format images for each product
+    const formattedProducts = products.map(product => {
+        let images = product.images;
+        if (typeof images === 'string') {
+            try {
+                images = JSON.parse(images);
+            } catch (e) {
+                images = [];
+            }
+        }
+        if (!Array.isArray(images)) {
+            images = images ? [images] : [];
+        }
+
+        return {
+            ...product,
+            images,
+            image: images && images.length > 0 ? images[0] : null
+        };
+    });
+
+    return success(res, 'Products retrieved successfully', {
+        subcategory: {
+            ...subcategory,
+            parent_id: subcategory.parent_id || null
+        },
+        products: formattedProducts,
+        pagination: {
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            pages: Math.ceil(total / parseInt(limit))
+        }
+    });
+});
+
+// @desc    Get sub-subcategories by parent subcategory ID
+// @route   GET /api/subcategories/by-parent/:parent_id
+// @access  Public
+exports.getSubCategoriesByParent = asyncHandler(async (req, res) => {
+    const { parent_id } = req.params;
+
+    // Verify parent subcategory exists
+    const parentSubcategory = await prisma.subCategory.findUnique({
+        where: { id: parseInt(parent_id) },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            }
+        }
+    });
+
+    if (!parentSubcategory) {
+        return error(res, 'Parent subcategory not found', 404);
+    }
+
+    // Get sub-subcategories (children)
+    const subcategories = await prisma.subCategory.findMany({
+        where: {
+            parent_id: parseInt(parent_id),
+            is_active: true
+        },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            }
+        },
+        orderBy: { sort_order: 'asc' }
+    });
+
+    return success(res, 'Sub-subcategories retrieved successfully', {
+        parentSubcategory: {
+            id: parentSubcategory.id,
+            name: parentSubcategory.name,
+            slug: parentSubcategory.slug,
+            category: parentSubcategory.category
+        },
+        subcategories: subcategories.map(sub => ({
+            ...sub,
+            parent_id: sub.parent_id
+        }))
     });
 });

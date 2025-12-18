@@ -3,13 +3,15 @@ const router = express.Router();
 const {
   getCategories,
   getCategory,
-  getCategoryBySlug
+  getCategoryBySlug,
+  getRelatedCategories
 } = require('../controllers/categoryController');
 
-// Public routes
+// Standard category routes
 router.get('/', getCategories);
-router.get('/:id', getCategory);
+router.get('/:id/related', getRelatedCategories);
 router.get('/slug/:slug', getCategoryBySlug);
+router.get('/:id', getCategory);
 
 module.exports = router;
 

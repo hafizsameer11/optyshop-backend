@@ -306,7 +306,7 @@
 					  "options"
 					]
 				  },
-				  "description": "Get all form options for product creation/editing including categories, subcategories (grouped by category), frame shapes, materials, genders, lens types, lens coatings, frame sizes, etc. The response includes 'subcategoriesByCategory' object where keys are category IDs and values are arrays of subcategories for that category."
+				  "description": "Get all form options for product creation/editing including categories, subcategories (with 3-level hierarchy), frame shapes, materials, genders, lens types, lens coatings, frame sizes, etc.\n\n**3-Level Hierarchy Structure:**\n- **Category** (e.g., \"Contact lenses\")\n  - **Subcategory** (e.g., \"Giornaliere\" / Daily) - `parent_id: null`\n    - **Sub-subcategory** (e.g., \"Sferiche\" / Spherical) - `parent_id: [Subcategory.id]`\n\n**Response includes:**\n- `categories`: List of all active categories\n- `subcategories`: Flat list of all active subcategories with `parent_id` field\n- `subcategoriesByCategory`: Subcategories grouped by category_id (keys: category IDs, values: arrays of subcategories)\n- `subcategoriesByParent`: Sub-subcategories grouped by parent_id (keys: parent subcategory IDs, values: arrays of sub-subcategories)\n- `topLevelSubcategories`: Only top-level subcategories (where `parent_id` is null)\n- `frameShapes`: Available frame shapes\n- `frameMaterials`: Available frame materials\n- `genders`: Available gender options\n- `lensTypes`: Available lens types with pricing\n- `lensCoatings`: Available lens coatings with pricing\n- `lensIndexOptions`: Available lens index options\n- `frameSizes`: Available frame sizes\n- `lensTypeEnums`: Available lens type enums\n\n**Usage Example:**\n1. Use `topLevelSubcategories` for the first dropdown (e.g., \"Giornaliere\", \"Settimanale\")\n2. When a subcategory is selected, use `subcategoriesByParent[subcategoryId]` to get sub-subcategories (e.g., \"Sferiche\", \"Astigmatismo\")\n3. Products can be assigned to either subcategories or sub-subcategories"
 				}
 			  },
 			  {
@@ -435,7 +435,8 @@
 					"query": [
 					  {
 						"key": "includeProducts",
-						"value": "true"
+						"value": "true",
+						"description": "Include sample products (up to 5) for each category"
 					  },
 					  {
 						"key": "includeSubcategories",
@@ -443,7 +444,8 @@
 						"description": "Include subcategories in response"
 					  }
 					]
-				  }
+				  },
+				  "description": "Get all active categories with optional products and subcategories (with 3-level hierarchy).\n\n**3-Level Hierarchy:**\nWhen `includeSubcategories=true`, returns top-level subcategories with their sub-subcategories:\n- Category (e.g., \"Contact lenses\")\n  - Subcategory (e.g., \"Giornaliere\") - `parent_id: null`\n    - Sub-subcategory (e.g., \"Sferiche\") - `parent_id: [Subcategory.id]`\n\n**Query Parameters:**\n- `includeProducts`: When true, includes up to 5 sample products per category\n- `includeSubcategories`: When true, includes top-level subcategories with their children (sub-subcategories)\n\n**Use Cases:**\n- Build hierarchical navigation menus\n- Display category listings with nested subcategories\n- Populate category/subcategory dropdowns"
 				}
 			  },
 			  {
@@ -461,7 +463,8 @@
 					  "categories",
 					  "1"
 					]
-				  }
+				  },
+				  "description": "Get a single category by ID with its products and subcategories (with 3-level hierarchy).\n\n**3-Level Hierarchy:**\nReturns top-level subcategories (parent_id = null), each including:\n- Subcategory details\n- `children`: Array of sub-subcategories (if any)\n\n**Response includes:**\n- Category details\n- Active products in this category\n- Top-level subcategories with their sub-subcategories (children)\n\n**Example:**\nIf category is 'Contact Lenses':\n- Returns 'Giornaliere', 'Settimanale', etc. (top-level)\n- Each includes children like 'Sferiche', 'Astigmatismo' under 'Giornaliere'"
 				}
 			  },
 			  {
@@ -481,6 +484,33 @@
 					  "prescription-glasses"
 					]
 				  }
+				}
+			  },
+			  {
+				"name": "Get Related Categories",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/categories/1/related?limit=5",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "categories",
+					  "1",
+					  "related"
+					],
+					"query": [
+					  {
+						"key": "limit",
+						"value": "5",
+						"description": "Maximum number of related categories to return (default: 5)"
+					  }
+					]
+				  },
+				  "description": "Get categories that have similar subcategories to the given category (including sub-subcategories).\n\n**3-Level Hierarchy Support:**\n- Finds all subcategories in the given category (including sub-subcategories)\n- Searches other categories for subcategories with matching or similar names\n- Scores categories based on number of matching subcategories\n\n**How it works:**\n- Gets all subcategories in the given category (top-level and sub-subcategories)\n- Searches other categories for subcategories with matching or similar names\n- Scores categories based on number of matching subcategories\n- Returns top results sorted by relevance score\n\n**Response includes:**\n- Related categories with matching subcategories\n- Relevance score for each category\n- List of matching subcategories (can be top-level or sub-subcategories)"
 				}
 			  }
 			]
@@ -505,18 +535,28 @@
 									"query": [
 										{
 											"key": "page",
-											"value": "1"
+											"value": "1",
+											"description": "Page number for pagination"
 										},
 										{
 											"key": "limit",
-											"value": "50"
+											"value": "50",
+											"description": "Number of items per page (default: 50)"
 										},
 										{
 											"key": "category_id",
-											"value": "1"
+											"value": "1",
+											"description": "Filter by category ID (optional)"
+										},
+										{
+											"key": "search",
+											"value": "",
+											"description": "Search subcategories by name (optional)",
+											"disabled": true
 										}
 									]
-								}
+								},
+								"description": "Get all active subcategories with pagination support.\n\n**3-Level Hierarchy:**\nSupports Category → Subcategory → Sub-subcategory structure. Each subcategory includes:\n- `parent_id`: null for top-level subcategories, or the parent subcategory ID for sub-subcategories\n- `parent`: Parent subcategory object (if nested)\n- `children`: Array of sub-subcategories (if this is a parent)\n\n**Features:**\n- Paginated results\n- Filter by category_id\n- Search by name\n- Includes category, parent, and children information\n\n**Response Structure:**\n- `subcategories`: All subcategories (flat list) with parent/children info\n- `topLevelSubcategories`: Only top-level subcategories (parent_id = null)\n- `subSubcategories`: Only sub-subcategories (parent_id != null)\n- `pagination`: Pagination metadata"
 							}
 						},
 						{
@@ -525,7 +565,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/api/subcategories/1",
+									"raw": "{{base_url}}/api/subcategories/1?includeProducts=true",
 									"host": [
 										"{{base_url}}"
 									],
@@ -533,8 +573,17 @@
 										"api",
 										"subcategories",
 										"1"
+									],
+									"query": [
+									  {
+										"key": "includeProducts",
+										"value": "true",
+										"description": "Include products associated with this subcategory",
+										"disabled": true
+									  }
 									]
-								}
+								},
+								"description": "Get a single subcategory by ID with its category, parent, and children information.\n\n**3-Level Hierarchy:**\n- If this is a top-level subcategory (`parent_id: null`), it may have `children` (sub-subcategories)\n- If this is a sub-subcategory (`parent_id` set), it includes `parent` subcategory info\n\n**Response includes:**\n- Subcategory details (id, name, slug, description, image, parent_id, etc.)\n- `category`: Category information\n- `parent`: Parent subcategory (if this is a sub-subcategory, null otherwise)\n- `children`: Array of sub-subcategories (if this is a parent subcategory, empty otherwise)\n- Products (if includeProducts=true)"
 							}
 						},
 						{
@@ -553,7 +602,8 @@
 										"slug",
 										"test-subcategory"
 									]
-								}
+								},
+								"description": "Get a single subcategory by slug with its category, parent, and children information.\n\n**3-Level Hierarchy:**\n- If this is a top-level subcategory (`parent_id: null`), it may have `children` (sub-subcategories)\n- If this is a sub-subcategory (`parent_id` set), it includes `parent` subcategory info\n\n**Response includes:**\n- Subcategory details (id, name, slug, description, image, parent_id, etc.)\n- `category`: Category information\n- `parent`: Parent subcategory (if this is a sub-subcategory, null otherwise)\n- `children`: Array of sub-subcategories (if this is a parent subcategory, empty otherwise)"
 							}
 						},
 						{
@@ -573,7 +623,91 @@
 										"1"
 									]
 								},
-								"description": "Get all active subcategories for a specific category. Useful for populating subcategory dropdown when a category is selected in product forms."
+								"description": "Get all active top-level subcategories for a specific category with their sub-subcategories.\n\n**3-Level Hierarchy:**\nReturns only top-level subcategories (parent_id = null) for the category, each including:\n- Subcategory details\n- `children`: Array of sub-subcategories (if any)\n\n**Example Structure:**\n```\nCategory: Contact Lenses\n  ├─ Subcategory: Giornaliere (parent_id: null)\n  │   ├─ Sub-subcategory: Sferiche (parent_id: Giornaliere.id)\n  │   └─ Sub-subcategory: Astigmatismo (parent_id: Giornaliere.id)\n  └─ Subcategory: Settimanale (parent_id: null)\n```\n\n**Use Cases:**\n- Populate category/subcategory dropdown menus\n- Display hierarchical navigation\n- Filter products by subcategory hierarchy"
+							}
+						},
+						{
+							"name": "Get Sub-SubCategories by Parent ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/subcategories/by-parent/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"subcategories",
+										"by-parent",
+										"1"
+									],
+									"query": []
+								},
+								"description": "Get all sub-subcategories (children) of a specific parent subcategory.\n\n**3-Level Hierarchy:**\nThis endpoint retrieves the third level of the hierarchy - sub-subcategories that belong to a parent subcategory.\n\n**Purpose:**\nPerfect for cascading dropdowns in product forms. When a user selects a subcategory (e.g., \"Giornaliere\"), use this endpoint to get its sub-subcategories (e.g., \"Sferiche\", \"Astigmatismo\").\n\n**Example:**\nIf parent subcategory ID 5 is \"Giornaliere\" (Daily), this endpoint returns:\n- Sferiche (Spherical) - `parent_id: 5`\n- Astigmatismo (Astigmatism) - `parent_id: 5`\n\n**Response includes:**\n- `parentSubcategory`: Information about the parent subcategory (id, name, slug, category)\n- `subcategories`: Array of sub-subcategories, each with:\n  - `id`: Sub-subcategory ID\n  - `name`: Sub-subcategory name\n  - `slug`: Sub-subcategory slug\n  - `parent_id`: The parent subcategory ID (matches the parent_id in URL)\n  - `category_id`: Category ID\n  - `category`: Category information\n\n**Use Cases:**\n- **Product Forms**: When a parent subcategory is selected, fetch sub-subcategories for the second dropdown\n- **Website Navigation**: Display nested menu items\n- **Filtering**: Build hierarchical product filters\n\n**Example Request Flow:**\n1. User selects category: \"Contact Lenses\"\n2. Frontend calls `GET /api/subcategories/by-category/1` → Gets \"Giornaliere\", \"Settimanale\", etc.\n3. User selects subcategory: \"Giornaliere\" (ID: 5)\n4. Frontend calls `GET /api/subcategories/by-parent/5` → Gets \"Sferiche\", \"Astigmatismo\"\n5. User selects sub-subcategory: \"Sferiche\"\n6. Product is assigned to sub-subcategory \"Sferiche\""
+							}
+						},
+						{
+							"name": "Get Products by SubCategory",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/subcategories/1/products?page=1&limit=12&sortBy=created_at&sortOrder=desc",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"subcategories",
+										"1",
+										"products"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1",
+											"description": "Page number (default: 1)"
+										},
+										{
+											"key": "limit",
+											"value": "12",
+											"description": "Items per page (default: 12)"
+										},
+										{
+											"key": "sortBy",
+											"value": "created_at",
+											"description": "Sort field: created_at, price, name, rating, updated_at"
+										},
+										{
+											"key": "sortOrder",
+											"value": "desc",
+											"description": "Sort order: asc or desc"
+										}
+									]
+								},
+								"description": "Get all products for a subcategory (including products from sub-subcategories if it's a parent).\n\n**3-Level Hierarchy Support:**\n- If the subcategory has children (sub-subcategories), products from both the parent and all children are included\n- If it's a sub-subcategory, only its own products are returned\n\n**Features:**\n- Returns products for the specified subcategory and its sub-subcategories (if any)\n- Paginated results\n- Sortable results\n- Includes subcategory, parent, children, and category information\n\n**Response includes:**\n- `subcategory`: Subcategory details with parent, children, and category info\n- `products`: Array of products with formatted images (from subcategory + sub-subcategories if parent)\n- `pagination`: Pagination metadata\n\n**Use Cases:**\n- Display products for a subcategory page (shows all products in the hierarchy)\n- Build product listings filtered by subcategory hierarchy\n\n**Example:**\nIf subcategory \"Giornaliere\" has children \"Sferiche\" and \"Astigmatismo\", this endpoint returns products assigned to all three subcategories."
+							}
+						},
+						{
+							"name": "Get Related Categories for SubCategory",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/subcategories/1/related-categories",
+									"host": [
+									  "{{base_url}}"
+									],
+									"path": [
+									  "api",
+									  "subcategories",
+									  "1",
+									  "related-categories"
+									],
+									"query": []
+								},
+								"description": "Get categories that have subcategories with the same or similar name as the given subcategory.\n\n**How it works:**\n1. Gets the specified subcategory\n2. Searches all other categories for subcategories with matching names\n3. Returns categories grouped by matching subcategories\n\n**Example:**\nIf subcategory 'Spherical' in 'Contact Lenses' category:\n- Finds other categories that also have 'Spherical' subcategory\n- May find 'Prescription Glasses' category with 'Spherical' lens type\n- Returns matching categories with their matching subcategories\n\n**Response Structure:**\n```json\n{\n  \"subcategory\": { id, name, slug, category },\n  \"relatedCategories\": [\n    {\n      \"id\": 2,\n      \"name\": \"Prescription Glasses\",\n      \"matchingSubcategories\": [\n        { \"id\": 5, \"name\": \"Spherical\" }\n      ]\n    }\n  ]\n}\n```\n\n**Use Cases:**\n- Cross-category navigation\n- Related product suggestions\n- Category discovery based on subcategory similarity"
 							}
 						}
 					]
@@ -2803,7 +2937,7 @@
 						"key": "sub_category_id",
 						"value": "",
 						"type": "text",
-						"description": "Optional: Subcategory ID. Must belong to the selected category. Use GET /api/subcategories/by-category/:category_id to get subcategories for a category, or GET /api/products/options to get all subcategories grouped by category."
+						"description": "Optional: Subcategory ID (can be a top-level subcategory or sub-subcategory). Must belong to the selected category. Use GET /api/subcategories/by-category/:category_id to get top-level subcategories, GET /api/subcategories/by-parent/:parent_id for sub-subcategories, or GET /api/products/options to get all subcategories with hierarchy."
 					  },
 					  {
 						"key": "price",
@@ -2853,7 +2987,7 @@
 					  }
 					}
 				  },
-				  "description": "Update product details. You can update sub_category_id - it must belong to the product's category. Use GET /api/subcategories/by-category/:category_id to get available subcategories for a category.",
+				  "description": "Update product details.\n\n**3-Level Hierarchy Support:**\n- You can update `sub_category_id` - it must belong to the product's category\n- Products can be assigned to either top-level subcategories or sub-subcategories\n- Use `GET /api/subcategories/by-category/:category_id` to get top-level subcategories\n- Use `GET /api/subcategories/by-parent/:parent_id` to get sub-subcategories for a parent\n- Use `GET /api/products/options` to get all subcategories with hierarchy structure\n\n**Example:**\n```json\n{\n  \"sub_category_id\": 10\n}\n```\nWhere subcategory ID 10 can be either a top-level subcategory or a sub-subcategory.",
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products/1",
 					"host": [
@@ -3463,10 +3597,16 @@
 						"value": "",
 						"description": "Search by name",
 						"disabled": true
+					  },
+					  {
+						"key": "type",
+						"value": "",
+						"description": "Filter by type: 'top-level' or 'nested'",
+						"disabled": true
 					  }
 					]
 				  },
-				  "description": "Get all subcategories. Includes both active and inactive subcategories (admin view)."
+				  "description": "Get all subcategories. Includes both active and inactive subcategories (admin view).\n\n**Response includes:**\n- All subcategories with `parent_id` field (null for top-level subcategories)\n- `parent`: Parent subcategory object (if nested)\n- `children`: Array of child subcategories (nested subcategories)\n- `category`: Category information for each subcategory\n- `counts`: Object with counts:\n  - `total`: Total subcategories\n  - `topLevel`: Count of top-level subcategories\n  - `nested`: Count of nested subcategories\n- `pagination`: Pagination metadata\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `category_id`: Filter by category ID\n- `search`: Search by subcategory name\n- `type`: Filter by type - `'top-level'` or `'nested'` (optional)\n\n**Use Cases:**\n- Admin subcategory management\n- Building hierarchical subcategory trees\n- Filtering and searching subcategories\n- Getting counts for UI tabs (top-level vs nested)"
 				}
 			  },
 			  {
@@ -3490,7 +3630,213 @@
 					  "subcategories",
 					  "1"
 					]
-				  }
+				  },
+				  "description": "Get a single subcategory with parent and children information (supports nested subcategories).\n\n**Response includes:**\n- All subcategory fields including `parent_id` (null for top-level subcategories)\n- `parent`: Parent subcategory object (if nested)\n- `children`: Array of child subcategories (nested subcategories)\n- `category`: Category information\n\n**Example Response:**\n```json\n{\n  \"id\": 10,\n  \"name\": \"Spherical\",\n  \"parent_id\": 5,\n  \"category_id\": 1,\n  \"parent\": {\n    \"id\": 5,\n    \"name\": \"Daily\",\n    \"slug\": \"daily\"\n  },\n  \"children\": [],\n  \"category\": { ... }\n}\n```"
+				}
+			  },
+			  {
+				"name": "Get Top-Level SubCategories",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/top-level?page=1&limit=50&category_id=1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "top-level"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1",
+						"description": "Page number (default: 1)",
+						"disabled": true
+					  },
+					  {
+						"key": "limit",
+						"value": "50",
+						"description": "Items per page (default: 50)",
+						"disabled": true
+					  },
+					  {
+						"key": "category_id",
+						"value": "1",
+						"description": "Filter by category ID (optional)",
+						"disabled": true
+					  },
+					  {
+						"key": "search",
+						"value": "",
+						"description": "Search by name (optional)",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all subcategories with pagination. Returns all statuses (active and inactive) for admin view.\n\n**3-Level Hierarchy:**\nSupports Category → Subcategory → Sub-subcategory structure. Each subcategory includes:\n- `parent_id`: null for top-level subcategories, or the parent subcategory ID for sub-subcategories\n- `parent`: Parent subcategory object (if nested)\n- `children`: Array of sub-subcategories (if this is a parent)\n\n**Response includes:**\n- All subcategories (top-level and sub-subcategories)\n- Each subcategory includes:\n  - `category`: Category information\n  - `parent`: Parent subcategory (if sub-subcategory)\n  - `children`: Sub-subcategories (if parent)\n- `pagination`: Pagination metadata\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `category_id`: (optional) Filter by category ID\n- `search`: (optional) Search by subcategory name\n\n**Use Cases:**\n- Admin subcategory management\n- Display subcategories in admin forms with hierarchy\n- Build hierarchical navigation"
+				}
+			  },
+			  {
+				"name": "Get Nested SubCategories",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/nested?page=1&limit=50&category_id=1&parent_id=5",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "nested"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1",
+						"description": "Page number (default: 1)",
+						"disabled": true
+					  },
+					  {
+						"key": "limit",
+						"value": "50",
+						"description": "Items per page (default: 50)",
+						"disabled": true
+					  },
+					  {
+						"key": "category_id",
+						"value": "1",
+						"description": "Filter by category ID (optional)",
+						"disabled": true
+					  },
+					  {
+						"key": "parent_id",
+						"value": "5",
+						"description": "Filter by parent subcategory ID (optional)",
+						"disabled": true
+					  },
+					  {
+						"key": "search",
+						"value": "",
+						"description": "Search by name (optional)",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all sub-subcategories (where parent_id != null) with pagination. Returns all statuses (active and inactive) for admin view.\n\n**3-Level Hierarchy:**\nThis endpoint returns only sub-subcategories (the third level). Each includes:\n- `parent_id`: The parent subcategory ID\n- `parent`: Full parent subcategory object with category info\n- `category`: Category information\n\n**Response includes:**\n- Only sub-subcategories (where `parent_id` is not null)\n- Each subcategory includes:\n  - `parent_id`: The parent subcategory ID\n  - `parent`: Full parent subcategory object\n  - `category`: Category information\n- `pagination`: Pagination metadata\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `category_id`: (optional) Filter by category ID\n- `parent_id`: (optional) Filter by parent subcategory ID\n- `search`: (optional) Search by subcategory name\n\n**Use Cases:**\n- Admin sub-subcategory management\n- Display nested subcategories in admin tables\n- Filter sub-subcategories by parent or category"
+				}
+			  },
+			  {
+				"name": "Get Available Parent SubCategories",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/available-parents/1?exclude_id=5",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "available-parents",
+					  "1"
+					],
+					"query": [
+					  {
+						"key": "exclude_id",
+						"value": "5",
+						"description": "Exclude a subcategory ID (useful when editing to prevent circular references)",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all available parent subcategories (top-level) for a specific category. These can be used as parents when creating sub-subcategories.\n\n**3-Level Hierarchy:**\nReturns only top-level subcategories (parent_id = null) that can be used as parents for sub-subcategories.\n\n**Purpose:**\nHelps admin panel populate the parent subcategory dropdown when creating or editing sub-subcategories.\n\n**Response includes:**\n- `category_id`: The category ID\n- `parentSubcategories`: Array of top-level subcategories that can be parents, each with:\n  - `id`: Subcategory ID\n  - `name`: Subcategory name\n  - `slug`: Subcategory slug\n  - `category_id`: Category ID\n  - `image`: Subcategory image URL\n  - `description`: Subcategory description\n  - `children_count`: Number of existing sub-subcategories\n  - `products_count`: Number of products in this subcategory\n\n**Query Parameters:**\n- `exclude_id`: (optional) Exclude a specific subcategory ID (useful when editing to prevent circular references)\n\n**Example Use Case:**\n1. Admin wants to create a sub-subcategory under category ID 1\n2. Call this endpoint: `GET /api/admin/subcategories/available-parents/1`\n3. Get list of top-level subcategories in category 1 (e.g., \"Giornaliere\", \"Settimanale\")\n4. Show them in a dropdown for parent selection\n5. When creating sub-subcategory, use the selected parent ID in `parent_id` field"
+				}
+			  },
+			  {
+				"name": "Get SubCategories by Parent ID",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories/by-parent/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories",
+					  "by-parent",
+					  "1"
+					]
+				  },
+				  "description": "Get sub-subcategories (children) of a specific parent subcategory. Useful for admin cascading dropdowns.\n\n**3-Level Hierarchy:**\nThis endpoint retrieves the third level - sub-subcategories that belong to a parent subcategory.\n\n**Response includes:**\n- `parentSubcategory`: Information about the parent subcategory\n- `subcategories`: Array of sub-subcategories with:\n  - `parent_id`: The parent subcategory ID (matches the parent_id in URL)\n  - `category`: Category information\n\n**Example:**\nIf parent subcategory ID 5 is 'Giornaliere', returns all sub-subcategories where `parent_id = 5`:\n- Sferiche (parent_id: 5)\n- Astigmatismo (parent_id: 5)\n\n**Use Cases:**\n- Admin cascading dropdowns: Show sub-subcategories when parent is selected\n- Building hierarchical navigation in admin panel\n- Filtering products by sub-subcategory levels"
+				}
+			  },
+			  {
+				"name": "Create Nested SubCategory",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Spherical\",\n  \"slug\": \"spherical\",\n  \"category_id\": 1,\n  \"parent_id\": 5,\n  \"description\": \"Spherical contact lenses under Daily category\",\n  \"sort_order\": 1,\n  \"is_active\": true\n}",
+					"options": {
+					  "raw": {
+						"language": "json"
+					  }
+					}
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/subcategories",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "subcategories"
+					]
+				  },
+				  "description": "Create a new subcategory (can be top-level or sub-subcategory).\n\n**3-Level Hierarchy Support:**\n- **Top-level subcategory**: Set `parent_id` to `null` or omit it\n- **Sub-subcategory**: Set `parent_id` to the ID of a top-level subcategory in the same category\n\n**Required Fields:**\n- `name`: Subcategory name\n- `category_id`: ID of the category\n\n**Optional Fields:**\n- `parent_id`: ID of the parent subcategory (for sub-subcategories). Must be a top-level subcategory (parent_id = null) in the same category. Omit or set to null for top-level subcategories.\n- `slug`: URL-friendly slug (auto-generated from name if not provided)\n- `description`: Subcategory description\n- `is_active`: Active status (default: true)\n- `sort_order`: Display order (default: 0)\n- `image`: Image file (use multipart/form-data for file uploads)\n\n**Example Request - Top-level subcategory:**\n```json\n{\n  \"name\": \"Giornaliere\",\n  \"slug\": \"giornaliere\",\n  \"category_id\": 1,\n  \"parent_id\": null,\n  \"description\": \"Daily contact lenses\",\n  \"is_active\": true\n}\n```\n\n**Example Request - Sub-subcategory:**\n```json\n{\n  \"name\": \"Sferiche\",\n  \"slug\": \"sferiche\",\n  \"category_id\": 1,\n  \"parent_id\": 5,\n  \"description\": \"Spherical contact lenses\",\n  \"is_active\": true\n}\n```\nWhere `parent_id: 5` is the ID of \"Giornaliere\" subcategory.\n\n**How to Get Parent ID:**\n1. First, call `GET /api/admin/subcategories/available-parents/:category_id`\n2. This returns list of top-level subcategories that can be parents\n3. Use one of those IDs in `parent_id` field\n\n**Validation:**\n- Category must exist and be active\n- If `parent_id` is provided, parent subcategory must exist, be active, and belong to the same category\n- Parent subcategory must be top-level (parent_id = null)\n- Slug must be unique\n\n**Response:**\nReturns the created subcategory with category and parent information"
 				}
 			  },
 			  {
@@ -3509,7 +3855,12 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"name\": \"Men Frames\",\n  \"slug\": \"men-frames\",\n  \"category_id\": 1,\n  \"description\": \"Subcategory for men's frames\",\n  \"sort_order\": 1\n}"
+					"raw": "{\n  \"name\": \"Men Frames\",\n  \"slug\": \"men-frames\",\n  \"category_id\": 1,\n  \"parent_id\": null,\n  \"description\": \"Subcategory for men's frames\",\n  \"sort_order\": 1,\n  \"is_active\": true\n}",
+					"options": {
+					  "raw": {
+						"language": "json"
+					  }
+					}
 				  },
 				  "url": {
 					"raw": "{{base_url}}/api/admin/subcategories",
@@ -3522,7 +3873,7 @@
 					  "subcategories"
 					]
 				  },
-				  "description": "Create a new subcategory. Must specify category_id that exists."
+				  "description": "Create a top-level subcategory (subcategory without a parent). For nested subcategories, use the \"Create Nested SubCategory\" endpoint instead.\n\n**Required Fields:**\n- `name`: Subcategory name\n- `category_id`: ID of the parent category\n\n**Optional Fields:**\n- `parent_id`: Set to `null` or omit (for top-level subcategories)\n- `slug`: URL-friendly slug (auto-generated from name if not provided, but recommended to provide)\n- `description`: Subcategory description\n- `is_active`: Active status (default: true)\n- `sort_order`: Display order (default: 0)\n- `image`: Image file (use multipart/form-data for file uploads)\n\n**Example Request:**\n```json\n{\n  \"name\": \"Men Frames\",\n  \"slug\": \"men-frames\",\n  \"category_id\": 1,\n  \"parent_id\": null,\n  \"description\": \"Subcategory for men's frames\",\n  \"is_active\": true\n}\n```\n\n**Response:**\nThe response includes the created subcategory with:\n- `parent_id`: null (top-level subcategory)\n- `parent`: null\n- `children`: Array of child subcategories (if any are added later)\n- `category`: Category information\n\n**Validation:**\n- Slug must be unique across all subcategories\n- Category must exist\n- If slug is not provided, it's auto-generated from name\n\n**Note:** To create nested subcategories, use the \"Create Nested SubCategory\" endpoint. Use multipart/form-data when uploading an image file."
 				}
 			  },
 			  {
@@ -3541,7 +3892,12 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"name\": \"Updated SubCategory Name\",\n  \"is_active\": true,\n  \"sort_order\": 2\n}"
+					"raw": "{\n  \"name\": \"Updated SubCategory Name\",\n  \"slug\": \"updated-subcategory-slug\",\n  \"category_id\": 1,\n  \"parent_id\": null,\n  \"description\": \"Updated description\",\n  \"is_active\": true,\n  \"sort_order\": 2\n}",
+					"options": {
+					  "raw": {
+						"language": "json"
+					  }
+					}
 				  },
 				  "url": {
 					"raw": "{{base_url}}/api/admin/subcategories/1",
@@ -3555,7 +3911,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Update subcategory details. You can update category_id, but it must be a valid category."
+				  "description": "Update subcategory details. Supports converting between top-level and nested subcategories.\n\n**Updatable Fields:**\n- `name`: Subcategory name\n- `slug`: URL-friendly slug (sanitized automatically if provided)\n- `category_id`: Change the parent category (must be valid)\n- `parent_id` or `parent_subcategory_id`: Set parent subcategory for nesting. Set to `null` to make it top-level.\n- `description`: Subcategory description\n- `is_active`: Active status\n- `sort_order`: Display order\n- `image`: Image file (use multipart/form-data)\n\n**Nested Subcategory Updates:**\n- To make a subcategory nested: Set `parent_id` to the parent subcategory ID\n- To make it top-level: Set `parent_id` to `null`\n- Parent subcategory must belong to the same category\n- Cannot set a subcategory as its own parent\n- Prevents circular references automatically\n\n**Example - Make subcategory nested:**\n```json\n{\n  \"parent_id\": 5,\n  \"slug\": \"updated-slug\"\n}\n```\n\n**Example - Make subcategory top-level:**\n```json\n{\n  \"parent_id\": null\n}\n```\n\n**Example - Update slug:**\n```json\n{\n  \"slug\": \"new-slug-name\"\n}\n```\n\n**Response:**\nThe response includes the updated subcategory with:\n- `parent_id`: The parent subcategory ID (null for top-level subcategories)\n- `parent`: Parent subcategory object (if nested)\n- `children`: Array of child subcategories (if any, all statuses)\n- `category`: Category information\n\n**Note:** If no fields are provided, returns the current subcategory without changes. Use multipart/form-data when uploading an image file."
 				}
 			  },
 			  {
@@ -3580,7 +3936,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Delete a subcategory. This will cascade delete all products in this subcategory if onDelete: Cascade is set."
+				  "description": "Delete a subcategory.\n\n**Behavior:**\n- **Products Check**: Cannot delete if subcategory has associated products. Returns error with product count.\n- **Children Handling**: If subcategory has children (nested subcategories), they will automatically become top-level subcategories (parent_id set to null) due to database schema's `onDelete: SetNull`.\n- **Image Cleanup**: Automatically deletes associated image from S3 storage.\n\n**Response includes:**\n- `deleted`: Object with deletion details:\n  - `id`: Deleted subcategory ID\n  - `name`: Deleted subcategory name\n  - `slug`: Deleted subcategory slug\n  - `wasNested`: Boolean indicating if it was a nested subcategory\n  - `childrenCount`: Number of children that became top-level\n\n**Example Response:**\n```json\n{\n  \"deleted\": {\n    \"id\": 10,\n    \"name\": \"Spherical\",\n    \"slug\": \"spherical\",\n    \"wasNested\": true,\n    \"childrenCount\": 0\n  }\n}\n```\n\n**Error Cases:**\n- Returns 400 error if subcategory has associated products\n- Returns 404 error if subcategory not found\n\n**Note:** This operation cannot be undone. Make sure to reassign or delete products before deleting a subcategory."
 				}
 			  },
 			  {

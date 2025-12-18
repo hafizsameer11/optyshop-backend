@@ -12,35 +12,71 @@ const bcrypt = require('bcryptjs');
 // @route   GET /api/admin/dashboard
 // @access  Private/Admin
 exports.getAllSubCategories = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 50, category_id, search } = req.query;
+  const { page = 1, limit = 50, category_id, search, type } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   const where = {};
   if (category_id) where.category_id = parseInt(category_id);
   if (search) where.name = { contains: search };
+  
+  // Filter by type: 'top-level' or 'nested'
+  if (type === 'top-level') {
+    where.parent_id = null;
+  } else if (type === 'nested') {
+    where.parent_id = { not: null };
+  }
 
-  const [subcategories, total] = await Promise.all([
+  const [subcategories, total, topLevelCount, nestedCount] = await Promise.all([
     prisma.subCategory.findMany({
       where,
       include: {
         category: {
           select: { id: true, name: true, slug: true }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            is_active: true
+          },
+          orderBy: { sort_order: 'asc' }
         }
       },
       take: parseInt(limit),
       skip: parseInt(skip),
       orderBy: { sort_order: 'asc' }
     }),
-    prisma.subCategory.count({ where })
+    prisma.subCategory.count({ where }),
+    prisma.subCategory.count({ where: { parent_id: null, ...(category_id ? { category_id: parseInt(category_id) } : {}) } }),
+    prisma.subCategory.count({ where: { parent_id: { not: null }, ...(category_id ? { category_id: parseInt(category_id) } : {}) } })
   ]);
 
+  // Ensure parent_id is explicitly included
+  const enrichedSubcategories = subcategories.map(sub => ({
+    ...sub,
+    parent_id: sub.parent_id || null
+  }));
+
   return success(res, "Subcategories retrieved successfully", {
-    subcategories,
+    subcategories: enrichedSubcategories,
+    counts: {
+      total,
+      topLevel: topLevelCount,
+      nested: nestedCount
+    },
     pagination: {
       total,
       page: parseInt(page),
       limit: parseInt(limit),
-      pages: Math.ceil(total / limit)
+      pages: Math.ceil(total / parseInt(limit))
     }
   });
 });
@@ -51,8 +87,73 @@ exports.getAllSubCategories = asyncHandler(async (req, res) => {
 exports.getSubCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
+  // Validate id parameter exists and is not empty
+  if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.trim() === '')) {
+    return error(res, "Subcategory ID is required", 400);
+  }
+
+  const subcategoryId = parseInt(String(id), 10);
+  if (isNaN(subcategoryId) || subcategoryId <= 0) {
+    return error(res, "Invalid subcategory ID. Must be a positive integer", 400);
+  }
+
+  // Final validation - ensure subcategoryId is a valid number
+  if (typeof subcategoryId !== 'number' || !Number.isInteger(subcategoryId)) {
+    return error(res, "Invalid subcategory ID format", 400);
+  }
+
   const subcategory = await prisma.subCategory.findUnique({
-    where: { id: parseInt(id) },
+    where: { id: subcategoryId },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      children: {
+        where: { is_active: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true,
+          sort_order: true
+        },
+        orderBy: { sort_order: 'asc' }
+      }
+    }
+  });
+
+  if (!subcategory) {
+    return error(res, "Subcategory not found", 404);
+  }
+
+  // Ensure parent_id is explicitly included in response
+  const responseData = {
+    ...subcategory,
+    parent_id: subcategory.parent_id || null
+  };
+
+  return success(res, "Subcategory retrieved successfully", { subcategory: responseData });
+});
+
+// @desc    Get subcategories by parent ID (for nested subcategories dropdown - admin view)
+// @route   GET /api/admin/subcategories/by-parent/:parent_id
+// @access  Private/Admin
+exports.getSubCategoriesByParent = asyncHandler(async (req, res) => {
+  const { parent_id } = req.params;
+
+  const parentSubcategory = await prisma.subCategory.findUnique({
+    where: { id: parseInt(parent_id) },
     include: {
       category: {
         select: {
@@ -64,15 +165,293 @@ exports.getSubCategory = asyncHandler(async (req, res) => {
     }
   });
 
-  if (!subcategory) {
-    return error(res, "Subcategory not found", 404);
+  if (!parentSubcategory) {
+    return error(res, 'Parent subcategory not found', 404);
   }
 
-  return success(res, "Subcategory retrieved successfully", { subcategory });
+  const subcategories = await prisma.subCategory.findMany({
+    where: {
+      parent_id: parseInt(parent_id)
+    },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      children: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          is_active: true
+        },
+        orderBy: { sort_order: 'asc' }
+      }
+    },
+    orderBy: { sort_order: 'asc' }
+  });
+
+  // Ensure parent_id is explicitly included
+  const enrichedSubcategories = subcategories.map(sub => ({
+    ...sub,
+    parent_id: sub.parent_id || null
+  }));
+
+  return success(res, 'Subcategories retrieved successfully', {
+    parentSubcategory: {
+      ...parentSubcategory,
+      parent_id: parentSubcategory.parent_id || null
+    },
+    subcategories: enrichedSubcategories
+  });
+});
+
+// @desc    Get available parent subcategories for a category (for nested subcategory creation)
+// @route   GET /api/admin/subcategories/available-parents/:category_id
+// @access  Private/Admin
+exports.getAvailableParentSubcategories = asyncHandler(async (req, res) => {
+  const { category_id } = req.params;
+  const { exclude_id } = req.query; // Exclude a subcategory ID (useful when editing)
+
+  const where = {
+    category_id: parseInt(category_id),
+    parent_id: null, // Only top-level subcategories can be parents
+    is_active: true
+  };
+
+  // Exclude a specific subcategory (useful when editing to prevent circular references)
+  if (exclude_id) {
+    where.id = { not: parseInt(exclude_id) };
+  }
+
+  const parentSubcategories = await prisma.subCategory.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      category_id: true,
+      image: true,
+      description: true,
+      _count: {
+        select: {
+          children: true,
+          products: true
+        }
+      }
+    },
+    orderBy: { sort_order: 'asc' }
+  });
+
+  // Format response with "None" option for top-level subcategories
+  const formattedParents = [
+    {
+      id: null,
+      name: "None (Top-level subcategory)",
+      slug: null,
+      category_id: parseInt(category_id),
+      image: null,
+      description: "Create a top-level subcategory (no parent)",
+      children_count: 0,
+      products_count: 0
+    },
+    ...parentSubcategories.map(sub => ({
+      id: sub.id,
+      name: sub.name,
+      slug: sub.slug,
+      category_id: sub.category_id,
+      image: sub.image,
+      description: sub.description,
+      children_count: sub._count.children,
+      products_count: sub._count.products
+    }))
+  ];
+
+  return success(res, 'Available parent subcategories retrieved successfully', {
+    category_id: parseInt(category_id),
+    parentSubcategories: formattedParents
+  });
+});
+
+// @desc    Get top-level subcategories (for admin view - all statuses)
+// @route   GET /api/admin/subcategories/top-level
+// @access  Private/Admin
+exports.getTopLevelSubCategories = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 50, category_id, search } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const where = {
+    parent_id: null // Only top-level subcategories
+  };
+
+  if (category_id) {
+    where.category_id = parseInt(category_id);
+  }
+
+  if (search) {
+    where.name = { contains: search };
+  }
+
+  const [subcategories, total] = await Promise.all([
+    prisma.subCategory.findMany({
+      where,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            is_active: true
+          },
+          orderBy: { sort_order: 'asc' }
+        },
+        _count: {
+          select: {
+            children: true
+          }
+        }
+      },
+      take: parseInt(limit),
+      skip: parseInt(skip),
+      orderBy: { sort_order: 'asc' }
+    }),
+    prisma.subCategory.count({ where })
+  ]);
+
+  // Ensure parent_id is explicitly included
+  const enrichedSubcategories = subcategories.map(sub => ({
+    ...sub,
+    parent_id: sub.parent_id || null
+  }));
+
+  return success(res, 'Top-level subcategories retrieved successfully', {
+    subcategories: enrichedSubcategories,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / parseInt(limit))
+    }
+  });
+});
+
+// @desc    Get nested subcategories (for admin view - all statuses)
+// @route   GET /api/admin/subcategories/nested
+// @access  Private/Admin
+exports.getNestedSubCategories = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 50, category_id, parent_id, search } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const where = {
+    parent_id: { not: null } // Only nested subcategories
+  };
+
+  if (category_id) {
+    where.category_id = parseInt(category_id);
+  }
+
+  if (parent_id) {
+    where.parent_id = parseInt(parent_id);
+  }
+
+  if (search) {
+    where.name = { contains: search };
+  }
+
+  const [subcategories, total] = await Promise.all([
+    prisma.subCategory.findMany({
+      where,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        parent: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            is_active: true
+          },
+          orderBy: { sort_order: 'asc' }
+        }
+      },
+      take: parseInt(limit),
+      skip: parseInt(skip),
+      orderBy: { sort_order: 'asc' }
+    }),
+    prisma.subCategory.count({ where })
+  ]);
+
+  // Ensure parent_id is explicitly included
+  const enrichedSubcategories = subcategories.map(sub => ({
+    ...sub,
+    parent_id: sub.parent_id || null
+  }));
+
+  return success(res, 'Nested subcategories retrieved successfully', {
+    subcategories: enrichedSubcategories,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / parseInt(limit))
+    }
+  });
 });
 
 exports.createSubCategory = asyncHandler(async (req, res) => {
-  const { name, category_id, description, is_active, sort_order } = req.body;
+  const { name, category_id, parent_id, parent_subcategory_id, description, is_active, sort_order, slug } = req.body;
+
+  // Debug logging
+  console.log('📥 Create SubCategory Request:', {
+    name,
+    category_id,
+    parent_id,
+    parent_subcategory_id,
+    parent_id_type: typeof parent_id, // Note: typeof null === 'object' (JavaScript quirk)
+    parent_subcategory_id_type: typeof parent_subcategory_id,
+    is_parent_id_null: parent_id === null,
+    will_be_top_level: parent_id === null || parent_id === undefined || parent_id === ''
+  });
 
   if (!name || !category_id) {
     return error(res, "Name and Category ID are required", 400);
@@ -93,13 +472,78 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
   
   console.log(`✅ Category found: ${category.name} (ID: ${categoryId})`);
 
-  // Generate slug
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  // Handle parent subcategory (for nested subcategories)
+  let parentSubcategoryId = null;
+  
+  // Handle parent subcategory (for nested subcategories)
+  // Accept both parent_id and parent_subcategory_id for flexibility
+  // Frontend sends null, "null", empty string, or no field for top-level subcategories
+  const parentIdValue = parent_id !== undefined ? parent_id : parent_subcategory_id;
+  
+  // Check if we have a valid parent ID
+  // Treat null, undefined, empty string, "null" string, or 0 as "no parent" (top-level)
+  const hasParent = parentIdValue !== undefined && 
+      parentIdValue !== null && 
+      parentIdValue !== '' && 
+      String(parentIdValue).toLowerCase() !== 'null' &&
+      String(parentIdValue).trim() !== '' &&
+      parentIdValue !== 0;
+  
+  if (hasParent) {
+    
+    const parsedParentId = parseInt(String(parentIdValue).trim(), 10);
+    if (isNaN(parsedParentId) || parsedParentId <= 0) {
+      return error(res, `Invalid Parent Subcategory ID: "${parentIdValue}". Must be a positive integer.`, 400);
+    }
+    
+    parentSubcategoryId = parsedParentId;
+
+    // Verify parent subcategory exists
+    const parentSubcategory = await prisma.subCategory.findUnique({
+      where: { id: parentSubcategoryId },
+      include: {
+        category: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+
+    if (!parentSubcategory) {
+      return error(res, `Parent subcategory with ID ${parentSubcategoryId} not found`, 404);
+    }
+
+    // Verify parent subcategory belongs to the same category
+    if (parentSubcategory.category_id !== categoryId) {
+      return error(res, `Parent subcategory must belong to the same category. Parent belongs to "${parentSubcategory.category.name}" (ID: ${parentSubcategory.category_id}), but you selected category ID ${categoryId}`, 400);
+    }
+
+    // Verify parent subcategory is top-level (parent_id must be null)
+    if (parentSubcategory.parent_id !== null) {
+      return error(res, `Parent subcategory must be a top-level subcategory (parent_id must be null). The selected subcategory "${parentSubcategory.name}" is itself a sub-subcategory.`, 400);
+    }
+
+    console.log(`✅ Parent subcategory found: ${parentSubcategory.name} (ID: ${parentSubcategoryId})`);
+  } else {
+    console.log(`ℹ️  Creating top-level subcategory (no parent)`);
+  }
+
+  // Handle slug - use provided slug or generate from name
+  let finalSlug;
+  if (slug && slug.trim()) {
+    // Use provided slug, sanitize it
+    finalSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    if (!finalSlug) {
+      return error(res, "Invalid slug provided", 400);
+    }
+  } else {
+    // Generate slug from name
+    finalSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
 
   // Check if subcategory with same slug exists
-  const existing = await prisma.subCategory.findUnique({ where: { slug } });
+  const existing = await prisma.subCategory.findUnique({ where: { slug: finalSlug } });
   if (existing) {
-    return error(res, "Subcategory with this name already exists", 400);
+    return error(res, "Subcategory with this slug already exists", 400);
   }
 
   let imageUrl = null;
@@ -118,24 +562,89 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
   }
 
   try {
-    const subcategory = await prisma.subCategory.create({
-      data: {
+    console.log(`📝 Creating subcategory:`);
+    console.log(`   - Name: ${name}`);
+    console.log(`   - Category ID: ${categoryId}`);
+    console.log(`   - Parent ID: ${parentSubcategoryId} (${parentSubcategoryId ? 'NESTED' : 'TOP-LEVEL'})`);
+    
+    const createData = {
         name,
-        slug,
+        slug: finalSlug,
         category_id: categoryId,
+        parent_id: parentSubcategoryId !== null ? parentSubcategoryId : null, // Explicitly set parent_id (null for top-level, number for nested)
         description,
         is_active: is_active === 'true' || is_active === true,
         sort_order: parseInt(sort_order, 10) || 0,
         image: imageUrl
+    };
+    
+    console.log(`📦 Create data:`, JSON.stringify(createData, null, 2));
+    
+    const subcategory = await prisma.subCategory.create({
+      data: createData,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            is_active: true
+          },
+          orderBy: { sort_order: 'asc' }
+        }
       }
     });
 
-    return success(res, "Subcategory created successfully", { subcategory }, 201);
+    // Verify the subcategory was created with correct parent_id by re-fetching
+    const verifySubcategory = await prisma.subCategory.findUnique({
+      where: { id: subcategory.id },
+      select: { id: true, parent_id: true, name: true }
+    });
+    
+    console.log(`✅ Subcategory created: ${subcategory.name} (ID: ${subcategory.id})`);
+    console.log(`   - parent_id from create response: ${subcategory.parent_id ?? 'null'}`);
+    console.log(`   - parent_id from verification query: ${verifySubcategory?.parent_id ?? 'null'}`);
+    console.log(`   - Expected parent_id: ${parentSubcategoryId ?? 'null'}`);
+
+    // Ensure parent_id is explicitly included in response
+    // Use the verified parent_id to ensure accuracy
+    const responseData = {
+      ...subcategory,
+      parent_id: verifySubcategory?.parent_id !== undefined 
+        ? verifySubcategory.parent_id 
+        : (subcategory.parent_id !== undefined ? subcategory.parent_id : parentSubcategoryId)
+    };
+    
+    console.log(`   - parent_id in final response: ${responseData.parent_id ?? 'null'}`);
+
+    return success(res, parentSubcategoryId ? "Nested subcategory created successfully" : "Subcategory created successfully", { subcategory: responseData }, 201);
   } catch (createError) {
     console.error('❌ Subcategory creation error:', createError);
+    console.error('   - Error code:', createError.code);
+    console.error('   - Error message:', createError.message);
+    console.error('   - Create data that failed:', JSON.stringify(createData, null, 2));
     
     // Check if it's a foreign key constraint error
     if (createError.code === 'P2003' || createError.message?.includes('Foreign key constraint')) {
+      // Check if it's a parent_id constraint error
+      if (createError.meta?.field_name === 'parent_id' || createError.message?.includes('parent_id')) {
+        return error(res, `Parent subcategory with ID ${parentSubcategoryId} not found or invalid. Please ensure the parent subcategory exists.`, 400);
+      }
+      
       // One more verification - maybe category was deleted between checks?
       const categoryCheck = await prisma.category.findUnique({
         where: { id: categoryId },
@@ -156,10 +665,15 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
 
 exports.updateSubCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, category_id, description, is_active, sort_order, slug: newSlug } = req.body;
+  const { name, category_id, parent_id, parent_subcategory_id, description, is_active, sort_order, slug: newSlug } = req.body;
 
   const subcategory = await prisma.subCategory.findUnique({
-    where: { id: parseInt(id) }
+    where: { id: parseInt(id) },
+    include: {
+      children: {
+        select: { id: true }
+      }
+    }
   });
 
   if (!subcategory) {
@@ -171,11 +685,31 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     data.name = name;
   }
 
-  if (newSlug && newSlug !== subcategory.slug) {
-    const existing = await prisma.subCategory.findUnique({ where: { slug: newSlug } });
-    if (existing) return error(res, "Slug already in use", 400);
-    data.slug = newSlug;
+  // Handle slug update
+  if (newSlug !== undefined) {
+    if (newSlug && newSlug.trim() && newSlug !== subcategory.slug) {
+      // Sanitize the slug
+      const sanitizedSlug = newSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      if (!sanitizedSlug) {
+        return error(res, "Invalid slug provided", 400);
+      }
+      
+      // Check if slug is already in use
+      const existing = await prisma.subCategory.findUnique({ where: { slug: sanitizedSlug } });
+      if (existing && existing.id !== parseInt(id)) {
+        return error(res, "Slug already in use", 400);
+      }
+      data.slug = sanitizedSlug;
+    } else if (!newSlug || !newSlug.trim()) {
+      // If slug is empty, generate from name
+      if (name) {
+        data.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      }
+    }
   }
+
+  // Determine the category ID (use new one if provided, otherwise keep existing)
+  const finalCategoryId = category_id ? parseInt(category_id, 10) : subcategory.category_id;
 
   if (category_id) {
     const categoryId = parseInt(category_id, 10);
@@ -194,6 +728,57 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     data.category_id = categoryId;
   }
 
+  // Handle parent_id (for nested subcategories)
+  if (parent_id !== undefined || parent_subcategory_id !== undefined) {
+    // If explicitly set to null or empty string, remove parent (make it top-level)
+    if (parent_id === null || parent_id === '' || parent_id === 'null' || 
+        parent_subcategory_id === null || parent_subcategory_id === '' || parent_subcategory_id === 'null') {
+      data.parent_id = null;
+    } else {
+      const parentSubcategoryId = parseInt(parent_id || parent_subcategory_id, 10);
+      if (isNaN(parentSubcategoryId)) {
+        return error(res, "Invalid Parent Subcategory ID", 400);
+      }
+
+      // Prevent setting itself as parent
+      if (parentSubcategoryId === parseInt(id)) {
+        return error(res, "Subcategory cannot be its own parent", 400);
+      }
+
+      // Prevent converting a parent subcategory (with children) into a sub-subcategory
+      if (subcategory.children && subcategory.children.length > 0) {
+        return error(res, `Cannot convert this subcategory to a sub-subcategory because it has ${subcategory.children.length} child subcategory(ies). Please remove or reassign the children first.`, 400);
+      }
+
+      // Prevent circular references (check if parent is a child of this subcategory)
+      const isCircular = await checkCircularReference(parseInt(id), parentSubcategoryId);
+      if (isCircular) {
+        return error(res, "Cannot set parent: would create circular reference", 400);
+      }
+
+      // Verify parent subcategory exists
+      const parentSubcategory = await prisma.subCategory.findUnique({
+        where: { id: parentSubcategoryId }
+      });
+
+      if (!parentSubcategory) {
+        return error(res, `Parent subcategory with ID ${parentSubcategoryId} not found`, 404);
+      }
+
+      // Verify parent subcategory belongs to the same category
+      if (parentSubcategory.category_id !== finalCategoryId) {
+        return error(res, `Parent subcategory must belong to the same category (Category ID: ${finalCategoryId})`, 400);
+      }
+
+      // Verify parent subcategory is top-level (parent_id must be null)
+      if (parentSubcategory.parent_id !== null) {
+        return error(res, `Parent subcategory must be a top-level subcategory. The selected subcategory "${parentSubcategory.name}" is itself a sub-subcategory and cannot be used as a parent.`, 400);
+      }
+
+      data.parent_id = parentSubcategoryId;
+    }
+  }
+
   if (description !== undefined) data.description = description;
   if (is_active !== undefined) data.is_active = is_active === 'true' || is_active === true;
   if (sort_order !== undefined) data.sort_order = parseInt(sort_order);
@@ -205,34 +790,191 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     data.image = await uploadToS3(req.file, "subcategories");
   }
 
+  // Only update if there's data to update
+  if (Object.keys(data).length === 0) {
+    // No changes, return current subcategory
+    const currentSubcategory = await prisma.subCategory.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            is_active: true
+          },
+          orderBy: { sort_order: 'asc' }
+        }
+      }
+    });
+
+    const responseData = {
+      ...currentSubcategory,
+      parent_id: currentSubcategory.parent_id || null
+    };
+
+    return success(res, "Subcategory retrieved successfully (no changes)", { subcategory: responseData });
+  }
+
   const updatedSubCategory = await prisma.subCategory.update({
     where: { id: parseInt(id) },
-    data
+    data,
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      children: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          is_active: true
+        },
+        orderBy: { sort_order: 'asc' }
+      }
+    }
   });
 
-  return success(res, "Subcategory updated successfully", { subcategory: updatedSubCategory });
+  // Ensure parent_id is explicitly included in response
+  const responseData = {
+    ...updatedSubCategory,
+    parent_id: updatedSubCategory.parent_id || null
+  };
+
+  const message = updatedSubCategory.parent_id 
+    ? "Nested subcategory updated successfully" 
+    : "Top-level subcategory updated successfully";
+
+  return success(res, message, { subcategory: responseData });
 });
+
+// Helper function to check for circular references in subcategory hierarchy
+async function checkCircularReference(subcategoryId, potentialParentId) {
+  let currentParentId = potentialParentId;
+  const visited = new Set([subcategoryId]); // Start with the subcategory itself
+
+  // Traverse up the parent chain
+  while (currentParentId) {
+    if (visited.has(currentParentId)) {
+      return true; // Circular reference detected
+    }
+    visited.add(currentParentId);
+
+    const parent = await prisma.subCategory.findUnique({
+      where: { id: currentParentId },
+      select: { parent_id: true }
+    });
+
+    if (!parent || !parent.parent_id) {
+      break; // Reached top level
+    }
+
+    currentParentId = parent.parent_id;
+  }
+
+  return false; // No circular reference
+}
 
 exports.deleteSubCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const subcategory = await prisma.subCategory.findUnique({
-    where: { id: parseInt(id) }
+    where: { id: parseInt(id) },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      children: {
+        select: {
+          id: true,
+          name: true
+        }
+      },
+      _count: {
+        select: {
+          children: true,
+          products: true
+        }
+      }
+    }
   });
 
   if (!subcategory) {
     return error(res, "Subcategory not found", 404);
   }
 
+  // Check if subcategory has children (nested subcategories)
+  if (subcategory._count.children > 0) {
+    // When deleting, children's parent_id will be set to null (top-level) due to onDelete: SetNull
+    // This is handled by the database schema, but we can inform the admin
+    console.log(`⚠️  Deleting subcategory with ${subcategory._count.children} children. Children will become top-level subcategories.`);
+  }
+
+  // Check if subcategory has products
+  if (subcategory._count.products > 0) {
+    return error(res, `Cannot delete subcategory: It has ${subcategory._count.products} associated product(s). Please remove or reassign products first.`, 400);
+  }
+
+  // Delete image from S3 if exists
   if (subcategory.image) {
     await deleteFromS3(subcategory.image);
   }
 
+  // Delete the subcategory
+  // Note: Children's parent_id will be automatically set to null due to schema's onDelete: SetNull
   await prisma.subCategory.delete({
     where: { id: parseInt(id) }
   });
 
-  return success(res, "Subcategory deleted successfully");
+  const responseMessage = subcategory.parent_id 
+    ? "Nested subcategory deleted successfully" 
+    : "Top-level subcategory deleted successfully";
+
+  return success(res, responseMessage, {
+    deleted: {
+      id: subcategory.id,
+      name: subcategory.name,
+      slug: subcategory.slug,
+      wasNested: !!subcategory.parent_id,
+      childrenCount: subcategory._count.children
+    }
+  });
 });
 
 // @desc    Get dashboard statistics
@@ -830,15 +1572,28 @@ exports.createProduct = asyncHandler(async (req, res) => {
       if (isNaN(productData.sub_category_id)) {
         return error(res, "Invalid sub_category_id", 400);
       }
-      // Verify subcategory exists and belongs to category
+      // Verify subcategory exists and belongs to category (can be nested subcategory)
       const subCategory = await prisma.subCategory.findUnique({
-        where: { id: productData.sub_category_id }
+        where: { id: productData.sub_category_id },
+        include: {
+          category: {
+            select: { id: true, name: true }
+          },
+          parent: {
+            select: { id: true, name: true, slug: true }
+          }
+        }
       });
       if (!subCategory) {
         return error(res, `SubCategory with ID ${productData.sub_category_id} not found`, 404);
       }
       if (subCategory.category_id !== productData.category_id) {
-        return error(res, "SubCategory does not belong to the selected Category", 400);
+        return error(res, `SubCategory does not belong to the selected Category. Subcategory belongs to "${subCategory.category.name}" (ID: ${subCategory.category_id})`, 400);
+      }
+      
+      // Log if it's a nested subcategory
+      if (subCategory.parent) {
+        console.log(`✅ Using nested subcategory: ${subCategory.name} (parent: ${subCategory.parent.name})`);
       }
     }
 
@@ -1306,16 +2061,29 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       if (isNaN(productData.sub_category_id)) {
         return error(res, "Invalid sub_category_id", 400);
       }
-      // Verify subcategory exists
+      // Verify subcategory exists (can be nested subcategory)
       const subCategory = await prisma.subCategory.findUnique({
-        where: { id: productData.sub_category_id }
+        where: { id: productData.sub_category_id },
+        include: {
+          category: {
+            select: { id: true, name: true }
+          },
+          parent: {
+            select: { id: true, name: true, slug: true }
+          }
+        }
       });
       if (!subCategory) {
         return error(res, `SubCategory with ID ${productData.sub_category_id} not found`, 404);
       }
       // Validate that subcategory belongs to the final category (new or existing)
       if (subCategory.category_id !== finalCategoryId) {
-        return error(res, "SubCategory does not belong to the product's Category", 400);
+        return error(res, `SubCategory does not belong to the product's Category. Subcategory belongs to "${subCategory.category.name}" (ID: ${subCategory.category_id})`, 400);
+      }
+      
+      // Log if it's a nested subcategory
+      if (subCategory.parent) {
+        console.log(`✅ Updating product with nested subcategory: ${subCategory.name} (parent: ${subCategory.parent.name})`);
       }
     }
   } else if (productData.category_id && productData.category_id !== product.category_id) {

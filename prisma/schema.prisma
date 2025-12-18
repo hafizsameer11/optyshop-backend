@@ -53,6 +53,7 @@ model Category {
 model SubCategory {
   id          Int       @id @default(autoincrement())
   category_id Int
+  parent_id   Int?
   name        String    @unique @db.VarChar(100)
   slug        String    @unique @db.VarChar(100)
   description String?   @db.Text
@@ -62,9 +63,12 @@ model SubCategory {
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
   category    Category  @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  parent      SubCategory? @relation("SubCategoryHierarchy", fields: [parent_id], references: [id], onDelete: SetNull)
+  children    SubCategory[] @relation("SubCategoryHierarchy")
   products    Product[]
 
   @@index([category_id])
+  @@index([parent_id])
   @@map("subcategories")
 }
 
