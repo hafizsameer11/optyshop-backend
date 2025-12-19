@@ -80,9 +80,7 @@ exports.getProductFormOptions = asyncHandler(async (req, res) => {
         slug: true,
         category_id: true,
         parent_id: true,
-        image: true
-      },
-      include: {
+        image: true,
         parent: {
           select: {
             id: true,
@@ -305,9 +303,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
             id: true,
             name: true,
             slug: true,
-            parent_id: true
-          },
-          include: {
+            parent_id: true,
             parent: {
               select: {
                 id: true,

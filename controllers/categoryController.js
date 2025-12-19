@@ -28,13 +28,6 @@ exports.getCategories = asyncHandler(async (req, res) => {
           is_active: true,
           parent_id: null // Only top-level subcategories
         },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          image: true,
-          parent_id: true
-        },
         include: {
           children: {
             where: { is_active: true },
@@ -43,7 +36,8 @@ exports.getCategories = asyncHandler(async (req, res) => {
               name: true,
               slug: true,
               image: true,
-              parent_id: true
+              parent_id: true,
+              sort_order: true
             },
             orderBy: { sort_order: 'asc' }
           }
@@ -86,13 +80,6 @@ exports.getCategory = asyncHandler(async (req, res) => {
           is_active: true,
           parent_id: null // Only top-level subcategories
         },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          image: true,
-          parent_id: true
-        },
         include: {
           children: {
             where: { is_active: true },
@@ -101,7 +88,8 @@ exports.getCategory = asyncHandler(async (req, res) => {
               name: true,
               slug: true,
               image: true,
-              parent_id: true
+              parent_id: true,
+              sort_order: true
             },
             orderBy: { sort_order: 'asc' }
           }
