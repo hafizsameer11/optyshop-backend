@@ -1,8 +1,52 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// Configure multer for memory storage (for S3 uploads)
-const storage = multer.memoryStorage();
+// Ensure uploads directory exists
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Configure multer for disk storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Determine folder based on route path, not field name
+    let folder = 'general';
+    const route = req.route?.path || req.path || req.originalUrl || '';
+    
+    // Determine folder based on route
+    if (route.includes('/products') || route.includes('/admin/products')) {
+      if (file.fieldname === 'model_3d') {
+        folder = 'vto-assets';
+      } else {
+        folder = 'products';
+      }
+    } else if (route.includes('/subcategories') || route.includes('/admin/subcategories')) {
+      folder = 'subcategories';
+    } else if (route.includes('/cms') || route.includes('/banners') || route.includes('/admin/banners')) {
+      folder = 'cms/banners';
+    } else if (file.fieldname === 'attachments') {
+      folder = 'support-attachments';
+    } else if (file.fieldname === 'model_3d') {
+      folder = 'vto-assets';
+    } else {
+      // Default folder for other uploads
+      folder = 'general';
+    }
+    
+    const folderPath = path.join(UPLOADS_DIR, folder);
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+    cb(null, folderPath);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-originalname
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  }
+});
 
 // File filter
 const fileFilter = (req, file, cb) => {

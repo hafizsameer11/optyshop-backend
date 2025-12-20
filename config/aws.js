@@ -1,27 +1,6 @@
-const AWS = require('aws-sdk');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
-
-// Check if AWS credentials are configured
-const isS3Configured = () => {
-  return !!(
-    process.env.AWS_ACCESS_KEY_ID &&
-    process.env.AWS_SECRET_ACCESS_KEY &&
-    process.env.AWS_S3_BUCKET_NAME
-  );
-};
-
-// Configure AWS only if credentials are provided
-if (isS3Configured()) {
-  AWS.config.update({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION || 'us-east-1'
-  });
-}
-
-const s3 = isS3Configured() ? new AWS.S3() : null;
 
 // Local storage directory
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
@@ -39,19 +18,33 @@ const ensureUploadsDir = (folder = 'general') => {
   return folderPath;
 };
 
-// Upload to local storage (fallback when S3 is not configured)
+// Upload to local storage (for backward compatibility with buffer-based uploads)
 const uploadToLocal = async (file, folder = 'general') => {
   try {
-    const folderPath = ensureUploadsDir(folder);
-    const fileName = `${Date.now()}-${file.originalname}`;
-    const filePath = path.join(folderPath, fileName);
+    // If file is already saved by multer (has path property), return its URL
+    if (file.path) {
+      // Extract relative path from absolute path
+      const relativePath = file.path.replace(UPLOADS_DIR + path.sep, '').replace(/\\/g, '/');
+      const url = `${PUBLIC_URL}/uploads/${relativePath}`;
+      console.log(`✅ File already saved by multer: ${url}`);
+      return url;
+    }
     
-    fs.writeFileSync(filePath, file.buffer);
+    // Fallback: if file has buffer (old way), save it
+    if (file.buffer) {
+      const folderPath = ensureUploadsDir(folder);
+      const fileName = `${Date.now()}-${file.originalname}`;
+      const filePath = path.join(folderPath, fileName);
+      
+      fs.writeFileSync(filePath, file.buffer);
+      
+      // Return public URL
+      const url = `${PUBLIC_URL}/uploads/${folder}/${fileName}`;
+      console.log(`✅ File saved locally: ${url}`);
+      return url;
+    }
     
-    // Return public URL
-    const url = `${PUBLIC_URL}/uploads/${folder}/${fileName}`;
-    console.log(`✅ File saved locally: ${url}`);
-    return url;
+    throw new Error('File object must have either path or buffer property');
   } catch (error) {
     console.error('Local file upload error:', error);
     throw new Error(`Failed to save file locally: ${error.message}`);
@@ -61,14 +54,26 @@ const uploadToLocal = async (file, folder = 'general') => {
 // Delete from local storage
 const deleteFromLocal = async (url) => {
   try {
-    // Extract file path from URL
-    const urlPath = url.replace(`${PUBLIC_URL}/uploads/`, '');
-    const filePath = path.join(UPLOADS_DIR, urlPath);
+    // Handle both full URLs and relative paths
+    let filePath;
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/uploads/')) {
+      // Extract file path from URL
+      const urlPath = url.replace(`${PUBLIC_URL}/uploads/`, '').replace('/uploads/', '');
+      filePath = path.join(UPLOADS_DIR, urlPath);
+    } else {
+      // Assume it's already a file path
+      filePath = url;
+    }
+    
+    // Normalize path separators
+    filePath = filePath.replace(/\//g, path.sep);
     
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
+      console.log(`✅ File deleted: ${filePath}`);
       return true;
     }
+    console.warn(`⚠️  File not found for deletion: ${filePath}`);
     return false;
   } catch (error) {
     console.error('Local file delete error:', error);
@@ -76,56 +81,60 @@ const deleteFromLocal = async (url) => {
   }
 };
 
+// Upload file - multer already saves to disk, optionally move to correct folder
 const uploadToS3 = async (file, folder = 'general') => {
-  // Use local storage if S3 is not configured
-  if (!isS3Configured()) {
-    console.warn('⚠️  AWS S3 not configured. Using local file storage.');
-    return uploadToLocal(file, folder);
+  // With multer disk storage, file is already saved
+  if (file.path) {
+    const fileName = path.basename(file.path);
+    
+    // Get the current folder from the file path (normalize separators)
+    let currentRelativePath = file.path.replace(UPLOADS_DIR + path.sep, '').replace(/\\/g, '/');
+    
+    // Remove "images" from path if it exists (legacy support)
+    currentRelativePath = currentRelativePath.replace(/^images\//, '').replace(/\/images\//, '/');
+    
+    const pathParts = currentRelativePath.split('/');
+    const currentFolder = pathParts[0] || 'general';
+    
+    // Always use the specified folder parameter, not the detected folder
+    // This ensures consistent folder structure
+    if (currentFolder !== folder) {
+      const targetFolderPath = ensureUploadsDir(folder);
+      const targetPath = path.join(targetFolderPath, fileName);
+      
+      try {
+        // Move file to correct folder
+        fs.renameSync(file.path, targetPath);
+        const url = `${PUBLIC_URL}/uploads/${folder}/${fileName}`;
+        console.log(`✅ File moved to ${folder}: ${url}`);
+        return url;
+      } catch (error) {
+        console.error(`Failed to move file to ${folder}, using current location:`, error);
+        // If move fails, reconstruct URL without "images" in path
+        const cleanPath = currentRelativePath.replace(/^images\//, folder + '/');
+        const url = `${PUBLIC_URL}/uploads/${cleanPath}`;
+        return url;
+      }
+    }
+    
+    // File is already in the correct folder - ensure URL doesn't include "images"
+    const cleanPath = currentRelativePath.replace(/^images\//, folder + '/');
+    const url = `${PUBLIC_URL}/uploads/${cleanPath}`;
+    console.log(`✅ File uploaded via multer: ${url}`);
+    return url;
   }
-
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET_NAME,
-    Key: `${folder}/${Date.now()}-${file.originalname}`,
-    Body: file.buffer,
-    ContentType: file.mimetype,
-    ACL: 'public-read'
-  };
-
-  try {
-    const data = await s3.upload(params).promise();
-    return data.Location;
-  } catch (error) {
-    console.error('S3 upload failed, falling back to local storage:', error.message);
-    // Fallback to local storage on S3 error
-    return uploadToLocal(file, folder);
-  }
+  
+  // Fallback to local upload if file doesn't have path (backward compatibility)
+  return uploadToLocal(file, folder);
 };
 
 const deleteFromS3 = async (urlOrKey) => {
-  // If S3 is not configured, try to delete from local storage
-  if (!isS3Configured()) {
-    return deleteFromLocal(urlOrKey);
-  }
-
-  // Check if it's a local URL or S3 key
-  if (urlOrKey.includes('/uploads/')) {
-    return deleteFromLocal(urlOrKey);
-  }
-
-  // It's an S3 key
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET_NAME,
-    Key: urlOrKey
-  };
-
-  try {
-    await s3.deleteObject(params).promise();
-    return true;
-  } catch (error) {
-    console.error('S3 delete failed:', error.message);
-    return false;
-  }
+  // Always use local storage deletion
+  return deleteFromLocal(urlOrKey);
 };
 
-module.exports = { s3, uploadToS3, deleteFromS3, isS3Configured };
+// Keep isS3Configured for backward compatibility (always returns false now)
+const isS3Configured = () => false;
+
+module.exports = { uploadToS3, deleteFromS3, isS3Configured };
 

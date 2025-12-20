@@ -1,9 +1,11 @@
+// Suppress AWS SDK v2 maintenance mode warning (if aws-sdk is still in dependencies)
+process.env.AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE = '1';
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
@@ -121,165 +123,6 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Rate limiting - Configurable via environment variables
-// For development: Very high limits or disabled
-// For production: Use reasonable limits
-const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED !== 'false'; // Default: enabled
-const rateLimitWindow = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
-const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 100000 : 100000 // Very high limit to handle frontend requests
-);
-
-// Separate limits for GET requests (read operations) - much more lenient
-const getRequestLimitMax = parseInt(process.env.GET_RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 200000 : 200000 // Very high limit for GET requests
-);
-
-// More lenient rate limiter for auth endpoints (especially /me which is called frequently)
-const authRateLimitMax = parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || (
-  process.env.NODE_ENV === 'development' ? 100000 : 100000 // Very high limit for auth endpoints
-);
-const authRateLimitWindow = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000); // 15 minutes default
-
-// Helper function to get the real client IP (works behind proxy/load balancer)
-const getClientIP = (req) => {
-  // Check for forwarded IP headers (common in proxy/load balancer setups)
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    // x-forwarded-for can contain multiple IPs, take the first one
-    const ips = forwarded.split(',').map(ip => ip.trim());
-    return ips[0];
-  }
-  
-  // Check for other common proxy headers
-  if (req.headers['x-real-ip']) {
-    return req.headers['x-real-ip'];
-  }
-  
-  if (req.headers['cf-connecting-ip']) {
-    return req.headers['cf-connecting-ip'];
-  }
-  
-  // Fallback to Express's req.ip (works with trust proxy)
-  return req.ip || req.connection.remoteAddress;
-};
-
-if (rateLimitEnabled) {
-  // Very lenient rate limiter for GET requests (read operations)
-  // GET requests are typically safe and frontend makes many of them
-  const getRequestLimiter = rateLimit({
-    windowMs: rateLimitWindow,
-    max: getRequestLimitMax,
-    message: {
-      success: false,
-      error: 'Too many requests from this IP, please try again later.',
-      retryAfter: Math.ceil(rateLimitWindow / 1000)
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-      return getClientIP(req);
-    },
-    skip: (req) => {
-      // Only apply to GET requests
-      if (req.method !== 'GET') return true;
-      if (process.env.NODE_ENV === 'development') {
-        const ip = getClientIP(req);
-        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
-      }
-      return false;
-    },
-    handler: (req, res) => {
-      res.status(429).json({
-        success: false,
-        error: 'Too many requests from this IP, please try again later.',
-        retryAfter: Math.ceil(rateLimitWindow / 1000),
-        message: `Rate limit exceeded. Maximum ${getRequestLimitMax} GET requests per ${rateLimitWindow / 1000 / 60} minutes.`
-      });
-    }
-  });
-
-  // General rate limiter for POST/PUT/DELETE/PATCH requests (write operations)
-  const writeRequestLimiter = rateLimit({
-    windowMs: rateLimitWindow,
-    max: rateLimitMax,
-    message: {
-      success: false,
-      error: 'Too many requests from this IP, please try again later.',
-      retryAfter: Math.ceil(rateLimitWindow / 1000)
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-      return getClientIP(req);
-    },
-    skip: (req) => {
-      // Only apply to non-GET requests
-      if (req.method === 'GET') return true;
-      if (process.env.NODE_ENV === 'development') {
-        const ip = getClientIP(req);
-        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
-      }
-      return false;
-    },
-    handler: (req, res) => {
-      res.status(429).json({
-        success: false,
-        error: 'Too many requests from this IP, please try again later.',
-        retryAfter: Math.ceil(rateLimitWindow / 1000),
-        message: `Rate limit exceeded. Maximum ${rateLimitMax} write requests per ${rateLimitWindow / 1000 / 60} minutes.`
-      });
-    }
-  });
-
-  // More lenient rate limiter for auth endpoints
-  const authLimiter = rateLimit({
-    windowMs: authRateLimitWindow,
-    max: authRateLimitMax,
-    message: {
-      success: false,
-      error: 'Too many requests from this IP, please try again later.',
-      retryAfter: Math.ceil(authRateLimitWindow / 1000)
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-      return getClientIP(req);
-    },
-    skip: (req) => {
-      if (process.env.NODE_ENV === 'development') {
-        const ip = getClientIP(req);
-        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
-      }
-      return false;
-    },
-    handler: (req, res) => {
-      res.status(429).json({
-        success: false,
-        error: 'Too many requests from this IP, please try again later.',
-        retryAfter: Math.ceil(authRateLimitWindow / 1000),
-        message: `Rate limit exceeded. Maximum ${authRateLimitMax} requests per ${authRateLimitWindow / 1000 / 60} minutes.`
-      });
-    }
-  });
-
-  // Apply rate limiters in order (most specific first)
-  // Auth endpoints get their own limiter
-  app.use('/api/auth', authLimiter);
-  
-  // Apply GET request limiter to all API routes (only affects GET requests)
-  app.use('/api/', getRequestLimiter);
-  
-  // Apply write request limiter to all API routes (only affects non-GET requests)
-  app.use('/api/', writeRequestLimiter);
-  
-  console.log(`✅ Rate limiting enabled:`);
-  console.log(`   - Auth endpoints: ${authRateLimitMax} requests per ${authRateLimitWindow / 1000 / 60} minutes`);
-  console.log(`   - GET requests: ${getRequestLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
-  console.log(`   - Write requests (POST/PUT/DELETE/PATCH): ${rateLimitMax} requests per ${rateLimitWindow / 1000 / 60} minutes`);
-} else {
-  console.log('⚠️  Rate limiting disabled');
-}
 
 // Health check route
 app.get('/health', (req, res) => {
