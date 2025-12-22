@@ -1485,7 +1485,7 @@
 			]
 		  },
 		  {
-			"name": "Lens Options & Treatments (Public)",
+			"name": "Lens Options & Treatments (Public/Website)",
 			"item": [
 			  {
 				"name": "Get All Lens Options",
@@ -1511,7 +1511,7 @@
 					  }
 					]
 				  },
-				  "description": "Get all active lens options with their colors. Optionally filter by type."
+				  "description": "Get all active lens options with their colors for website display. Optionally filter by type. These are public endpoints for viewing lens management data on the website."
 				}
 			  },
 			  {
@@ -1531,7 +1531,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Get a single lens option with all its colors by ID."
+				  "description": "Get a single lens option with all its colors by ID for website display. Public endpoint for viewing lens management data."
 				}
 			  },
 			  {
@@ -1558,7 +1558,7 @@
 					  }
 					]
 				  },
-				  "description": "Get all active lens treatments. Optionally filter by type."
+				  "description": "Get all active lens treatments for website display. Optionally filter by type. Public endpoint for viewing lens management data."
 				}
 			  },
 			  {
@@ -1578,7 +1578,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Get a single lens treatment by ID."
+				  "description": "Get a single lens treatment by ID for website display. Public endpoint for viewing lens management data."
 				}
 			  },
 			  {
@@ -1662,6 +1662,25 @@
 				}
 			  },
 			  {
+				"name": "Get Prescription Sun Colors",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/lens/prescription-sun-colors",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "lens",
+					  "prescription-sun-colors"
+					]
+				  },
+				  "description": "Get all prescription sun colors from prescription lens types that have 'Sun' in their name. These are colors available for prescription sun lenses. Public endpoint for viewing lens management data on the website."
+				}
+			  },
+			  {
 				"name": "Get Lens Thickness Materials",
 				"request": {
 				  "method": "GET",
@@ -1737,6 +1756,112 @@
 					]
 				  },
 				  "description": "Get a single lens thickness option by ID."
+				}
+			  },
+			  {
+				"name": "Get All Lens Colors",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/lens/colors?lensOptionId=1&lensFinishId=null&prescriptionLensTypeId=null",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "lens",
+					  "colors"
+					],
+					"query": [
+					  {
+						"key": "lensOptionId",
+						"value": "1",
+						"description": "Filter by lens option ID",
+						"disabled": true
+					  },
+					  {
+						"key": "lensFinishId",
+						"value": "null",
+						"description": "Filter by lens finish ID",
+						"disabled": true
+					  },
+					  {
+						"key": "prescriptionLensTypeId",
+						"value": "null",
+						"description": "Filter by prescription lens type ID",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all active lens colors for website display. Colors can belong to lens options, lens finishes, or prescription lens types. Optionally filter by parent ID. Note: Colors are also included in lens options, finishes, and prescription lens types responses. Public endpoint for viewing lens management data on the website."
+				}
+			  },
+			  {
+				"name": "Get Lens Color by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/lens/colors/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "lens",
+					  "colors",
+					  "1"
+					]
+				  },
+				  "description": "Get a single lens color by ID with its parent information (lens option, finish, or prescription lens type) for website display. Public endpoint for viewing lens management data."
+				}
+			  },
+			  {
+				"name": "Get All Lens Finishes",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/lens/finishes?lensOptionId=1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "lens",
+					  "finishes"
+					],
+					"query": [
+					  {
+						"key": "lensOptionId",
+						"value": "1",
+						"description": "Filter by lens option ID",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all active lens finishes with their colors for website display. Optionally filter by lens option ID. Note: Finishes are also included in lens options responses. Public endpoint for viewing lens management data on the website."
+				}
+			  },
+			  {
+				"name": "Get Lens Finish by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/lens/finishes/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "lens",
+					  "finishes",
+					  "1"
+					]
+				  },
+				  "description": "Get a single lens finish by ID with all its colors and parent lens option information for website display. Public endpoint for viewing lens management data."
 				}
 			  }
 			]
@@ -7049,7 +7174,32 @@
 					  }
 					]
 				  },
-				  "description": "Get all lens options with their colors. Admin only."
+				  "description": "Get all lens options with their colors. Admin can view, add, update, and delete lens options. Admin only."
+				}
+			  },
+			  {
+				"name": "Get Lens Option by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/lens-options/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "lens-options",
+					  "1"
+					]
+				  },
+				  "description": "Get a single lens option with all its colors by ID. Admin can view, add, update, and delete lens options. Admin only."
 				}
 			  },
 			  {
@@ -7081,7 +7231,7 @@
 					  "lens-options"
 					]
 				  },
-				  "description": "Create a new lens option. Admin only."
+				  "description": "Create a new lens option. Admin can add, update, and delete lens options. Admin only."
 				}
 			  },
 			  {
@@ -7114,7 +7264,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Update a lens option. Admin only."
+				  "description": "Update an existing lens option. Admin can add, update, and delete lens options. Admin only."
 				}
 			  },
 			  {
@@ -7139,7 +7289,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Delete a lens option. Admin only."
+				  "description": "Delete a lens option. Admin can add, update, and delete lens options. Admin only."
 				}
 			  }
 			]
@@ -7190,7 +7340,32 @@
 					  }
 					]
 				  },
-				  "description": "Get all lens colors with their lens option info. Admin only."
+				  "description": "Get all lens colors with their lens option info. Admin can view, add, update, and delete lens colors. Admin only."
+				}
+			  },
+			  {
+				"name": "Get Lens Color by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/lens-colors/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "lens-colors",
+					  "1"
+					]
+				  },
+				  "description": "Get a single lens color by ID. Admin can view, add, update, and delete lens colors. Admin only."
 				}
 			  },
 			  {
@@ -7209,7 +7384,7 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"lens_option_id\": 1,\n  \"lens_finish_id\": null,\n  \"prescription_lens_type_id\": null,\n  \"name\": \"Blue Mirror\",\n  \"color_code\": \"BLUE_MIRROR\",\n  \"hex_code\": \"#0066CC\",\n  \"image_url\": \"https://example.com/images/blue-mirror.png\",\n  \"price_adjustment\": 0.00,\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+					"raw": "{\n  \"lens_option_id\": 1,\n  \"lens_finish_id\": null,\n  \"prescription_lens_type_id\": null,\n  \"name\": \"Blue Mirror\",\n  \"color_code\": \"BLUE_MIRROR\",\n  \"hex_code\": \"#0066CC\",\n  \"image_url\": \"https://example.com/images/blue-mirror.png\",\n  \"price_adjustment\": 0.00,\n  \"is_active\": true,\n  \"sort_order\": 0\n}\n\n// Example for Prescription Sun Color:\n// {\n//   \"lens_option_id\": null,\n//   \"lens_finish_id\": null,\n//   \"prescription_lens_type_id\": 5,\n//   \"name\": \"Brown Gradient\",\n//   \"color_code\": \"BROWN_GRADIENT\",\n//   \"hex_code\": \"#8B4513\",\n//   \"image_url\": \"https://example.com/images/brown-gradient.png\",\n//   \"price_adjustment\": 10.00,\n//   \"is_active\": true,\n//   \"sort_order\": 0\n// }\n// Note: prescription_lens_type_id should be the ID of a prescription lens type with 'Sun' in its name"
 				  },
 				  "url": {
 					"raw": "{{base_url}}/api/admin/lens-colors",
@@ -7222,7 +7397,7 @@
 					  "lens-colors"
 					]
 				  },
-				  "description": "Create a new lens color. Color must belong to either lens_option_id, lens_finish_id, or prescription_lens_type_id (choose one). Admin only."
+				  "description": "Create a new lens color. Color must belong to either lens_option_id, lens_finish_id, or prescription_lens_type_id (choose one). To create prescription sun colors, set prescription_lens_type_id to a prescription lens type that has 'Sun' in its name. Admin can add, update, and delete lens colors. Admin only."
 				}
 			  },
 			  {
@@ -7255,7 +7430,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Update a lens color. Admin only."
+				  "description": "Update an existing lens color. Admin can add, update, and delete lens colors. Admin only."
 				}
 			  },
 			  {
@@ -7280,7 +7455,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Delete a lens color. Admin only."
+				  "description": "Delete a lens color. Admin can add, update, and delete lens colors. Admin only."
 				}
 			  }
 			]
@@ -7331,7 +7506,32 @@
 					  }
 					]
 				  },
-				  "description": "Get all lens treatments with pagination and filters. Admin only."
+				  "description": "Get all lens treatments with pagination and filters. Admin can view, add, update, and delete lens treatments. Admin only."
+				}
+			  },
+			  {
+				"name": "Get Lens Treatment by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/lens-treatments/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "lens-treatments",
+					  "1"
+					]
+				  },
+				  "description": "Get a single lens treatment by ID. Admin can view, add, update, and delete lens treatments. Admin only."
 				}
 			  },
 			  {
@@ -7363,7 +7563,7 @@
 					  "lens-treatments"
 					]
 				  },
-				  "description": "Create a new lens treatment. Admin only."
+				  "description": "Create a new lens treatment. Admin can add, update, and delete lens treatments. Admin only."
 				}
 			  },
 			  {
@@ -7396,7 +7596,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Update a lens treatment. Admin only."
+				  "description": "Update an existing lens treatment. Admin can add, update, and delete lens treatments. Admin only."
 				}
 			  },
 			  {
@@ -7421,7 +7621,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Delete a lens treatment. Admin only."
+				  "description": "Delete a lens treatment. Admin can add, update, and delete lens treatments. Admin only."
 				}
 			  }
 			]
@@ -7792,7 +7992,32 @@
 					  }
 					]
 				  },
-				  "description": "Get all lens finishes with their colors. Admin only."
+				  "description": "Get all lens finishes with their colors. Admin can view, add, update, and delete lens finishes. Admin only."
+				}
+			  },
+			  {
+				"name": "Get Lens Finish by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/lens-finishes/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "lens-finishes",
+					  "1"
+					]
+				  },
+				  "description": "Get a single lens finish by ID. Admin can view, add, update, and delete lens finishes. Admin only."
 				}
 			  },
 			  {
@@ -7824,7 +8049,7 @@
 					  "lens-finishes"
 					]
 				  },
-				  "description": "Create a new lens finish for a lens option. Admin only."
+				  "description": "Create a new lens finish for a lens option. Admin can add, update, and delete lens finishes. Admin only."
 				}
 			  },
 			  {
@@ -7857,7 +8082,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Update a lens finish. Admin only."
+				  "description": "Update an existing lens finish. Admin can add, update, and delete lens finishes. Admin only."
 				}
 			  },
 			  {
@@ -7882,7 +8107,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Delete a lens finish. Admin only."
+				  "description": "Delete a lens finish. Admin can add, update, and delete lens finishes. Admin only."
 				}
 			  }
 			]
@@ -7933,7 +8158,7 @@
 					  }
 					]
 				  },
-				  "description": "Get all prescription lens types with their colors. Admin only."
+				  "description": "Get all prescription lens types with their colors. Admin can view, add, update, and delete prescription lens types. To manage prescription sun colors, create prescription lens types with 'Sun' in the name, then add colors to them. Admin only."
 				}
 			  },
 			  {
@@ -7952,7 +8177,12 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"name\": \"Distance Vision\",\n  \"slug\": \"distance-vision\",\n  \"description\": \"For distance (Thin, anti-glare, blue-cut options)\",\n  \"prescription_type\": \"single_vision\",\n  \"base_price\": 60.00,\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+					"raw": "{\n  \"name\": \"Distance Vision\",\n  \"slug\": \"distance-vision\",\n  \"description\": \"For distance (Thin, anti-glare, blue-cut options)\",\n  \"prescription_type\": \"single_vision\",\n  \"base_price\": 60.00,\n  \"is_active\": true,\n  \"sort_order\": 0\n}\n\n// Example for Prescription Sun (to enable prescription sun colors):\n// {\n//   \"name\": \"Prescription Sun\",\n//   \"slug\": \"prescription-sun\",\n//   \"description\": \"Prescription sunglasses with UV protection\",\n//   \"prescription_type\": \"single_vision\",\n//   \"base_price\": 80.00,\n//   \"is_active\": true,\n//   \"sort_order\": 0\n// }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
 				  },
 				  "url": {
 					"raw": "{{base_url}}/api/admin/prescription-lens-types",
@@ -7965,7 +8195,7 @@
 					  "prescription-lens-types"
 					]
 				  },
-				  "description": "Create a new prescription lens type. Admin only."
+				  "description": "Create a new prescription lens type. To create prescription sun colors, create a prescription lens type with 'Sun' in the name (e.g., 'Prescription Sun', 'Distance Vision Sun'), then add colors to it using the Lens Colors admin endpoints with prescription_lens_type_id. Admin can add, update, and delete prescription lens types. Admin only."
 				}
 			  },
 			  {
@@ -7998,7 +8228,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Update a prescription lens type. Admin only."
+				  "description": "Update an existing prescription lens type. Admin can add, update, and delete prescription lens types. Admin only."
 				}
 			  },
 			  {
@@ -8023,7 +8253,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Delete a prescription lens type. Admin only."
+				  "description": "Delete a prescription lens type. Admin can add, update, and delete prescription lens types. Admin only."
 				}
 			  }
 			]

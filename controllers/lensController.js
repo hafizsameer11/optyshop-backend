@@ -303,6 +303,246 @@ exports.deleteLensOption = asyncHandler(async (req, res) => {
   return success(res, 'Lens option deleted successfully');
 });
 
+// ==================== LENS COLORS - PUBLIC ====================
+
+// @desc    Get all active lens colors
+// @route   GET /api/lens/colors
+// @access  Public
+exports.getLensColors = asyncHandler(async (req, res) => {
+  const { lensOptionId, lensFinishId, prescriptionLensTypeId } = req.query;
+
+  const where = {
+    is_active: true
+  };
+
+  if (lensOptionId) {
+    where.lens_option_id = parseInt(lensOptionId);
+  }
+
+  if (lensFinishId) {
+    where.lens_finish_id = parseInt(lensFinishId);
+  }
+
+  if (prescriptionLensTypeId) {
+    where.prescription_lens_type_id = parseInt(prescriptionLensTypeId);
+  }
+
+  const colors = await prisma.lensColor.findMany({
+    where,
+    include: {
+      lensOption: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true
+        }
+      },
+      lensFinish: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      prescriptionLensType: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    },
+    orderBy: [
+      { sort_order: 'asc' },
+      { created_at: 'asc' }
+    ]
+  });
+
+  return success(res, 'Lens colors retrieved successfully', {
+    colors: colors.map(color => ({
+      ...formatLensColor(color),
+      lensOption: color.lensOption ? {
+        id: color.lensOption.id,
+        name: color.lensOption.name,
+        slug: color.lensOption.slug,
+        type: color.lensOption.type
+      } : null,
+      lensFinish: color.lensFinish ? {
+        id: color.lensFinish.id,
+        name: color.lensFinish.name,
+        slug: color.lensFinish.slug
+      } : null,
+      prescriptionLensType: color.prescriptionLensType ? {
+        id: color.prescriptionLensType.id,
+        name: color.prescriptionLensType.name,
+        slug: color.prescriptionLensType.slug
+      } : null
+    })),
+    count: colors.length
+  });
+});
+
+// @desc    Get single lens color
+// @route   GET /api/lens/colors/:id
+// @access  Public
+exports.getLensColor = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const color = await prisma.lensColor.findFirst({
+    where: {
+      id: parseInt(id),
+      is_active: true
+    },
+    include: {
+      lensOption: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true
+        }
+      },
+      lensFinish: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      prescriptionLensType: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
+  });
+
+  if (!color) {
+    return error(res, 'Lens color not found', 404);
+  }
+
+  return success(res, 'Lens color retrieved successfully', {
+    color: {
+      ...formatLensColor(color),
+      lensOption: color.lensOption ? {
+        id: color.lensOption.id,
+        name: color.lensOption.name,
+        slug: color.lensOption.slug,
+        type: color.lensOption.type
+      } : null,
+      lensFinish: color.lensFinish ? {
+        id: color.lensFinish.id,
+        name: color.lensFinish.name,
+        slug: color.lensFinish.slug
+      } : null,
+      prescriptionLensType: color.prescriptionLensType ? {
+        id: color.prescriptionLensType.id,
+        name: color.prescriptionLensType.name,
+        slug: color.prescriptionLensType.slug
+      } : null
+    }
+  });
+});
+
+// ==================== LENS FINISHES - PUBLIC ====================
+
+// @desc    Get all active lens finishes
+// @route   GET /api/lens/finishes
+// @access  Public
+exports.getLensFinishes = asyncHandler(async (req, res) => {
+  const { lensOptionId } = req.query;
+
+  const where = {
+    is_active: true
+  };
+
+  if (lensOptionId) {
+    where.lens_option_id = parseInt(lensOptionId);
+  }
+
+  const finishes = await prisma.lensFinish.findMany({
+    where,
+    include: {
+      lensOption: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true
+        }
+      },
+      colors: {
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+      }
+    },
+    orderBy: [
+      { sort_order: 'asc' },
+      { created_at: 'asc' }
+    ]
+  });
+
+  return success(res, 'Lens finishes retrieved successfully', {
+    finishes: finishes.map(finish => ({
+      ...formatLensFinish(finish),
+      lensOption: finish.lensOption ? {
+        id: finish.lensOption.id,
+        name: finish.lensOption.name,
+        slug: finish.lensOption.slug,
+        type: finish.lensOption.type
+      } : null
+    })),
+    count: finishes.length
+  });
+});
+
+// @desc    Get single lens finish
+// @route   GET /api/lens/finishes/:id
+// @access  Public
+exports.getLensFinish = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const finish = await prisma.lensFinish.findFirst({
+    where: {
+      id: parseInt(id),
+      is_active: true
+    },
+    include: {
+      lensOption: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true
+        }
+      },
+      colors: {
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+      }
+    }
+  });
+
+  if (!finish) {
+    return error(res, 'Lens finish not found', 404);
+  }
+
+  return success(res, 'Lens finish retrieved successfully', {
+    finish: {
+      ...formatLensFinish(finish),
+      lensOption: finish.lensOption ? {
+        id: finish.lensOption.id,
+        name: finish.lensOption.name,
+        slug: finish.lensOption.slug,
+        type: finish.lensOption.type
+      } : null
+    }
+  });
+});
+
 // ==================== LENS COLORS - ADMIN ====================
 
 // @desc    Get all lens colors (Admin)

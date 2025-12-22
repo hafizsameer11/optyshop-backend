@@ -106,6 +106,55 @@ exports.getPrescriptionLensType = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get prescription sun colors (from prescription lens types with "Sun" in name)
+// @route   GET /api/lens/prescription-sun-colors
+// @access  Public
+exports.getPrescriptionSunColors = asyncHandler(async (req, res) => {
+  const prescriptionSunLensTypes = await prisma.prescriptionLensType.findMany({
+    where: {
+      name: { contains: 'Sun' },
+      is_active: true
+    },
+    include: {
+      colors: {
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+      }
+    },
+    orderBy: [
+      { sort_order: 'asc' },
+      { created_at: 'asc' }
+    ]
+  });
+
+  // Flatten all colors from all prescription sun lens types
+  const allColors = [];
+  prescriptionSunLensTypes.forEach(type => {
+    type.colors.forEach(color => {
+      allColors.push({
+        ...formatColor(color),
+        prescriptionLensType: {
+          id: type.id,
+          name: type.name,
+          slug: type.slug,
+          prescriptionType: type.prescription_type
+        }
+      });
+    });
+  });
+
+  return success(res, 'Prescription sun colors retrieved successfully', {
+    colors: allColors,
+    prescriptionLensTypes: prescriptionSunLensTypes.map(type => ({
+      id: type.id,
+      name: type.name,
+      slug: type.slug,
+      prescriptionType: type.prescription_type
+    })),
+    count: allColors.length
+  });
+});
+
 // ==================== PRESCRIPTION LENS TYPES - ADMIN ====================
 
 // @desc    Get all prescription lens types (Admin)
