@@ -410,7 +410,11 @@ exports.createLensColor = asyncHandler(async (req, res) => {
     sort_order = 0
   } = req.body;
 
-  if (!name || !color_code) {
+  // Trim and validate name and color_code
+  const trimmedName = name ? String(name).trim() : '';
+  const trimmedColorCode = color_code ? String(color_code).trim() : '';
+
+  if (!trimmedName || !trimmedColorCode) {
     return error(res, 'Name and color code are required', 400);
   }
 
@@ -465,10 +469,10 @@ exports.createLensColor = asyncHandler(async (req, res) => {
       lens_option_id: lens_option_id ? parseInt(lens_option_id) : null,
       lens_finish_id: lens_finish_id ? parseInt(lens_finish_id) : null,
       prescription_lens_type_id: prescription_lens_type_id ? parseInt(prescription_lens_type_id) : null,
-      name,
-      color_code,
-      hex_code: hex_code || null,
-      image_url: image_url || null,
+      name: trimmedName,
+      color_code: trimmedColorCode,
+      hex_code: hex_code ? String(hex_code).trim() || null : null,
+      image_url: image_url ? String(image_url).trim() || null : null,
       price_adjustment: parseFloat(price_adjustment),
       is_active,
       sort_order: parseInt(sort_order)
@@ -497,6 +501,16 @@ exports.updateLensColor = asyncHandler(async (req, res) => {
         updateData[field] = req.body[field] ? parseInt(req.body[field]) : null;
       } else if (field === 'is_active') {
         updateData[field] = req.body[field] === true || req.body[field] === 'true';
+      } else if (field === 'name' || field === 'color_code') {
+        // Trim and validate name and color_code
+        const trimmedValue = String(req.body[field]).trim();
+        if (!trimmedValue) {
+          return error(res, `${field === 'name' ? 'Name' : 'Color code'} cannot be empty`, 400);
+        }
+        updateData[field] = trimmedValue;
+      } else if (field === 'hex_code' || field === 'image_url') {
+        // Trim optional fields
+        updateData[field] = req.body[field] ? String(req.body[field]).trim() || null : null;
       } else {
         updateData[field] = req.body[field];
       }

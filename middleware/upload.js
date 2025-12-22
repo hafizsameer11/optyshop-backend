@@ -109,8 +109,110 @@ exports.uploadSingle = (fieldName = 'image') => upload.single(fieldName);
 // Multiple files upload
 exports.uploadMultiple = (fieldName = 'images', maxCount = 5) => upload.array(fieldName, maxCount);
 
-// Mixed fields upload
-exports.uploadFields = (fields) => upload.fields(fields);
+// Mixed fields upload with error handling
+exports.uploadFields = (fields) => {
+  const fieldsMiddleware = upload.fields(fields);
+  
+  return (req, res, next) => {
+    // Log expected fields for debugging
+    const expectedFields = fields.map(f => f.name).join(', ');
+    console.log(`📤 Upload middleware - Expected fields: ${expectedFields}`);
+    
+    fieldsMiddleware(req, res, (err) => {
+      if (err) {
+        // Log detailed error information
+        console.error('❌ Multer error:', {
+          name: err.name,
+          code: err.code,
+          message: err.message,
+          field: err.field,
+          expectedFields: expectedFields,
+          url: req.originalUrl,
+          method: req.method
+        });
+        
+        // Enhance error message with expected fields
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+          err.message = `Unexpected field: "${err.field}". Expected fields: ${expectedFields}`;
+        }
+      }
+      next(err);
+    });
+  };
+};
+
+// Product upload middleware - accepts images, model_3d, and dynamic color_images_* fields
+exports.uploadProductFiles = () => {
+  // Use upload.any() to accept any field names, then validate
+  const anyUpload = upload.any();
+  
+  return (req, res, next) => {
+    anyUpload(req, res, (err) => {
+      if (err) {
+        console.error('❌ Multer error in product upload:', {
+          name: err.name,
+          code: err.code,
+          message: err.message,
+          url: req.originalUrl,
+          method: req.method
+        });
+        return next(err);
+      }
+      
+      // Convert array format to object format for compatibility with existing code
+      // upload.any() returns an array, but controller expects an object keyed by fieldname
+      if (req.files && Array.isArray(req.files)) {
+        const allowedFields = ['images', 'model_3d'];
+        const invalidFields = [];
+        
+        // Group files by fieldname
+        const filesByField = {};
+        req.files.forEach(file => {
+          if (!filesByField[file.fieldname]) {
+            filesByField[file.fieldname] = [];
+          }
+          filesByField[file.fieldname].push(file);
+        });
+        
+        // Validate each field
+        for (const fieldname of Object.keys(filesByField)) {
+          const isAllowed = allowedFields.includes(fieldname);
+          const isColorImage = fieldname.startsWith('color_images_');
+          
+          if (!isAllowed && !isColorImage) {
+            invalidFields.push(fieldname);
+          }
+          
+          // Validate limits
+          if (fieldname === 'images' && filesByField[fieldname].length > 5) {
+            return next(new Error(`Too many files for 'images' field. Maximum is 5, received ${filesByField[fieldname].length}.`));
+          }
+          
+          if (fieldname === 'model_3d' && filesByField[fieldname].length > 1) {
+            return next(new Error(`Too many files for 'model_3d' field. Maximum is 1, received ${filesByField[fieldname].length}.`));
+          }
+          
+          // Limit color_images_* fields to 5 files each
+          if (isColorImage && filesByField[fieldname].length > 5) {
+            return next(new Error(`Too many files for '${fieldname}' field. Maximum is 5, received ${filesByField[fieldname].length}.`));
+          }
+        }
+        
+        if (invalidFields.length > 0) {
+          return next(new Error(`Unexpected field(s): ${invalidFields.join(', ')}. Allowed fields: images, model_3d, or color_images_{colorName} (e.g., color_images_black, color_images_brown).`));
+        }
+        
+        // Convert to object format - controller expects req.files.images, req.files.model_3d, req.files['color_images_black'], etc.
+        req.files = filesByField;
+      } else if (!req.files) {
+        // Ensure req.files exists as an object even if no files were uploaded
+        req.files = {};
+      }
+      
+      next();
+    });
+  };
+};
 
 // Support form attachments upload (max 5 files, 100MB each)
 exports.uploadSupportAttachments = (fieldName = 'attachments') => supportUpload.array(fieldName, 5);

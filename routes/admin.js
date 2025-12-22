@@ -170,7 +170,7 @@ const {
   deleteLensThicknessOption
 } = require('../controllers/lensThicknessController');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadMultiple, uploadSingle, uploadFields } = require('../middleware/upload');
+const { uploadMultiple, uploadSingle, uploadFields, uploadProductFiles } = require('../middleware/upload');
 const {
   validateCreateProduct,
   validateUpdateProduct
@@ -187,12 +187,12 @@ router.get('/dashboard', getDashboardStats);
 router.get('/products', getAllProducts);
 router.get('/products/:id', getProduct);
 router.post('/products',
-  uploadFields([{ name: 'images', maxCount: 5 }, { name: 'model_3d', maxCount: 1 }]),
+  uploadProductFiles(),
   validateCreateProduct,
   createProduct
 );
 router.put('/products/:id',
-  uploadFields([{ name: 'images', maxCount: 5 }, { name: 'model_3d', maxCount: 1 }]),
+  uploadProductFiles(),
   validateUpdateProduct,
   updateProduct
 );

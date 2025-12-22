@@ -1352,11 +1352,41 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     prisma.product.count({ where })
   ]);
 
-  // Ensure images are properly formatted (handle JSON strings)
-  const formattedProducts = products.map(product => {
-    let images = product.images;
+  // Helper function to get hex code from color name
+  const getColorHexCode = (colorName) => {
+    if (!colorName) return null;
+    
+    const colorMap = {
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'brown': '#8B4513',
+      'tortoiseshell': '#8B4513',
+      'tortoise': '#8B4513',
+      'red': '#FF0000',
+      'burgundy': '#800020',
+      'pink': '#FFC0CB',
+      'rose': '#FF69B4',
+      'green': '#008000',
+      'blue': '#0000FF',
+      'purple': '#800080',
+      'yellow': '#FFFF00',
+      'cream': '#FFFDD0',
+      'grey': '#808080',
+      'gray': '#808080',
+      'silver': '#C0C0C0',
+      'gold': '#FFD700',
+      'navy': '#000080',
+      'beige': '#F5F5DC'
+    };
 
-    // Parse images if it's a JSON string
+    const normalized = colorName.toLowerCase().trim();
+    return colorMap[normalized] || null;
+  };
+
+  // Helper function to format product media
+  const formatProductMedia = (product) => {
+    // Format images - parse JSON string to array
+    let images = product.images;
     if (typeof images === 'string') {
       try {
         images = JSON.parse(images);
@@ -1365,14 +1395,44 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         images = [];
       }
     }
-
-    // Ensure images is an array
     if (!Array.isArray(images)) {
       images = images ? [images] : [];
     }
 
+    // Format color_images - parse JSON string to array
+    let colorImages = product.color_images;
+    if (typeof colorImages === 'string') {
+      try {
+        colorImages = JSON.parse(colorImages);
+      } catch (e) {
+        colorImages = [];
+      }
+    }
+    if (!Array.isArray(colorImages)) {
+      colorImages = colorImages ? [colorImages] : [];
+    }
+
+    // Create colors array for frontend color swatches
+    const colors = colorImages.map((colorData, index) => ({
+      name: colorData.color || `Color ${index + 1}`,
+      value: colorData.color?.toLowerCase() || `color-${index + 1}`,
+      images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
+      primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
+        ? colorData.images[0] 
+        : (colorData.images || null),
+      hexCode: getColorHexCode(colorData.color) || '#000000'
+    }));
+
+    // Determine default/selected color
+    const defaultColor = colors.length > 0 ? colors[0].value : null;
+    const currentImages = defaultColor && colors.length > 0 
+      ? colors[0].images.length > 0 
+        ? colors[0].images 
+        : images
+      : images;
+
     // Get first image URL for easy access in frontend
-    const firstImage = images && images.length > 0 ? images[0] : null;
+    const firstImage = currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null);
 
     return {
       ...product,
@@ -1380,9 +1440,16 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       // Add first image URL for easy access in frontend
       image: firstImage,
       // Also add thumbnail for backward compatibility
-      thumbnail: firstImage
+      thumbnail: firstImage,
+      color_images: colorImages,
+      colors: colors, // Array of color objects for swatches
+      selectedColor: defaultColor, // Default selected color value
+      model_3d_url: product.model_3d_url || null
     };
-  });
+  };
+
+  // Ensure images are properly formatted (handle JSON strings)
+  const formattedProducts = products.map(formatProductMedia);
 
   return success(res, "Products retrieved successfully", {
     products: formattedProducts,
@@ -1438,10 +1505,25 @@ exports.getProduct = asyncHandler(async (req, res) => {
     images = images ? [images] : [];
   }
 
+  // Format color_images - parse JSON string to array
+  let colorImages = product.color_images;
+  if (typeof colorImages === 'string') {
+    try {
+      colorImages = JSON.parse(colorImages);
+    } catch (e) {
+      colorImages = [];
+    }
+  }
+  if (!Array.isArray(colorImages)) {
+    colorImages = colorImages ? [colorImages] : [];
+  }
+
   const formattedProduct = {
     ...product,
     images,
-    image: images && images.length > 0 ? images[0] : null
+    image: images && images.length > 0 ? images[0] : null,
+    color_images: colorImages,
+    model_3d_url: product.model_3d_url || null
   };
 
   return success(res, "Product retrieved successfully", { product: formattedProduct });
@@ -1466,10 +1548,89 @@ exports.createProduct = asyncHandler(async (req, res) => {
           const url = await uploadToS3(file, "products");
           imageUrls.push(url);
         }
-        productData.images = imageUrls;
+        productData.images = imageUrls; // Keep as array, will be normalized later
       } catch (uploadError) {
         console.error("Image upload error:", uploadError);
         return error(res, `Image upload failed: ${uploadError.message}`, 500);
+      }
+    }
+
+    // Handle color-specific image uploads
+    // Expected format: color_images[color_name] = [files]
+    // Or color_images as JSON string in body: [{color: "black", images: ["url1", "url2"]}]
+    // Also handle file uploads with field names like color_images_black, color_images_brown, etc.
+    const hasColorImagesInBody = req.body.color_images;
+    const hasColorImageFiles = req.files && Object.keys(req.files).some(key => key.startsWith('color_images_'));
+    
+    if (hasColorImagesInBody || hasColorImageFiles) {
+      try {
+        let colorImagesData = [];
+        
+        // If color_images is provided in body, parse it
+        if (hasColorImagesInBody) {
+          if (typeof req.body.color_images === 'string') {
+            try {
+              colorImagesData = JSON.parse(req.body.color_images);
+            } catch (e) {
+              console.error("Error parsing color_images JSON:", e);
+              colorImagesData = [];
+            }
+          } else if (Array.isArray(req.body.color_images)) {
+            colorImagesData = req.body.color_images;
+          }
+        }
+
+        // Handle file uploads for color images
+        // Look for files with pattern: color_images_<color_name>
+        const colorImageFiles = {};
+        Object.keys(req.files || {}).forEach(key => {
+          if (key.startsWith('color_images_')) {
+            const colorName = key.replace('color_images_', '');
+            if (!colorImageFiles[colorName]) {
+              colorImageFiles[colorName] = [];
+            }
+            const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
+            files.forEach(file => colorImageFiles[colorName].push(file));
+          }
+        });
+
+        // Upload color-specific images and build color_images structure
+        const colorImagesMap = {};
+        
+        // Process uploaded files
+        for (const [colorName, files] of Object.entries(colorImageFiles)) {
+          const imageUrls = [];
+          for (const file of files) {
+            const url = await uploadToS3(file, `products/colors/${colorName}`);
+            imageUrls.push(url);
+          }
+          colorImagesMap[colorName] = imageUrls;
+        }
+
+        // Merge with existing color_images data from body
+        if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
+          colorImagesData.forEach(item => {
+            if (item.color && item.images) {
+              // If images are URLs, use them; otherwise merge with uploaded files
+              const existingUrls = Array.isArray(item.images) ? item.images : [];
+              const uploadedUrls = colorImagesMap[item.color] || [];
+              colorImagesMap[item.color] = [...existingUrls, ...uploadedUrls];
+            }
+          });
+        }
+
+        // Convert to array format: [{color: "black", images: ["url1", "url2"]}, ...]
+        const colorImagesArray = Object.entries(colorImagesMap).map(([color, images]) => ({
+          color,
+          images: Array.isArray(images) ? images : [images]
+        }));
+
+        if (colorImagesArray.length > 0) {
+          productData.color_images = JSON.stringify(colorImagesArray);
+        }
+      } catch (uploadError) {
+        console.error("Color image upload error:", uploadError);
+        return error(res, `Color image upload failed: ${uploadError.message}`, 500);
       }
     }
 
@@ -1743,6 +1904,29 @@ exports.createProduct = asyncHandler(async (req, res) => {
     productData.images = imagesArray.length > 0 ? JSON.stringify(imagesArray) : null;
     console.log('💾 Saving images to DB:', productData.images ? `${imagesArray.length} image(s)` : 'null');
 
+    // Normalize color_images - similar to images
+    if (productData.color_images !== undefined) {
+      let colorImagesArray = [];
+      if (typeof productData.color_images === "string") {
+        if (productData.color_images.trim() === "") {
+          colorImagesArray = [];
+        } else {
+          try {
+            colorImagesArray = JSON.parse(productData.color_images);
+          } catch (e) {
+            console.error("Error parsing color_images:", e);
+            colorImagesArray = [];
+          }
+        }
+      } else if (Array.isArray(productData.color_images)) {
+        colorImagesArray = productData.color_images;
+      }
+
+      // Convert color_images array to JSON string for database storage
+      productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;
+      console.log('💾 Saving color_images to DB:', productData.color_images ? `${colorImagesArray.length} color(s)` : 'null');
+    }
+
     // Handle variants
     let variantsData = [];
     if (productData.variants) {
@@ -1791,10 +1975,24 @@ exports.createProduct = asyncHandler(async (req, res) => {
       images = images ? [images] : [];
     }
 
+    // Format color_images - parse JSON string to array for response
+    let colorImages = product.color_images;
+    if (typeof colorImages === 'string') {
+      try {
+        colorImages = JSON.parse(colorImages);
+      } catch (e) {
+        colorImages = [];
+      }
+    }
+    if (!Array.isArray(colorImages)) {
+      colorImages = colorImages ? [colorImages] : [];
+    }
+
     const formattedProduct = {
       ...product,
       images,
-      image: images && images.length > 0 ? images[0] : null
+      image: images && images.length > 0 ? images[0] : null,
+      color_images: colorImages
     };
 
     // Create variants separately if any exist
@@ -1841,10 +2039,24 @@ exports.createProduct = asyncHandler(async (req, res) => {
         variantImages = variantImages ? [variantImages] : [];
       }
 
+      // Format color_images for product with variants
+      let variantColorImages = productWithVariants.color_images;
+      if (typeof variantColorImages === 'string') {
+        try {
+          variantColorImages = JSON.parse(variantColorImages);
+        } catch (e) {
+          variantColorImages = [];
+        }
+      }
+      if (!Array.isArray(variantColorImages)) {
+        variantColorImages = variantColorImages ? [variantColorImages] : [];
+      }
+
       const formattedProductWithVariants = {
         ...productWithVariants,
         images: variantImages,
-        image: variantImages && variantImages.length > 0 ? variantImages[0] : null
+        image: variantImages && variantImages.length > 0 ? variantImages[0] : null,
+        color_images: variantColorImages
       };
 
       return success(res, "Product created successfully", { product: formattedProductWithVariants }, 201);
@@ -1893,6 +2105,90 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       imageUrls.push(url);
     }
     productData.images = imageUrls; // Will be converted to JSON string later
+  }
+
+  // Handle color-specific image uploads (same logic as create)
+  if (req.body.color_images || (req.files && Object.keys(req.files).some(key => key.startsWith('color_images_')))) {
+    try {
+      let colorImagesData = [];
+      
+      // Parse existing color_images
+      if (product.color_images) {
+        try {
+          colorImagesData = typeof product.color_images === 'string'
+            ? JSON.parse(product.color_images)
+            : (Array.isArray(product.color_images) ? product.color_images : []);
+        } catch (e) {
+          console.error("Error parsing existing color_images:", e);
+          colorImagesData = [];
+        }
+      }
+
+      // If color_images is provided in body, use it (replaces existing)
+      if (req.body.color_images) {
+        if (typeof req.body.color_images === 'string') {
+          try {
+            colorImagesData = JSON.parse(req.body.color_images);
+          } catch (e) {
+            console.error("Error parsing color_images JSON:", e);
+            colorImagesData = [];
+          }
+        } else if (Array.isArray(req.body.color_images)) {
+          colorImagesData = req.body.color_images;
+        }
+      }
+
+      // Handle file uploads for color images
+      const colorImageFiles = {};
+      Object.keys(req.files || {}).forEach(key => {
+        if (key.startsWith('color_images_')) {
+          const colorName = key.replace('color_images_', '');
+          if (!colorImageFiles[colorName]) {
+            colorImageFiles[colorName] = [];
+          }
+          const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
+          files.forEach(file => colorImageFiles[colorName].push(file));
+        }
+      });
+
+      // Upload color-specific images
+      const colorImagesMap = {};
+      
+      // Start with existing color_images data
+      if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
+        colorImagesData.forEach(item => {
+          if (item.color && item.images) {
+            colorImagesMap[item.color] = Array.isArray(item.images) ? item.images : [item.images];
+          }
+        });
+      }
+
+      // Upload new color images and merge
+      for (const [colorName, files] of Object.entries(colorImageFiles)) {
+        const imageUrls = [];
+        for (const file of files) {
+          const url = await uploadToS3(file, `products/colors/${colorName}`);
+          imageUrls.push(url);
+        }
+        // Merge with existing or create new
+        if (colorImagesMap[colorName]) {
+          colorImagesMap[colorName] = [...colorImagesMap[colorName], ...imageUrls];
+        } else {
+          colorImagesMap[colorName] = imageUrls;
+        }
+      }
+
+      // Convert to array format
+      const colorImagesArray = Object.entries(colorImagesMap).map(([color, images]) => ({
+        color,
+        images: Array.isArray(images) ? images : [images]
+      }));
+
+      productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;
+    } catch (uploadError) {
+      console.error("Color image upload error:", uploadError);
+      return error(res, `Color image upload failed: ${uploadError.message}`, 500);
+    }
   }
 
   // Handle 3D model upload
@@ -2124,6 +2420,29 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     productData.images = imagesArray.length > 0 ? JSON.stringify(imagesArray) : null;
   }
 
+  // Normalize color_images - convert array to JSON string for database storage
+  if (productData.color_images !== undefined) {
+    let colorImagesArray = [];
+
+    if (Array.isArray(productData.color_images)) {
+      colorImagesArray = productData.color_images;
+    } else if (typeof productData.color_images === "string") {
+      if (productData.color_images.trim() === "") {
+        colorImagesArray = [];
+      } else {
+        try {
+          colorImagesArray = JSON.parse(productData.color_images);
+        } catch (e) {
+          console.error("Error parsing color_images:", e);
+          colorImagesArray = [];
+        }
+      }
+    }
+
+    // Convert color_images array to JSON string for database storage
+    productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;
+  }
+
   // Remove non-Prisma fields that might be in the request
   const fieldsToRemove = ['replace_images', 'variants'];
   fieldsToRemove.forEach(field => {
@@ -2189,10 +2508,24 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     images = images ? [images] : [];
   }
 
+  // Format color_images - parse JSON string to array for response
+  let colorImages = updatedProduct.color_images;
+  if (typeof colorImages === 'string') {
+    try {
+      colorImages = JSON.parse(colorImages);
+    } catch (e) {
+      colorImages = [];
+    }
+  }
+  if (!Array.isArray(colorImages)) {
+    colorImages = colorImages ? [colorImages] : [];
+  }
+
   const formattedProduct = {
     ...updatedProduct,
     images,
-    image: images && images.length > 0 ? images[0] : null
+    image: images && images.length > 0 ? images[0] : null,
+    color_images: colorImages
   };
 
   return success(res, "Product updated successfully", {

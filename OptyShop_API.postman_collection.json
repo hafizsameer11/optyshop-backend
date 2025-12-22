@@ -197,7 +197,8 @@
 						"value": "200"
 					  }
 					]
-				  }
+				  },
+				  "description": "Get all active products with pagination and filters.\n\n**Response includes for each product:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Color name (e.g., \"black\", \"brown\")\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display\n- `selectedColor`: Default selected color value (first color or null)\n- Standard product fields (name, price, description, category, etc.)\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 12)\n- `category`: Filter by category slug\n- `subCategory`: Filter by subcategory slug\n- `frameShape`: Filter by frame shape\n- `frameMaterial`: Filter by frame material\n- `lensType`: Filter by lens type\n- `gender`: Filter by gender\n- `minPrice`, `maxPrice`: Price range filter\n- `search`: Search in name, description, SKU\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)\n- `isFeatured`: Filter featured products (true/false)\n\n**Example Product in Response:**\n```json\n{\n  \"id\": 1,\n  \"name\": \"Classic Round Frame\",\n  \"images\": [\"main1.jpg\"],\n  \"image\": \"black1.jpg\",\n  \"colors\": [\n    {\"name\": \"black\", \"value\": \"black\", \"images\": [\"black1.jpg\"], \"primaryImage\": \"black1.jpg\", \"hexCode\": \"#000000\"}\n  ],\n  \"selectedColor\": \"black\",\n  \"model_3d_url\": \"https://s3.../model.glb\",\n  \"price\": 25.99\n}\n```"
 				}
 			  },
 			  {
@@ -287,7 +288,8 @@
 						"value": "8"
 					  }
 					]
-				  }
+				  },
+				  "description": "Get featured products. Each product includes:\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `colors`: Formatted array for color swatches with `name`, `value`, `images`, `primaryImage`, `hexCode`\n- `selectedColor`: Default selected color value\n- `color_images`: Raw array of color-specific images\n- Standard product fields\n\n**Use `colors` array to display color swatches in product cards.**"
 				}
 			  },
 			  {
@@ -325,7 +327,7 @@
 					  "1"
 					]
 				  },
-				  "description": "Get single product by ID. Returns full product details including:\n\n**For Contact Lens Products:**\n- `base_curve_options`: Available base curve options (array) - e.g., [8.70, 8.80, 8.90]\n- `diameter_options`: Available diameter options (array) - e.g., [14.00, 14.20]\n- `powers_range`: Available power range (string or object) - e.g., \"-0.50 to -6.00 in 0.25 steps\"\n- `contact_lens_brand`: Brand/Producer name (e.g., \"Alcon\")\n- `contact_lens_material`: Material (e.g., \"Nelfilcon A\")\n- `contact_lens_color`: Lens color\n- `contact_lens_type`: Product type (e.g., \"Sferica\", \"Toric\")\n- `replacement_frequency`: Replacement frequency (e.g., \"Giornaliera\", \"Settimanale\", \"Mensile\")\n- `water_content`: Water content percentage\n- `can_sleep_with`: Boolean - can sleep with lenses\n- `is_medical_device`: Boolean - is medical device\n- `has_uv_filter`: Boolean - has UV filter\n\n**For Frame Products:**\n- `frameSizes`: Available frame sizes\n- `lensTypes`: Available lens types\n- `lensCoatings`: Available lens coatings\n- Standard product fields (name, price, description, images, etc.)"
+				  "description": "Get single product by ID. Returns full product details including:\n\n**Media Fields:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (e.g., .glb, .gltf) - null if not available\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Color name (e.g., \"black\", \"brown\")\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display (e.g., \"#000000\")\n- `selectedColor`: Default selected color value (first color or null)\n\n**For Contact Lens Products:**\n- `base_curve_options`: Available base curve options (array) - e.g., [8.70, 8.80, 8.90]\n- `diameter_options`: Available diameter options (array) - e.g., [14.00, 14.20]\n- `powers_range`: Available power range (string or object) - e.g., \"-0.50 to -6.00 in 0.25 steps\"\n- `contact_lens_brand`: Brand/Producer name (e.g., \"Alcon\")\n- `contact_lens_material`: Material (e.g., \"Nelfilcon A\")\n- `contact_lens_color`: Lens color\n- `contact_lens_type`: Product type (e.g., \"Sferica\", \"Toric\")\n- `replacement_frequency`: Replacement frequency (e.g., \"Giornaliera\", \"Settimanale\", \"Mensile\")\n- `water_content`: Water content percentage\n- `can_sleep_with`: Boolean - can sleep with lenses\n- `is_medical_device`: Boolean - is medical device\n- `has_uv_filter`: Boolean - has UV filter\n\n**For Frame Products:**\n- `frameSizes`: Available frame sizes\n- `lensTypes`: Available lens types\n- `lensCoatings`: Available lens coatings\n- Standard product fields (name, price, description, etc.)\n\n**Example Response:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"product\": {\n      \"id\": 1,\n      \"name\": \"Classic Round Frame\",\n      \"images\": [\"main1.jpg\", \"main2.jpg\"],\n      \"image\": \"black1.jpg\",\n      \"model_3d_url\": \"https://s3.../model.glb\",\n      \"color_images\": [\n        {\"color\": \"black\", \"images\": [\"black1.jpg\", \"black2.jpg\"]},\n        {\"color\": \"brown\", \"images\": [\"brown1.jpg\"]}\n      ],\n      \"colors\": [\n        {\n          \"name\": \"black\",\n          \"value\": \"black\",\n          \"images\": [\"black1.jpg\", \"black2.jpg\"],\n          \"primaryImage\": \"black1.jpg\",\n          \"hexCode\": \"#000000\"\n        },\n        {\n          \"name\": \"brown\",\n          \"value\": \"brown\",\n          \"images\": [\"brown1.jpg\"],\n          \"primaryImage\": \"brown1.jpg\",\n          \"hexCode\": \"#8B4513\"\n        }\n      ],\n      \"selectedColor\": \"black\",\n      \"price\": 99.99\n    }\n  }\n}\n```\n\n**Frontend Usage:**\n- Use `colors` array to display color swatches\n- Use `hexCode` for swatch background color\n- When user selects a color, find it in `colors` array and use its `images`\n- Use `model_3d_url` for 3D try-on feature"
 				}
 			  },
 			  {
@@ -345,7 +347,7 @@
 					  "classic-round-frame"
 					]
 				  },
-				  "description": "Get single product by slug. Returns full product details including:\n\n**For Contact Lens Products:**\n- `base_curve_options`: Available base curve options (array) - e.g., [8.70, 8.80, 8.90]\n- `diameter_options`: Available diameter options (array) - e.g., [14.00, 14.20]\n- `powers_range`: Available power range (string or object) - e.g., \"-0.50 to -6.00 in 0.25 steps\"\n- `contact_lens_brand`: Brand/Producer name (e.g., \"Alcon\")\n- `contact_lens_material`: Material (e.g., \"Nelfilcon A\")\n- `contact_lens_color`: Lens color\n- `contact_lens_type`: Product type (e.g., \"Sferica\", \"Toric\")\n- `replacement_frequency`: Replacement frequency (e.g., \"Giornaliera\", \"Settimanale\", \"Mensile\")\n- `water_content`: Water content percentage\n- `can_sleep_with`: Boolean - can sleep with lenses\n- `is_medical_device`: Boolean - is medical device\n- `has_uv_filter`: Boolean - has UV filter\n\n**For Frame Products:**\n- `frameSizes`: Available frame sizes\n- `lensTypes`: Available lens types\n- `lensCoatings`: Available lens coatings\n- Standard product fields (name, price, description, images, etc.)"
+				  "description": "Get single product by slug. Returns full product details including:\n\n**Media Fields:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (e.g., .glb, .gltf) - null if not available\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Color name (e.g., \"black\", \"brown\")\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display (e.g., \"#000000\")\n- `selectedColor`: Default selected color value (first color or null)\n\n**For Contact Lens Products:**\n- `base_curve_options`: Available base curve options (array) - e.g., [8.70, 8.80, 8.90]\n- `diameter_options`: Available diameter options (array) - e.g., [14.00, 14.20]\n- `powers_range`: Available power range (string or object) - e.g., \"-0.50 to -6.00 in 0.25 steps\"\n- `contact_lens_brand`: Brand/Producer name (e.g., \"Alcon\")\n- `contact_lens_material`: Material (e.g., \"Nelfilcon A\")\n- `contact_lens_color`: Lens color\n- `contact_lens_type`: Product type (e.g., \"Sferica\", \"Toric\")\n- `replacement_frequency`: Replacement frequency (e.g., \"Giornaliera\", \"Settimanale\", \"Mensile\")\n- `water_content`: Water content percentage\n- `can_sleep_with`: Boolean - can sleep with lenses\n- `is_medical_device`: Boolean - is medical device\n- `has_uv_filter`: Boolean - has UV filter\n\n**For Frame Products:**\n- `frameSizes`: Available frame sizes\n- `lensTypes`: Available lens types\n- `lensCoatings`: Available lens coatings\n- Standard product fields (name, price, description, etc.)\n\n**Example Response:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"product\": {\n      \"id\": 1,\n      \"name\": \"Classic Round Frame\",\n      \"images\": [\"main1.jpg\", \"main2.jpg\"],\n      \"image\": \"black1.jpg\",\n      \"model_3d_url\": \"https://s3.../model.glb\",\n      \"colors\": [\n        {\n          \"name\": \"black\",\n          \"value\": \"black\",\n          \"images\": [\"black1.jpg\", \"black2.jpg\"],\n          \"primaryImage\": \"black1.jpg\",\n          \"hexCode\": \"#000000\"\n        },\n        {\n          \"name\": \"brown\",\n          \"value\": \"brown\",\n          \"images\": [\"brown1.jpg\"],\n          \"primaryImage\": \"brown1.jpg\",\n          \"hexCode\": \"#8B4513\"\n        }\n      ],\n      \"selectedColor\": \"black\",\n      \"price\": 99.99\n    }\n  }\n}\n```\n\n**Frontend Usage:**\n- Use `colors` array to display color swatches\n- Use `hexCode` for swatch background color\n- When user selects a color, find it in `colors` array and use its `images`\n- Use `model_3d_url` for 3D try-on feature"
 				}
 			  },
 			  {
@@ -370,7 +372,8 @@
 						"value": "4"
 					  }
 					]
-				  }
+				  },
+				  "description": "Get related products from the same category. Each product includes:\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color\n- `colors`: Formatted array for color swatches with `name`, `value`, `images`, `primaryImage`, `hexCode`\n- `selectedColor`: Default selected color value\n- `model_3d_url`: URL to 3D model file (null if not available)\n- Standard product fields\n\n**Query Parameters:**\n- `limit`: Number of related products to return (default: 4)"
 				}
 			  },
 			  {
@@ -2947,10 +2950,30 @@
 					  {
 						"key": "images",
 						"type": "file",
-						"src": []
+						"src": [],
+						"description": "Multiple product images (max 5)"
+					  },
+					  {
+						"key": "model_3d",
+						"type": "file",
+						"src": [],
+						"description": "Optional: 3D model file for the product (e.g., .glb, .gltf)"
+					  },
+					  {
+						"key": "color_images",
+						"value": "",
+						"type": "text",
+						"description": "Optional: JSON string for color-to-image mapping. Format: [{\"color\": \"black\", \"images\": [\"url1\", \"url2\"]}, {\"color\": \"brown\", \"images\": [\"url3\"]}]. Alternatively, use file uploads with field names: color_images_black, color_images_brown, etc."
+					  },
+					  {
+						"key": "color_images_black",
+						"type": "file",
+						"src": [],
+						"description": "Optional: Images for black color variant (can add more: color_images_brown, color_images_blue, etc.)"
 					  }
 					]
 				  },
+				  "description": "Create a new product with images, 3D model, and color-specific images.\n\n**3D Model:** Upload a 3D model file using the `model_3d` field.\n\n**Color Images:** Two ways to add color-specific images:\n1. **JSON String:** Send `color_images` as JSON: `[{\"color\": \"black\", \"images\": [\"url1\", \"url2\"]}]`\n2. **File Uploads:** Upload files with field names like `color_images_black`, `color_images_brown`, etc.\n\n**Example with color images:**\n- Field: `color_images_black` → Upload files for black color\n- Field: `color_images_brown` → Upload files for brown color\n- Multiple files per color are supported",
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products",
 					"host": [
@@ -2972,22 +2995,53 @@
 					{
 					  "key": "Authorization",
 					  "value": "Bearer {{admin_token}}"
-					},
-					{
-					  "key": "Content-Type",
-					  "value": "application/json"
 					}
 				  ],
 				  "body": {
-					"mode": "raw",
-					"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"price\": 129.99,\n  \"sub_category_id\": 1\n}",
-					"options": {
-					  "raw": {
-						"language": "json"
+					"mode": "formdata",
+					"formdata": [
+					  {
+						"key": "name",
+						"value": "Updated Product Name",
+						"type": "text"
+					  },
+					  {
+						"key": "price",
+						"value": "129.99",
+						"type": "text"
+					  },
+					  {
+						"key": "sub_category_id",
+						"value": "1",
+						"type": "text"
+					  },
+					  {
+						"key": "images",
+						"type": "file",
+						"src": [],
+						"description": "Optional: New images to add (will be merged with existing)"
+					  },
+					  {
+						"key": "model_3d",
+						"type": "file",
+						"src": [],
+						"description": "Optional: Update 3D model file"
+					  },
+					  {
+						"key": "color_images",
+						"value": "",
+						"type": "text",
+						"description": "Optional: JSON string to replace color images. Format: [{\"color\": \"black\", \"images\": [\"url1\", \"url2\"]}]. Or use file uploads with color_images_{colorName} to add new images."
+					  },
+					  {
+						"key": "color_images_black",
+						"type": "file",
+						"src": [],
+						"description": "Optional: Add new images for black color (will be merged with existing)"
 					  }
-					}
+					]
 				  },
-				  "description": "Update product details.\n\n**3-Level Hierarchy Support:**\n- You can update `sub_category_id` - it must belong to the product's category\n- Products can be assigned to either top-level subcategories or sub-subcategories\n- Use `GET /api/subcategories/by-category/:category_id` to get top-level subcategories\n- Use `GET /api/subcategories/by-parent/:parent_id` to get sub-subcategories for a parent\n- Use `GET /api/products/options` to get all subcategories with hierarchy structure\n\n**Example:**\n```json\n{\n  \"sub_category_id\": 10\n}\n```\nWhere subcategory ID 10 can be either a top-level subcategory or a sub-subcategory.",
+				  "description": "Update product details. Supports both JSON and form-data.\n\n**3-Level Hierarchy Support:**\n- You can update `sub_category_id` - it must belong to the product's category\n- Products can be assigned to either top-level subcategories or sub-subcategories\n- Use `GET /api/subcategories/by-category/:category_id` to get top-level subcategories\n- Use `GET /api/subcategories/by-parent/:parent_id` to get sub-subcategories for a parent\n- Use `GET /api/products/options` to get all subcategories with hierarchy structure\n\n**3D Model:** Upload a new 3D model file using the `model_3d` field.\n\n**Color Images:**\n- Send `color_images` as JSON string to replace all color images\n- Or upload files with `color_images_{colorName}` to add/merge with existing color images\n\n**Example:**\n```json\n{\n  \"sub_category_id\": 10,\n  \"color_images\": \"[{\\\"color\\\": \\\"black\\\", \\\"images\\\": [\\\"url1\\\", \\\"url2\\\"]}]\"\n}\n```\nWhere subcategory ID 10 can be either a top-level subcategory or a sub-subcategory.",
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products/1",
 					"host": [
@@ -3147,7 +3201,8 @@
 						"value": "20"
 					  }
 					]
-				  }
+				  },
+				  "description": "Get all products (admin view - includes inactive products).\n\n**Response includes for each product:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `thumbnail`: First image URL (backward compatibility)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Color name (e.g., \"black\", \"brown\")\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display\n- `selectedColor`: Default selected color value (first color or null)\n- Standard product fields including `is_active`, `is_featured`\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `search`: Search in name, description, SKU\n- `category_id`: Filter by category ID\n- `sub_category_id`: Filter by subcategory ID\n- `is_active`: Filter by active status (true/false)\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)"
 				}
 			  },
 			  {
@@ -3249,7 +3304,8 @@
 					  "products",
 					  "1"
 					]
-				  }
+				  },
+				  "description": "Get single product by ID (admin view - includes inactive products).\n\n**Response includes:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Color name (e.g., \"black\", \"brown\")\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display\n- `selectedColor`: Default selected color value (first color or null)\n- All product fields including variants, frameSizes, lensTypes, lensCoatings\n- `is_active`, `is_featured` status fields\n\n**Frontend can use `colors` array to display color swatches and switch images dynamically.**"
 				}
 			  },
 			  {

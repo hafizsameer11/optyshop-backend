@@ -61,6 +61,130 @@ const parseJsonOption = (value) => {
   }
 };
 
+/**
+ * Helper function to format product images and color_images for frontend display
+ * 
+ * Returns product with:
+ * - images: Array of main product images
+ * - image: First image URL (for easy access)
+ * - color_images: Raw color images array from database
+ * - colors: Formatted array for color swatches [{name, value, images, primaryImage, hexCode}]
+ * - selectedColor: Default selected color value
+ * - model_3d_url: URL to 3D model file
+ * 
+ * Frontend Usage Example:
+ * ```javascript
+ * // Display color swatches
+ * product.colors.map(color => (
+ *   <ColorSwatch 
+ *     key={color.value}
+ *     color={color.hexCode}
+ *     selected={selectedColor === color.value}
+ *     onClick={() => handleColorSelect(color.value)}
+ *   />
+ * ))
+ * 
+ * // Get images for selected color
+ * const selectedColorData = product.colors.find(c => c.value === selectedColor);
+ * const displayImages = selectedColorData?.images || product.images;
+ * 
+ * // Display 3D model
+ * if (product.model_3d_url) {
+ *   <ModelViewer src={product.model_3d_url} />
+ * }
+ * ```
+ */
+const formatProductMedia = (product) => {
+  // Format images - parse JSON string to array
+  let images = product.images;
+  if (typeof images === 'string') {
+    try {
+      images = JSON.parse(images);
+    } catch (e) {
+      images = [];
+    }
+  }
+  if (!Array.isArray(images)) {
+    images = images ? [images] : [];
+  }
+
+  // Format color_images - parse JSON string to array
+  let colorImages = product.color_images;
+  if (typeof colorImages === 'string') {
+    try {
+      colorImages = JSON.parse(colorImages);
+    } catch (e) {
+      colorImages = [];
+    }
+  }
+  if (!Array.isArray(colorImages)) {
+    colorImages = colorImages ? [colorImages] : [];
+  }
+
+  // Create colors array for frontend color swatches
+  // Extract colors from color_images and create a user-friendly structure
+  const colors = colorImages.map((colorData, index) => ({
+    name: colorData.color || `Color ${index + 1}`,
+    value: colorData.color?.toLowerCase() || `color-${index + 1}`,
+    images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
+    primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
+      ? colorData.images[0] 
+      : (colorData.images || null),
+    // Try to extract hex code from color name or use a default
+    hexCode: getColorHexCode(colorData.color) || '#000000'
+  }));
+
+  // Determine default/selected color (first color or use main images)
+  const defaultColor = colors.length > 0 ? colors[0].value : null;
+  const currentImages = defaultColor && colors.length > 0 
+    ? colors[0].images.length > 0 
+      ? colors[0].images 
+      : images
+    : images;
+
+  return {
+    ...product,
+    images,
+    image: currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null),
+    color_images: colorImages,
+    colors: colors, // Array of color objects for swatches: [{name, value, images, primaryImage, hexCode}]
+    selectedColor: defaultColor, // Default selected color value
+    // model_3d_url is already in the product object from Prisma
+    model_3d_url: product.model_3d_url || null
+  };
+};
+
+// Helper function to get hex code from color name
+const getColorHexCode = (colorName) => {
+  if (!colorName) return null;
+  
+  const colorMap = {
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'brown': '#8B4513',
+    'tortoiseshell': '#8B4513',
+    'tortoise': '#8B4513',
+    'red': '#FF0000',
+    'burgundy': '#800020',
+    'pink': '#FFC0CB',
+    'rose': '#FF69B4',
+    'green': '#008000',
+    'blue': '#0000FF',
+    'purple': '#800080',
+    'yellow': '#FFFF00',
+    'cream': '#FFFDD0',
+    'grey': '#808080',
+    'gray': '#808080',
+    'silver': '#C0C0C0',
+    'gold': '#FFD700',
+    'navy': '#000080',
+    'beige': '#F5F5DC'
+  };
+
+  const normalized = colorName.toLowerCase().trim();
+  return colorMap[normalized] || null;
+};
+
 
 // @desc    Get product form options (dropdowns, presets)
 // @route   GET /api/products/options
@@ -321,8 +445,11 @@ exports.getProducts = asyncHandler(async (req, res) => {
     prisma.product.count({ where })
   ]);
 
+  // Format products with images and color_images
+  const formattedProducts = products.map(formatProductMedia);
+
   return success(res, 'Products retrieved successfully', {
-    products,
+    products: formattedProducts,
     pagination: {
       total,
       page: parseInt(page),
@@ -417,9 +544,12 @@ exports.getProduct = asyncHandler(async (req, res) => {
   const diameterOptions = parseJsonOption(product.diameter_options);
   const powersRange = parseJsonOption(product.powers_range);
 
+  // Format product media (images, color_images, model_3d_url)
+  const formattedProduct = formatProductMedia(product);
+
   // Transform lensTypes and lensCoatings to match expected format
   const transformedProduct = {
-    ...product,
+    ...formattedProduct,
     lensTypes: product.lensTypes.map(plt => plt.lensType),
     lensCoatings: product.lensCoatings.map(plc => plc.lensCoating),
     // Contact lens options (parsed from JSON strings)
@@ -546,9 +676,12 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     }
   }
 
+  // Format product media (images, color_images, model_3d_url)
+  const formattedProduct = formatProductMedia(product);
+
   // Transform lensTypes and lensCoatings
   const transformedProduct = {
-    ...product,
+    ...formattedProduct,
     lensTypes: product.lensTypes.map(plt => plt.lensType),
     lensCoatings: product.lensCoatings.map(plc => plc.lensCoating),
     // Contact lens options (parsed from JSON strings)
@@ -591,7 +724,10 @@ exports.getFeaturedProducts = asyncHandler(async (req, res) => {
     orderBy: { created_at: 'desc' }
   });
 
-  return success(res, 'Featured products retrieved successfully', { products });
+  // Format products with images and color_images
+  const formattedProducts = products.map(formatProductMedia);
+
+  return success(res, 'Featured products retrieved successfully', { products: formattedProducts });
 });
 
 // @desc    Get related products
@@ -635,5 +771,8 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
     orderBy: { created_at: 'desc' }
   });
 
-  return success(res, 'Related products retrieved successfully', { products: relatedProducts });
+  // Format products with images and color_images
+  const formattedProducts = relatedProducts.map(formatProductMedia);
+
+  return success(res, 'Related products retrieved successfully', { products: formattedProducts });
 });

@@ -86,6 +86,7 @@ model Product {
   stock_quantity     Int                  @default(0)
   stock_status       StockStatus          @default(in_stock)
   images             String?              @db.LongText
+  color_images       String?              @db.LongText
   frame_shape        FrameShape?
   frame_material     FrameMaterial?
   frame_color        String?              @db.VarChar(100)
