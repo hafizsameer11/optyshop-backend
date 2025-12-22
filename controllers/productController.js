@@ -23,7 +23,7 @@ const FRAME_MATERIALS = [
 ];
 
 const GENDERS = ['men', 'women', 'unisex', 'kids'];
-const LENS_TYPE_ENUMS = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic'];
+const LENS_TYPE_ENUMS = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic', 'plastic', 'glass', 'polycarbonate', 'trivex', 'high_index'];
 const LENS_INDEX_OPTIONS = [1.56, 1.61, 1.67, 1.74];
 
 const fallbackCategories = [

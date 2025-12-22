@@ -308,7 +308,7 @@
 					  "options"
 					]
 				  },
-				  "description": "Get all form options for product creation/editing including categories, subcategories (with 3-level hierarchy), frame shapes, materials, genders, lens types, lens coatings, frame sizes, etc.\n\n**3-Level Hierarchy Structure:**\n- **Category** (e.g., \"Contact lenses\")\n  - **Subcategory** (e.g., \"Giornaliere\" / Daily) - `parent_id: null`\n    - **Sub-subcategory** (e.g., \"Sferiche\" / Spherical) - `parent_id: [Subcategory.id]`\n\n**Response includes:**\n- `categories`: List of all active categories\n- `subcategories`: Flat list of all active subcategories with `parent_id` field\n- `subcategoriesByCategory`: Subcategories grouped by category_id (keys: category IDs, values: arrays of subcategories)\n- `subcategoriesByParent`: Sub-subcategories grouped by parent_id (keys: parent subcategory IDs, values: arrays of sub-subcategories)\n- `topLevelSubcategories`: Only top-level subcategories (where `parent_id` is null)\n- `frameShapes`: Available frame shapes\n- `frameMaterials`: Available frame materials\n- `genders`: Available gender options\n- `lensTypes`: Available lens types with pricing\n- `lensCoatings`: Available lens coatings with pricing\n- `lensIndexOptions`: Available lens index options\n- `frameSizes`: Available frame sizes\n- `lensTypeEnums`: Available lens type enums\n\n**Usage Example:**\n1. Use `topLevelSubcategories` for the first dropdown (e.g., \"Giornaliere\", \"Settimanale\")\n2. When a subcategory is selected, use `subcategoriesByParent[subcategoryId]` to get sub-subcategories (e.g., \"Sferiche\", \"Astigmatismo\")\n3. Products can be assigned to either subcategories or sub-subcategories"
+				  "description": "Get all form options for product creation/editing including categories, subcategories (with 3-level hierarchy), frame shapes, materials, genders, lens types, lens coatings, frame sizes, etc.\n\n**3-Level Hierarchy Structure:**\n- **Category** (e.g., \"Contact lenses\")\n  - **Subcategory** (e.g., \"Giornaliere\" / Daily) - `parent_id: null`\n    - **Sub-subcategory** (e.g., \"Sferiche\" / Spherical) - `parent_id: [Subcategory.id]`\n\n**Response includes:**\n- `categories`: List of all active categories\n- `subcategories`: Flat list of all active subcategories with `parent_id` field\n- `subcategoriesByCategory`: Subcategories grouped by category_id (keys: category IDs, values: arrays of subcategories)\n- `subcategoriesByParent`: Sub-subcategories grouped by parent_id (keys: parent subcategory IDs, values: arrays of sub-subcategories)\n- `topLevelSubcategories`: Only top-level subcategories (where `parent_id` is null)\n- `frameShapes`: Available frame shapes\n- `frameMaterials`: Available frame materials\n- `genders`: Available gender options\n- `lensTypes`: Available lens types with pricing\n- `lensCoatings`: Available lens coatings with pricing\n- `lensIndexOptions`: Available lens index options\n- `frameSizes`: Available frame sizes\n- `lensTypeEnums`: Available lens type enum values: prescription, sunglasses, reading, computer, photochromic, plastic, glass, polycarbonate, trivex, high_index\n\n**Usage Example:**\n1. Use `topLevelSubcategories` for the first dropdown (e.g., \"Giornaliere\", \"Settimanale\")\n2. When a subcategory is selected, use `subcategoriesByParent[subcategoryId]` to get sub-subcategories (e.g., \"Sferiche\", \"Astigmatismo\")\n3. Products can be assigned to either subcategories or sub-subcategories\n4. Use `lensTypeEnums` to populate the lens type dropdown in the product form"
 				}
 			  },
 			  {
@@ -2948,6 +2948,60 @@
 						"type": "text"
 					  },
 					  {
+						"key": "description",
+						"value": "Product description",
+						"type": "text",
+						"description": "Optional: Full product description"
+					  },
+					  {
+						"key": "short_description",
+						"value": "Short product description",
+						"type": "text",
+						"description": "Optional: Short product description (max 500 characters)"
+					  },
+					  {
+						"key": "stock_quantity",
+						"value": "100",
+						"type": "text",
+						"description": "Optional: Stock quantity (default: 0)"
+					  },
+					  {
+						"key": "stock_status",
+						"value": "in_stock",
+						"type": "text",
+						"description": "Optional: Stock status. Valid values: in_stock, out_of_stock, backorder, preorder (default: in_stock)"
+					  },
+					  {
+						"key": "frame_shape",
+						"value": "round",
+						"type": "text",
+						"description": "Optional: Frame shape. Valid values: round, square, rectangle, oval, cat_eye, aviator, wayfarer, browline, geometric"
+					  },
+					  {
+						"key": "frame_material",
+						"value": "plastic",
+						"type": "text",
+						"description": "Optional: Frame material. Valid values: plastic, metal, acetate, titanium, wood, mixed"
+					  },
+					  {
+						"key": "frame_color",
+						"value": "Black",
+						"type": "text",
+						"description": "Optional: Frame color (e.g., Black, Gold, Brown)"
+					  },
+					  {
+						"key": "gender",
+						"value": "unisex",
+						"type": "text",
+						"description": "Optional: Gender. Valid values: men, women, unisex, kids (default: unisex)"
+					  },
+					  {
+						"key": "lens_type",
+						"value": "prescription",
+						"type": "text",
+						"description": "Optional: Lens type. Valid values: prescription, sunglasses, reading, computer, photochromic, plastic, glass, polycarbonate, trivex, high_index"
+					  },
+					  {
 						"key": "images",
 						"type": "file",
 						"src": [],
@@ -2973,7 +3027,7 @@
 					  }
 					]
 				  },
-				  "description": "Create a new product with images, 3D model, and color-specific images.\n\n**3D Model:** Upload a 3D model file using the `model_3d` field.\n\n**Color Images:** Two ways to add color-specific images:\n1. **JSON String:** Send `color_images` as JSON: `[{\"color\": \"black\", \"images\": [\"url1\", \"url2\"]}]`\n2. **File Uploads:** Upload files with field names like `color_images_black`, `color_images_brown`, etc.\n\n**Example with color images:**\n- Field: `color_images_black` → Upload files for black color\n- Field: `color_images_brown` → Upload files for brown color\n- Multiple files per color are supported",
+				  "description": "Create a new product with images, 3D model, and color-specific images.\n\n**Product Information:**\n- `name` (required): Product name\n- `sku` (required): Unique SKU\n- `category_id` (required): Category ID\n- `sub_category_id` (optional): Subcategory ID (can be top-level or sub-subcategory)\n- `price` (required): Product price\n- `description` (optional): Full product description\n- `short_description` (optional): Short description (max 500 chars)\n- `stock_quantity` (optional): Stock quantity (default: 0)\n- `stock_status` (optional): in_stock, out_of_stock, backorder, preorder (default: in_stock)\n\n**Frame Properties:**\n- `frame_shape` (optional): round, square, rectangle, oval, cat_eye, aviator, wayfarer, browline, geometric\n- `frame_material` (optional): plastic, metal, acetate, titanium, wood, mixed\n- `frame_color` (optional): Frame color (e.g., Black, Gold, Brown)\n- `gender` (optional): men, women, unisex, kids (default: unisex)\n\n**Lens Type:** Optional field for lens type. Valid values:\n- `prescription` - Prescription lenses\n- `sunglasses` - Sunglasses\n- `reading` - Reading glasses\n- `computer` - Computer glasses\n- `photochromic` - Photochromic lenses\n- `plastic` - Plastic lenses\n- `glass` - Glass lenses\n- `polycarbonate` - Polycarbonate lenses\n- `trivex` - Trivex lenses\n- `high_index` - High index lenses\n\n**3D Model:** Upload a 3D model file using the `model_3d` field.\n\n**Color Images:** Two ways to add color-specific images:\n1. **JSON String:** Send `color_images` as JSON: `[{\"color\": \"black\", \"images\": [\"url1\", \"url2\"]}]`\n2. **File Uploads:** Upload files with field names like `color_images_black`, `color_images_brown`, etc.\n\n**Example with color images:**\n- Field: `color_images_black` → Upload files for black color\n- Field: `color_images_brown` → Upload files for brown color\n- Multiple files per color are supported",
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products",
 					"host": [
@@ -3011,6 +3065,60 @@
 						"type": "text"
 					  },
 					  {
+						"key": "description",
+						"value": "Updated product description",
+						"type": "text",
+						"description": "Optional: Full product description"
+					  },
+					  {
+						"key": "short_description",
+						"value": "Updated short description",
+						"type": "text",
+						"description": "Optional: Short product description (max 500 characters)"
+					  },
+					  {
+						"key": "stock_quantity",
+						"value": "50",
+						"type": "text",
+						"description": "Optional: Stock quantity"
+					  },
+					  {
+						"key": "stock_status",
+						"value": "in_stock",
+						"type": "text",
+						"description": "Optional: Stock status. Valid values: in_stock, out_of_stock, backorder, preorder"
+					  },
+					  {
+						"key": "frame_shape",
+						"value": "round",
+						"type": "text",
+						"description": "Optional: Frame shape. Valid values: round, square, rectangle, oval, cat_eye, aviator, wayfarer, browline, geometric"
+					  },
+					  {
+						"key": "frame_material",
+						"value": "plastic",
+						"type": "text",
+						"description": "Optional: Frame material. Valid values: plastic, metal, acetate, titanium, wood, mixed"
+					  },
+					  {
+						"key": "frame_color",
+						"value": "Black",
+						"type": "text",
+						"description": "Optional: Frame color (e.g., Black, Gold, Brown)"
+					  },
+					  {
+						"key": "gender",
+						"value": "unisex",
+						"type": "text",
+						"description": "Optional: Gender. Valid values: men, women, unisex, kids"
+					  },
+					  {
+						"key": "lens_type",
+						"value": "sunglasses",
+						"type": "text",
+						"description": "Optional: Lens type. Valid values: prescription, sunglasses, reading, computer, photochromic, plastic, glass, polycarbonate, trivex, high_index"
+					  },
+					  {
 						"key": "sub_category_id",
 						"value": "1",
 						"type": "text"
@@ -3041,7 +3149,7 @@
 					  }
 					]
 				  },
-				  "description": "Update product details. Supports both JSON and form-data.\n\n**3-Level Hierarchy Support:**\n- You can update `sub_category_id` - it must belong to the product's category\n- Products can be assigned to either top-level subcategories or sub-subcategories\n- Use `GET /api/subcategories/by-category/:category_id` to get top-level subcategories\n- Use `GET /api/subcategories/by-parent/:parent_id` to get sub-subcategories for a parent\n- Use `GET /api/products/options` to get all subcategories with hierarchy structure\n\n**3D Model:** Upload a new 3D model file using the `model_3d` field.\n\n**Color Images:**\n- Send `color_images` as JSON string to replace all color images\n- Or upload files with `color_images_{colorName}` to add/merge with existing color images\n\n**Example:**\n```json\n{\n  \"sub_category_id\": 10,\n  \"color_images\": \"[{\\\"color\\\": \\\"black\\\", \\\"images\\\": [\\\"url1\\\", \\\"url2\\\"]}]\"\n}\n```\nWhere subcategory ID 10 can be either a top-level subcategory or a sub-subcategory.",
+				  "description": "Update product details. Supports both JSON and form-data.\n\n**3-Level Hierarchy Support:**\n- You can update `sub_category_id` - it must belong to the product's category\n- Products can be assigned to either top-level subcategories or sub-subcategories\n- Use `GET /api/subcategories/by-category/:category_id` to get top-level subcategories\n- Use `GET /api/subcategories/by-parent/:parent_id` to get sub-subcategories for a parent\n- Use `GET /api/products/options` to get all subcategories with hierarchy structure\n\n**Product Information:**\n- `name` (optional): Product name\n- `price` (optional): Product price\n- `description` (optional): Full product description\n- `short_description` (optional): Short description (max 500 chars)\n- `stock_quantity` (optional): Stock quantity\n- `stock_status` (optional): in_stock, out_of_stock, backorder, preorder\n\n**Frame Properties:**\n- `frame_shape` (optional): round, square, rectangle, oval, cat_eye, aviator, wayfarer, browline, geometric\n- `frame_material` (optional): plastic, metal, acetate, titanium, wood, mixed\n- `frame_color` (optional): Frame color (e.g., Black, Gold, Brown)\n- `gender` (optional): men, women, unisex, kids\n\n**Lens Type:** Optional field to update lens type. Valid values:\n- `prescription` - Prescription lenses\n- `sunglasses` - Sunglasses\n- `reading` - Reading glasses\n- `computer` - Computer glasses\n- `photochromic` - Photochromic lenses\n- `plastic` - Plastic lenses\n- `glass` - Glass lenses\n- `polycarbonate` - Polycarbonate lenses\n- `trivex` - Trivex lenses\n- `high_index` - High index lenses\n\n**3D Model:** Upload a new 3D model file using the `model_3d` field.\n\n**Color Images:**\n- Send `color_images` as JSON string to replace all color images\n- Or upload files with `color_images_{colorName}` to add/merge with existing color images\n\n**Example:**\n```json\n{\n  \"sub_category_id\": 10,\n  \"lens_type\": \"plastic\",\n  \"frame_material\": \"plastic\",\n  \"frame_shape\": \"round\",\n  \"gender\": \"unisex\",\n  \"color_images\": \"[{\\\"color\\\": \\\"black\\\", \\\"images\\\": [\\\"url1\\\", \\\"url2\\\"]}]\"\n}\n```\nWhere subcategory ID 10 can be either a top-level subcategory or a sub-subcategory.",
 				  "url": {
 					"raw": "{{base_url}}/api/admin/products/1",
 					"host": [

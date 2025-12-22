@@ -1860,7 +1860,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
     // Validate and normalize lens_type enum (LensTypeEnum)
     if (productData.lens_type !== undefined && productData.lens_type !== null && productData.lens_type !== '') {
-      const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic'];
+      const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic', 'plastic', 'glass', 'polycarbonate', 'trivex', 'high_index'];
       const lensType = String(productData.lens_type).toLowerCase().trim();
 
       if (!validLensTypes.includes(lensType)) {
@@ -2311,7 +2311,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   // Validate and normalize lens_type enum (LensTypeEnum) if provided
   if (productData.lens_type !== undefined && productData.lens_type !== null && productData.lens_type !== '') {
-    const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic'];
+    const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic', 'plastic', 'glass', 'polycarbonate', 'trivex', 'high_index'];
     const lensType = String(productData.lens_type).toLowerCase().trim();
 
     if (!validLensTypes.includes(lensType)) {

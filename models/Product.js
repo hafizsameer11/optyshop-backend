@@ -80,7 +80,7 @@ const Product = sequelize.define('Product', {
     defaultValue: 'unisex'
   },
   lens_type: {
-    type: DataTypes.ENUM('prescription', 'sunglasses', 'reading', 'computer', 'photochromic'),
+    type: DataTypes.ENUM('prescription', 'sunglasses', 'reading', 'computer', 'photochromic', 'plastic', 'glass', 'polycarbonate', 'trivex', 'high_index'),
     allowNull: true
   },
   lens_index_options: {
