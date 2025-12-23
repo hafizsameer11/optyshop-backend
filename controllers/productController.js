@@ -368,8 +368,8 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
   // Filter by subCategory (including sub-subcategories if it's a parent)
   if (req.query.subCategory) {
-    const subCategoryRecord = await prisma.subCategory.findUnique({ 
-      where: { slug: req.query.subCategory },
+    const subCategoryRecord = await prisma.subCategory.findFirst({ 
+      where: { slug: req.query.subCategory, is_active: true },
       include: {
         children: {
           where: { is_active: true },
