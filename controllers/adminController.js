@@ -643,6 +643,23 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     console.error('   - Error message:', createError.message);
     console.error('   - Create data that failed:', JSON.stringify(createData, null, 2));
     
+    // Check if it's a unique constraint error (P2002) - only for name, slug uniqueness is allowed
+    if (createError.code === 'P2002') {
+      const target = createError.meta?.target;
+      // Only handle name constraint errors, not slug (slug duplicates are allowed)
+      if (Array.isArray(target) && target.includes('name') && !target.includes('slug')) {
+        return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
+      }
+      // If it's a slug constraint error, it means the database migration hasn't been applied yet
+      // Slug duplicates are now allowed, but the database constraint needs to be removed
+      if (Array.isArray(target) && target.includes('slug')) {
+        console.error('⚠️  Database migration required: The slug unique constraint still exists in the database.');
+        console.error('   Run this SQL command: DROP INDEX subcategories_slug_parent_id_key ON subcategories;');
+        console.error('   Or run: npx prisma migrate deploy');
+        return error(res, `Database migration required: The slug unique constraint still exists. Please run the migration to remove it: DROP INDEX subcategories_slug_parent_id_key ON subcategories;`, 500);
+      }
+    }
+    
     // Check if it's a foreign key constraint error
     if (createError.code === 'P2003' || createError.message?.includes('Foreign key constraint')) {
       // Check if it's a parent_id constraint error

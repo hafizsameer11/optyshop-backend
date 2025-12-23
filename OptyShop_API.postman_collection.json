@@ -1724,6 +1724,80 @@
 				}
 			  },
 			  {
+				"name": "Get All Prescription Sun Lenses",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/prescription-sun-lenses",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "prescription-sun-lenses"
+					]
+				  },
+				  "description": "Get all prescription sun lenses organized by category (Polarized, Classic, Blokz® Sunglasses). Returns structured data with finishes (Classic, Mirror, Gradient, Fashion) and colors for each option. Public endpoint for website display."
+				}
+			  },
+			  {
+				"name": "Get Prescription Sun Lens by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/prescription-sun-lenses/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "prescription-sun-lenses",
+					  "1"
+					]
+				  },
+				  "description": "Get a single prescription sun lens option by ID with all its finishes and colors. Public endpoint for website display."
+				}
+			  },
+			  {
+				"name": "Get All Photochromic Lenses",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/photochromic-lenses",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "photochromic-lenses"
+					]
+				  },
+				  "description": "Get all photochromic lenses organized by type (EyeQLenz™ with Zenni ID Guard™, EyeQLenz™, Transitions® GEN S™, Standard, Blokz Photochromic). Returns structured data with colors for each option. Public endpoint for website display."
+				}
+			  },
+			  {
+				"name": "Get Photochromic Lens by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/photochromic-lenses/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "photochromic-lenses",
+					  "1"
+					]
+				  },
+				  "description": "Get a single photochromic lens option by ID with all its colors. Public endpoint for website display."
+				}
+			  },
+			  {
 				"name": "Get Lens Thickness Materials",
 				"request": {
 				  "method": "GET",
@@ -8151,6 +8225,282 @@
 					]
 				  },
 				  "description": "Delete a lens finish. Admin can add, update, and delete lens finishes. Admin only."
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "Prescription Sun Lenses (Admin)",
+			"item": [
+			  {
+				"name": "Get All Prescription Sun Lenses",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/prescription-sun-lenses?page=1&limit=50&type=polarized&isActive=true",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "prescription-sun-lenses"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "50"
+					  },
+					  {
+						"key": "type",
+						"value": "polarized",
+						"description": "Filter by type (polarized, classic, photochromic)",
+						"disabled": true
+					  },
+					  {
+						"key": "isActive",
+						"value": "true",
+						"description": "Filter by active status",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all prescription sun lenses (Polarized, Classic, Blokz® Sunglasses) with pagination and filters. Admin can view, add, update, and delete prescription sun lens options. Admin only."
+				}
+			  },
+			  {
+				"name": "Create Prescription Sun Lens",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Polarized\",\n  \"slug\": \"polarized\",\n  \"type\": \"polarized\",\n  \"description\": \"Reduce glare and see clearly for outdoor activities and driving.\",\n  \"base_price\": 76.95,\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/prescription-sun-lenses",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "prescription-sun-lenses"
+					]
+				  },
+				  "description": "Create a new prescription sun lens option (Polarized, Classic, or Blokz® Sunglasses). After creating, use lens-finishes and lens-colors endpoints to add finishes and colors. Admin only."
+				}
+			  },
+			  {
+				"name": "Update Prescription Sun Lens",
+				"request": {
+				  "method": "PUT",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Polarized\",\n  \"base_price\": 80.00,\n  \"is_active\": true\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/prescription-sun-lenses/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "prescription-sun-lenses",
+					  "1"
+					]
+				  },
+				  "description": "Update an existing prescription sun lens option. Admin only."
+				}
+			  },
+			  {
+				"name": "Delete Prescription Sun Lens",
+				"request": {
+				  "method": "DELETE",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/prescription-sun-lenses/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "prescription-sun-lenses",
+					  "1"
+					]
+				  },
+				  "description": "Delete a prescription sun lens option. Admin only."
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "Photochromic Lenses (Admin)",
+			"item": [
+			  {
+				"name": "Get All Photochromic Lenses",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/photochromic-lenses?page=1&limit=50&isActive=true",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "photochromic-lenses"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "50"
+					  },
+					  {
+						"key": "isActive",
+						"value": "true",
+						"description": "Filter by active status",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all photochromic lenses (EyeQLenz™ with Zenni ID Guard™, EyeQLenz™, Transitions® GEN S™, Standard, Blokz Photochromic) with pagination and filters. Admin can view, add, update, and delete photochromic lens options. Admin only."
+				}
+			  },
+			  {
+				"name": "Create Photochromic Lens",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"EyeQLenz™ with Zenni ID Guard™\",\n  \"slug\": \"eyeqlenz-with-zenni-id-guard\",\n  \"description\": \"4-in-1 lens that reflects infrared light to disrupt unwanted tracking technology, filters blue light & blocks 100% UV. Stays clear indoors and darkens outdoors, with a subtle pink sheen.\",\n  \"base_price\": 0,\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/photochromic-lenses",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "photochromic-lenses"
+					]
+				  },
+				  "description": "Create a new photochromic lens option. After creating, use lens-colors endpoint to add colors directly to the lens option. Admin only."
+				}
+			  },
+			  {
+				"name": "Update Photochromic Lens",
+				"request": {
+				  "method": "PUT",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"EyeQLenz™ with Zenni ID Guard™\",\n  \"base_price\": 10.00,\n  \"is_active\": true\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/photochromic-lenses/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "photochromic-lenses",
+					  "1"
+					]
+				  },
+				  "description": "Update an existing photochromic lens option. Admin only."
+				}
+			  },
+			  {
+				"name": "Delete Photochromic Lens",
+				"request": {
+				  "method": "DELETE",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/photochromic-lenses/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "photochromic-lenses",
+					  "1"
+					]
+				  },
+				  "description": "Delete a photochromic lens option. Admin only."
 				}
 			  }
 			]

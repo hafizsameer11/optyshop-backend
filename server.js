@@ -40,6 +40,8 @@ const paymentRoutes = require('./routes/payments');
 const shippingRoutes = require('./routes/shipping');
 const lensRoutes = require('./routes/lens');
 const customizationRoutes = require('./routes/productCustomization');
+const prescriptionSunLensRoutes = require('./routes/prescriptionSunLenses');
+const photochromicLensRoutes = require('./routes/photochromicLenses');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -154,7 +156,7 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'OptyShop API is running',
     version: '1.0.0',
-    endpoints: {
+      endpoints: {
       auth: '/api/auth',
       products: '/api/products',
       cart: '/api/cart',
@@ -172,7 +174,10 @@ app.get('/api', (req, res) => {
       banners: '/api/banners',
       campaigns: '/api/campaigns',
       faqs: '/api/faqs',
-      pages: '/api/pages'
+      pages: '/api/pages',
+      lens: '/api/lens',
+      prescriptionSunLenses: '/api/prescription-sun-lenses',
+      photochromicLenses: '/api/photochromic-lenses'
     },
     timestamp: new Date().toISOString()
   });
@@ -206,6 +211,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/shipping-methods', shippingRoutes);
 app.use('/api/lens', lensRoutes);
 app.use('/api/customization', customizationRoutes);
+app.use('/api/prescription-sun-lenses', prescriptionSunLensRoutes);
+app.use('/api/photochromic-lenses', photochromicLensRoutes);
 
 // Handle double /api/api paths (fallback for cases where middleware doesn't catch it)
 app.use('/api/api/auth', authRoutes);
@@ -230,6 +237,8 @@ app.use('/api/api/campaigns', campaignRoutes);
 app.use('/api/api/faqs', faqRoutes);
 app.use('/api/api/pages', pageRoutes);
 app.use('/api/api/customization', customizationRoutes);
+app.use('/api/api/prescription-sun-lenses', prescriptionSunLensRoutes);
+app.use('/api/api/photochromic-lenses', photochromicLensRoutes);
 
 // 404 handler
 app.use((req, res) => {

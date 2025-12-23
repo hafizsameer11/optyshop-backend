@@ -169,6 +169,18 @@ const {
   updateLensThicknessOption,
   deleteLensThicknessOption
 } = require('../controllers/lensThicknessController');
+const {
+  getAllPrescriptionSunLenses,
+  createPrescriptionSunLens,
+  updatePrescriptionSunLens,
+  deletePrescriptionSunLens
+} = require('../controllers/prescriptionSunLensController');
+const {
+  getAllPhotochromicLenses,
+  createPhotochromicLens,
+  updatePhotochromicLens,
+  deletePhotochromicLens
+} = require('../controllers/photochromicLensController');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadMultiple, uploadSingle, uploadFields, uploadProductFiles } = require('../middleware/upload');
 const {
@@ -390,6 +402,18 @@ router.get('/lens-thickness-options', getAllLensThicknessOptions);
 router.post('/lens-thickness-options', createLensThicknessOption);
 router.put('/lens-thickness-options/:id', updateLensThicknessOption);
 router.delete('/lens-thickness-options/:id', deleteLensThicknessOption);
+
+// Prescription Sun Lenses
+router.get('/prescription-sun-lenses', getAllPrescriptionSunLenses);
+router.post('/prescription-sun-lenses', createPrescriptionSunLens);
+router.put('/prescription-sun-lenses/:id', updatePrescriptionSunLens);
+router.delete('/prescription-sun-lenses/:id', deletePrescriptionSunLens);
+
+// Photochromic Lenses
+router.get('/photochromic-lenses', getAllPhotochromicLenses);
+router.post('/photochromic-lenses', createPhotochromicLens);
+router.put('/photochromic-lenses/:id', updatePhotochromicLens);
+router.delete('/photochromic-lenses/:id', deletePhotochromicLens);
 
 // Simulation Configs (aliases for frontend compatibility)
 router.get('/configs', getSimulationConfig);
