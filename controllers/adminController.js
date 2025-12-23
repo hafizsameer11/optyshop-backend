@@ -540,10 +540,15 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     finalSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
 
-  // Check if subcategory with same slug exists
-  const existing = await prisma.subCategory.findUnique({ where: { slug: finalSlug } });
-  if (existing) {
-    return error(res, "Subcategory with this slug already exists", 400);
+  // Check if subcategory with same name and parent_id exists (allows duplicates under different parents)
+  const existingByName = await prisma.subCategory.findFirst({ 
+    where: { 
+      name: name,
+      parent_id: parentSubcategoryId 
+    } 
+  });
+  if (existingByName) {
+    return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
   }
 
   let imageUrl = null;
@@ -683,6 +688,18 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
   const data = {};
   if (name) {
     data.name = name;
+    // Check if name is already in use under the same parent (if updating parent_id, check new parent)
+    const currentParentId = parent_id !== undefined ? (parent_id ? parseInt(parent_id) : null) : 
+                            (parent_subcategory_id !== undefined ? (parent_subcategory_id ? parseInt(parent_subcategory_id) : null) : subcategory.parent_id);
+    const existingByName = await prisma.subCategory.findFirst({ 
+      where: { 
+        name: name,
+        parent_id: currentParentId 
+      } 
+    });
+    if (existingByName && existingByName.id !== parseInt(id)) {
+      return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
+    }
   }
 
   // Handle slug update
@@ -694,11 +711,6 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
         return error(res, "Invalid slug provided", 400);
       }
       
-      // Check if slug is already in use
-      const existing = await prisma.subCategory.findUnique({ where: { slug: sanitizedSlug } });
-      if (existing && existing.id !== parseInt(id)) {
-        return error(res, "Slug already in use", 400);
-      }
       data.slug = sanitizedSlug;
     } else if (!newSlug || !newSlug.trim()) {
       // If slug is empty, generate from name
