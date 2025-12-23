@@ -693,6 +693,49 @@
 							}
 						},
 						{
+							"name": "Get Contact Lens Options by Sub-SubCategory ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/subcategories/10/contact-lens-options",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"subcategories",
+										"10",
+										"contact-lens-options"
+									],
+									"query": []
+								},
+								"description": "Get aggregated contact lens options (power, base curve, diameter) for Spherical or Astigmatism/Toric sub-subcategories.\n\n**Supported Sub-SubCategory Types:**\n- **Spherical**: Sub-subcategories with names containing \"spherical\", \"sferiche\", or \"sferica\"\n- **Astigmatism/Toric**: Sub-subcategories with names containing \"astigmatism\", \"astigmatismo\", \"toric\", or \"torica\"\n\n**Response for Spherical Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", \"-9.50\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, 8.90, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"productCount\": 15,\n    \"type\": \"spherical\"\n  }\n}\n```\n\n**Response for Astigmatism/Toric Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"cylinderOptions\": [-0.25, -0.50, -0.75, ..., -6.00],\n    \"axisOptions\": [0, 1, 2, ..., 180],\n    \"productCount\": 15,\n    \"type\": \"astigmatism\"\n  }\n}\n```\n\n**Features:**\n- Automatically detects if sub-subcategory is Spherical or Astigmatism/Toric\n- Aggregates all unique options from all products in the sub-subcategory\n- Returns sorted arrays ready for dropdown menus\n- For Astigmatism: Includes standard cylinder (-0.25 to -6.00) and axis (0-180°) options\n\n**Use Cases:**\n- Populate contact lens parameter forms\n- Build dropdown menus for power, base curve, diameter, cylinder, and axis\n- Validate available options before adding to cart\n\n**Error Cases:**\n- Returns 404 if subcategory not found\n- Returns 400 if subcategory is not a sub-subcategory (no parent_id)\n- Returns 400 if subcategory is not Spherical or Astigmatism/Toric type"
+							}
+						},
+						{
+							"name": "Get Contact Lens Options by Sub-SubCategory Slug",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/subcategories/slug/sferiche/contact-lens-options",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"subcategories",
+										"slug",
+										"sferiche",
+										"contact-lens-options"
+									],
+									"query": []
+								},
+								"description": "Get aggregated contact lens options (power, base curve, diameter) for Spherical or Astigmatism/Toric sub-subcategories by slug.\n\n**Supported Sub-SubCategory Types:**\n- **Spherical**: Sub-subcategories with names containing \"spherical\", \"sferiche\", or \"sferica\"\n- **Astigmatism/Toric**: Sub-subcategories with names containing \"astigmatism\", \"astigmatismo\", \"toric\", or \"torica\"\n\n**Response for Spherical Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", \"-9.50\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, 8.90, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"productCount\": 15,\n    \"type\": \"spherical\"\n  }\n}\n```\n\n**Response for Astigmatism/Toric Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"cylinderOptions\": [-0.25, -0.50, -0.75, ..., -6.00],\n    \"axisOptions\": [0, 1, 2, ..., 180],\n    \"productCount\": 15,\n    \"type\": \"astigmatism\"\n  }\n}\n```\n\n**Features:**\n- Same as ID endpoint but uses slug instead of ID\n- Automatically detects if sub-subcategory is Spherical or Astigmatism/Toric\n- Aggregates all unique options from all products in the sub-subcategory\n- Returns sorted arrays ready for dropdown menus\n- For Astigmatism: Includes standard cylinder (-0.25 to -6.00) and axis (0-180°) options\n\n**Use Cases:**\n- Populate contact lens parameter forms using URL-friendly slugs\n- Build dropdown menus for power, base curve, diameter, cylinder, and axis\n- Validate available options before adding to cart\n\n**Error Cases:**\n- Returns 404 if subcategory not found\n- Returns 400 if subcategory is not a sub-subcategory (no parent_id)\n- Returns 400 if subcategory is not Spherical or Astigmatism/Toric type"
+							}
+						},
+						{
 							"name": "Get Related Categories for SubCategory",
 							"request": {
 								"method": "GET",
