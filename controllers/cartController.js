@@ -99,6 +99,7 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addToCart = asyncHandler(async (req, res) => {
   const { 
     product_id, 
+    configuration_id, // Contact lens configuration ID
     quantity = 1, 
     lens_index, 
     lens_coating, 
@@ -140,24 +141,60 @@ exports.addToCart = asyncHandler(async (req, res) => {
     coupon_code
   } = req.body;
 
-  if (!product_id) {
-    return error(res, 'Product ID is required', 400);
-  }
-
   // Get or create cart
   let cart = await prisma.cart.findUnique({ where: { user_id: req.user.id } });
   if (!cart) {
     cart = await prisma.cart.create({ data: { user_id: req.user.id } });
   }
 
+  let product = null;
+  let finalProductId = product_id;
+  let contactLensConfig = null;
+
+  // Handle contact lens configuration
+  if (configuration_id) {
+    contactLensConfig = await prisma.contactLensConfiguration.findUnique({
+      where: { id: parseInt(configuration_id) },
+      include: {
+        product: true
+      }
+    });
+
+    if (!contactLensConfig) {
+      return error(res, 'Contact lens configuration not found', 404);
+    }
+
+    if (!contactLensConfig.is_active) {
+      return error(res, 'Contact lens configuration is not active', 400);
+    }
+
+    // Use configuration's product_id if available, otherwise use configuration itself
+    if (contactLensConfig.product_id) {
+      finalProductId = contactLensConfig.product_id;
+    } else {
+      // If configuration has no linked product, we need to create a virtual product or use a default
+      // For now, return error asking to link configuration to a product
+      return error(res, 'Contact lens configuration must be linked to a product. Please link it in the admin panel.', 400);
+    }
+  }
+
+  // Validate product_id
+  if (!finalProductId) {
+    return error(res, 'Product ID is required', 400);
+  }
+
   // Check if product exists
-  const product = await prisma.product.findUnique({ where: { id: product_id } });
+  product = await prisma.product.findUnique({ where: { id: finalProductId } });
   if (!product) {
     return error(res, 'Product not found', 404);
   }
 
-  // Check stock
-  if (product.stock_quantity < quantity) {
+  // Check stock - use configuration stock if available, otherwise use product stock
+  const stockQuantity = contactLensConfig && contactLensConfig.stock_quantity !== null 
+    ? contactLensConfig.stock_quantity 
+    : product.stock_quantity;
+  
+  if (stockQuantity < quantity) {
     return error(res, 'Insufficient stock', 400);
   }
 
@@ -165,7 +202,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   const existingItem = await prisma.cartItem.findFirst({
     where: {
       cart_id: cart.id,
-      product_id,
+      product_id: finalProductId,
       lens_index: lens_index || null
     }
   });
@@ -394,7 +431,10 @@ exports.addToCart = asyncHandler(async (req, res) => {
   }
 
   // Calculate unit price including all add-ons
-  let calculatedPrice = parseFloat(product.price);
+  // Use configuration price if available, otherwise use product price
+  let calculatedPrice = contactLensConfig && contactLensConfig.price 
+    ? parseFloat(contactLensConfig.price) 
+    : parseFloat(product.price);
   
   // Add progressive variant price if selected
   if (progressive_variant_id) {
@@ -452,7 +492,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   const cartItem = await prisma.cartItem.create({
     data: {
       cart_id: cart.id,
-      product_id,
+      product_id: finalProductId,
       quantity,
       unit_price: calculatedPrice,
       lens_index: lens_index || null,
