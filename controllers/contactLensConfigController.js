@@ -133,11 +133,6 @@ exports.createContactLensConfig = asyncHandler(async (req, res) => {
 
   // Validate spherical configuration
   if (configuration_type === 'spherical') {
-    // At least one eye must have power
-    if ((!rightPowerArr || rightPowerArr.length === 0) && (!leftPowerArr || leftPowerArr.length === 0)) {
-      return error(res, "At least one eye (right or left) must have power for spherical configurations", 400);
-    }
-
     // If right eye has power, validate required fields
     if (rightPowerArr && rightPowerArr.length > 0) {
       if (!rightBaseCurveArr || rightBaseCurveArr.length === 0 || !rightDiameterArr || rightDiameterArr.length === 0) {
@@ -161,11 +156,6 @@ exports.createContactLensConfig = asyncHandler(async (req, res) => {
 
   // Validate astigmatism configuration
   if (configuration_type === 'astigmatism') {
-    // At least one eye must have power
-    if ((!rightPowerArr || rightPowerArr.length === 0) && (!leftPowerArr || leftPowerArr.length === 0)) {
-      return error(res, "At least one eye (right or left) must have power for astigmatism configurations", 400);
-    }
-
     // If right eye has power, validate required fields
     if (rightPowerArr && rightPowerArr.length > 0) {
       if (!rightBaseCurveArr || rightBaseCurveArr.length === 0 || !rightDiameterArr || rightDiameterArr.length === 0) {

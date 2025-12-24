@@ -550,7 +550,6 @@ const response = await fetch('/api/admin/contact-lens-configs', {
 **Validation Rules:**
 - ✅ `sub_category_id` MUST be a sub-subcategory (must have `parent_id`)
 - ✅ Sub-subcategory name must contain "spherical", "sferiche", or "sferica"
-- ✅ At least one eye (right or left) must have power
 - ✅ If power is provided, base_curve and diameter are required
 - ❌ Cannot include cylinder or axis fields (spherical only)
 
@@ -594,7 +593,6 @@ const response = await fetch('/api/admin/contact-lens-configs', {
 **Validation Rules:**
 - ✅ `sub_category_id` MUST be a sub-subcategory (must have `parent_id`)
 - ✅ Sub-subcategory name must contain "astigmatism", "astigmatismo", "toric", or "torica"
-- ✅ At least one eye (right or left) must have power
 - ✅ If power is provided, base_curve and diameter are required
 - ✅ If cylinder is provided, axis is required
 
@@ -911,7 +909,6 @@ const selectedPowers = Array.from(rightPowerSelect.selectedOptions)
 - Sub-subcategory name must match configuration type:
   - Spherical: name contains "spherical", "sferiche", or "sferica"
   - Astigmatism: name contains "astigmatism", "astigmatismo", "toric", or "torica"
-- At least one eye must have power
 - Base curve and diameter required when power is provided
 - For astigmatism: axis required when cylinder is provided
 
