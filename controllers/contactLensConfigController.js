@@ -361,10 +361,7 @@ exports.createContactLensConfig = asyncHandler(async (req, res) => {
     }
   }
   if (frame_material) {
-    const validMaterials = ['acetate', 'metal', 'tr90', 'titanium', 'wood', 'mixed'];
-    if (validMaterials.includes(frame_material)) {
-      configData.frame_material = frame_material;
-    }
+    configData.frame_material = frame_material.trim();
   }
   if (frame_color) configData.frame_color = frame_color.trim();
   if (gender) {
@@ -1051,11 +1048,10 @@ exports.updateContactLensConfig = asyncHandler(async (req, res) => {
     }
   }
   if (updateData.frame_material !== undefined) {
-    const validMaterials = ['acetate', 'metal', 'tr90', 'titanium', 'wood', 'mixed'];
-    if (validMaterials.includes(updateData.frame_material)) {
-      // Keep the value
-    } else if (updateData.frame_material === null || updateData.frame_material === '') {
+    if (updateData.frame_material === null || updateData.frame_material === '') {
       updateData.frame_material = null;
+    } else {
+      updateData.frame_material = String(updateData.frame_material).trim();
     }
   }
   if (updateData.frame_color !== undefined) updateData.frame_color = updateData.frame_color ? updateData.frame_color.trim() : null;

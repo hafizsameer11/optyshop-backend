@@ -95,9 +95,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Body parser middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parser middleware - Increased limits for file uploads
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // CORS headers for static files (uploads) - Allow ALL origins
 app.use('/uploads', (req, res, next) => {
@@ -265,13 +265,18 @@ const startServer = async () => {
     console.log('📦 Using Prisma ORM');
     console.log('💡 Run migrations with: npx prisma migrate dev');
 
-    // Start server
-    app.listen(PORT, () => {
+    // Start server with no timeout restrictions
+    const server = app.listen(PORT, () => {
       console.log(`🚀 OptyShop Backend server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
       console.log(`🔐 CORS: All origins allowed`);
     });
+
+    // Remove timeout restrictions - allow long-running requests (file uploads, etc.)
+    server.timeout = 0; // 0 = no timeout
+    server.keepAliveTimeout = 0; // 0 = no keep-alive timeout
+    server.headersTimeout = 0; // 0 = no headers timeout
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);

@@ -1875,16 +1875,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
       productData.frame_shape = normalizedShape;
     }
 
-    // Validate and normalize frame_material enum
+    // Normalize frame_material
     if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
-      const validFrameMaterials = ['acetate', 'metal', 'tr90', 'titanium', 'wood', 'mixed'];
-      const frameMaterial = String(productData.frame_material).toLowerCase().trim();
-
-      if (!validFrameMaterials.includes(frameMaterial)) {
-        return error(res, `Invalid frame_material "${productData.frame_material}". Valid values are: ${validFrameMaterials.join(', ')}`, 400);
-      }
-
-      productData.frame_material = frameMaterial;
+      productData.frame_material = String(productData.frame_material).trim();
     }
 
     // Validate and normalize lens_type enum (LensTypeEnum)
@@ -2326,16 +2319,9 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     productData.frame_shape = normalizedShape;
   }
 
-  // Validate and normalize frame_material enum if provided
+  // Normalize frame_material if provided
   if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
-    const validFrameMaterials = ['acetate', 'metal', 'tr90', 'titanium', 'wood', 'mixed'];
-    const frameMaterial = String(productData.frame_material).toLowerCase().trim();
-
-    if (!validFrameMaterials.includes(frameMaterial)) {
-      return error(res, `Invalid frame_material "${productData.frame_material}". Valid values are: ${validFrameMaterials.join(', ')}`, 400);
-    }
-
-    productData.frame_material = frameMaterial;
+    productData.frame_material = String(productData.frame_material).trim();
   }
 
   // Validate and normalize lens_type enum (LensTypeEnum) if provided

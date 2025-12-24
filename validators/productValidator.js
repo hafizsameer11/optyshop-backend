@@ -56,9 +56,7 @@ exports.validateCreateProduct = [
     .isIn(FRAME_SHAPES)
     .withMessage(`Frame shape must be one of: ${FRAME_SHAPES.join(', ')}`),
   body('frame_material')
-    .optional()
-    .isIn(FRAME_MATERIALS)
-    .withMessage(`Frame material must be one of: ${FRAME_MATERIALS.join(', ')}`),
+    .optional(),
   body('lens_type')
     .optional()
     .isIn(LENS_TYPES)
@@ -86,9 +84,7 @@ exports.validateUpdateProduct = [
     .isIn(FRAME_SHAPES)
     .withMessage(`Frame shape must be one of: ${FRAME_SHAPES.join(', ')}`),
   body('frame_material')
-    .optional()
-    .isIn(FRAME_MATERIALS)
-    .withMessage(`Frame material must be one of: ${FRAME_MATERIALS.join(', ')}`),
+    .optional(),
   handleValidationErrors
 ];
 
@@ -107,9 +103,7 @@ exports.validateProductQuery = [
     .isIn(FRAME_SHAPES)
     .withMessage(`Frame shape must be one of: ${FRAME_SHAPES.join(', ')}`),
   query('frameMaterial')
-    .optional()
-    .isIn(FRAME_MATERIALS)
-    .withMessage(`Frame material must be one of: ${FRAME_MATERIALS.join(', ')}`),
+    .optional(),
   query('minPrice')
     .optional()
     .isFloat({ min: 0 })
