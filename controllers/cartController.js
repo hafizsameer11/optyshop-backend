@@ -70,16 +70,7 @@ exports.getCart = asyncHandler(async (req, res) => {
         lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
         customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null,
         prescription_data: item.prescription_data ? JSON.parse(item.prescription_data) : null,
-        treatment_ids: item.treatment_ids ? JSON.parse(item.treatment_ids) : null,
-        // Contact lens fields are already in the correct format (numbers/decimals)
-        contact_lens_right_qty: item.contact_lens_right_qty,
-        contact_lens_right_base_curve: item.contact_lens_right_base_curve ? parseFloat(item.contact_lens_right_base_curve) : null,
-        contact_lens_right_diameter: item.contact_lens_right_diameter ? parseFloat(item.contact_lens_right_diameter) : null,
-        contact_lens_right_power: item.contact_lens_right_power ? parseFloat(item.contact_lens_right_power) : null,
-        contact_lens_left_qty: item.contact_lens_left_qty,
-        contact_lens_left_base_curve: item.contact_lens_left_base_curve ? parseFloat(item.contact_lens_left_base_curve) : null,
-        contact_lens_left_diameter: item.contact_lens_left_diameter ? parseFloat(item.contact_lens_left_diameter) : null,
-        contact_lens_left_power: item.contact_lens_left_power ? parseFloat(item.contact_lens_left_power) : null
+        treatment_ids: item.treatment_ids ? JSON.parse(item.treatment_ids) : null
       };
     });
   }
@@ -99,7 +90,6 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addToCart = asyncHandler(async (req, res) => {
   const { 
     product_id, 
-    configuration_id, // Contact lens configuration ID
     quantity = 1, 
     lens_index, 
     lens_coating, 
@@ -114,15 +104,6 @@ exports.addToCart = asyncHandler(async (req, res) => {
     treatment_ids, // Array of treatment IDs
     photochromic_color_id,
     prescription_sun_color_id,
-    // Contact Lens specific fields
-    contact_lens_right_qty,
-    contact_lens_right_base_curve,
-    contact_lens_right_diameter,
-    contact_lens_right_power,
-    contact_lens_left_qty,
-    contact_lens_left_base_curve,
-    contact_lens_left_diameter,
-    contact_lens_left_power,
     // Shipping information (optional)
     first_name,
     last_name,
@@ -147,52 +128,24 @@ exports.addToCart = asyncHandler(async (req, res) => {
     cart = await prisma.cart.create({ data: { user_id: req.user.id } });
   }
 
-  let product = null;
-  let finalProductId = product_id;
-  let contactLensConfig = null;
-
-  // Handle contact lens configuration
-  if (configuration_id) {
-    contactLensConfig = await prisma.contactLensConfiguration.findUnique({
-      where: { id: parseInt(configuration_id) },
-      include: {
-        product: true
-      }
-    });
-
-    if (!contactLensConfig) {
-      return error(res, 'Contact lens configuration not found', 404);
-    }
-
-    if (!contactLensConfig.is_active) {
-      return error(res, 'Contact lens configuration is not active', 400);
-    }
-
-    // Use configuration's product_id if available, otherwise use configuration itself
-    if (contactLensConfig.product_id) {
-      finalProductId = contactLensConfig.product_id;
-    } else {
-      // If configuration has no linked product, we need to create a virtual product or use a default
-      // For now, return error asking to link configuration to a product
-      return error(res, 'Contact lens configuration must be linked to a product. Please link it in the admin panel.', 400);
-    }
-  }
-
   // Validate product_id
-  if (!finalProductId) {
+  if (!product_id) {
     return error(res, 'Product ID is required', 400);
   }
 
   // Check if product exists
-  product = await prisma.product.findUnique({ where: { id: finalProductId } });
+  const product = await prisma.product.findUnique({ where: { id: product_id } });
   if (!product) {
-    return error(res, 'Product not found', 404);
+    return error(res, `Product not found with ID: ${product_id}`, 404);
   }
 
-  // Check stock - use configuration stock if available, otherwise use product stock
-  const stockQuantity = contactLensConfig && contactLensConfig.stock_quantity !== null 
-    ? contactLensConfig.stock_quantity 
-    : product.stock_quantity;
+  // Check if product is active
+  if (!product.is_active) {
+    return error(res, 'Product is not active', 400);
+  }
+
+  // Check stock
+  const stockQuantity = product.stock_quantity;
   
   if (stockQuantity < quantity) {
     return error(res, 'Insufficient stock', 400);
@@ -202,7 +155,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   const existingItem = await prisma.cartItem.findFirst({
     where: {
       cart_id: cart.id,
-      product_id: finalProductId,
+      product_id: product_id,
       lens_index: lens_index || null
     }
   });
@@ -210,32 +163,6 @@ exports.addToCart = asyncHandler(async (req, res) => {
   if (existingItem) {
     // Prepare update data
     const updateData = { quantity: { increment: quantity } };
-    
-    // Update contact lens fields if provided
-    if (contact_lens_right_qty !== undefined) {
-      updateData.contact_lens_right_qty = contact_lens_right_qty ? parseInt(contact_lens_right_qty) : null;
-    }
-    if (contact_lens_right_base_curve !== undefined) {
-      updateData.contact_lens_right_base_curve = contact_lens_right_base_curve ? parseFloat(contact_lens_right_base_curve) : null;
-    }
-    if (contact_lens_right_diameter !== undefined) {
-      updateData.contact_lens_right_diameter = contact_lens_right_diameter ? parseFloat(contact_lens_right_diameter) : null;
-    }
-    if (contact_lens_right_power !== undefined) {
-      updateData.contact_lens_right_power = contact_lens_right_power ? parseFloat(contact_lens_right_power) : null;
-    }
-    if (contact_lens_left_qty !== undefined) {
-      updateData.contact_lens_left_qty = contact_lens_left_qty ? parseInt(contact_lens_left_qty) : null;
-    }
-    if (contact_lens_left_base_curve !== undefined) {
-      updateData.contact_lens_left_base_curve = contact_lens_left_base_curve ? parseFloat(contact_lens_left_base_curve) : null;
-    }
-    if (contact_lens_left_diameter !== undefined) {
-      updateData.contact_lens_left_diameter = contact_lens_left_diameter ? parseFloat(contact_lens_left_diameter) : null;
-    }
-    if (contact_lens_left_power !== undefined) {
-      updateData.contact_lens_left_power = contact_lens_left_power ? parseFloat(contact_lens_left_power) : null;
-    }
     
     // Update item
     const updatedItem = await prisma.cartItem.update({
@@ -249,14 +176,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
       lens_coatings: updatedItem.lens_coatings ? JSON.parse(updatedItem.lens_coatings) : null,
       customization: updatedItem.customization ? (typeof updatedItem.customization === 'string' ? JSON.parse(updatedItem.customization) : updatedItem.customization) : null,
       prescription_data: updatedItem.prescription_data ? JSON.parse(updatedItem.prescription_data) : null,
-      treatment_ids: updatedItem.treatment_ids ? JSON.parse(updatedItem.treatment_ids) : null,
-      // Contact lens fields
-      contact_lens_right_base_curve: updatedItem.contact_lens_right_base_curve ? parseFloat(updatedItem.contact_lens_right_base_curve) : null,
-      contact_lens_right_diameter: updatedItem.contact_lens_right_diameter ? parseFloat(updatedItem.contact_lens_right_diameter) : null,
-      contact_lens_right_power: updatedItem.contact_lens_right_power ? parseFloat(updatedItem.contact_lens_right_power) : null,
-      contact_lens_left_base_curve: updatedItem.contact_lens_left_base_curve ? parseFloat(updatedItem.contact_lens_left_base_curve) : null,
-      contact_lens_left_diameter: updatedItem.contact_lens_left_diameter ? parseFloat(updatedItem.contact_lens_left_diameter) : null,
-      contact_lens_left_power: updatedItem.contact_lens_left_power ? parseFloat(updatedItem.contact_lens_left_power) : null
+      treatment_ids: updatedItem.treatment_ids ? JSON.parse(updatedItem.treatment_ids) : null
     };
     
     // Apply coupon automatically if provided
@@ -431,10 +351,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   }
 
   // Calculate unit price including all add-ons
-  // Use configuration price if available, otherwise use product price
-  let calculatedPrice = contactLensConfig && contactLensConfig.price 
-    ? parseFloat(contactLensConfig.price) 
-    : parseFloat(product.price);
+  let calculatedPrice = parseFloat(product.price);
   
   // Add progressive variant price if selected
   if (progressive_variant_id) {
@@ -492,7 +409,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   const cartItem = await prisma.cartItem.create({
     data: {
       cart_id: cart.id,
-      product_id: finalProductId,
+      product_id: product_id,
       quantity,
       unit_price: calculatedPrice,
       lens_index: lens_index || null,
@@ -506,16 +423,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
       lens_thickness_option_id: lens_thickness_option_id ? parseInt(lens_thickness_option_id) : null,
       treatment_ids: treatmentIdsValue,
       photochromic_color_id: photochromic_color_id ? parseInt(photochromic_color_id) : null,
-      prescription_sun_color_id: prescription_sun_color_id ? parseInt(prescription_sun_color_id) : null,
-      // Contact Lens specific fields
-      contact_lens_right_qty: contact_lens_right_qty ? parseInt(contact_lens_right_qty) : null,
-      contact_lens_right_base_curve: contact_lens_right_base_curve ? parseFloat(contact_lens_right_base_curve) : null,
-      contact_lens_right_diameter: contact_lens_right_diameter ? parseFloat(contact_lens_right_diameter) : null,
-      contact_lens_right_power: contact_lens_right_power ? parseFloat(contact_lens_right_power) : null,
-      contact_lens_left_qty: contact_lens_left_qty ? parseInt(contact_lens_left_qty) : null,
-      contact_lens_left_base_curve: contact_lens_left_base_curve ? parseFloat(contact_lens_left_base_curve) : null,
-      contact_lens_left_diameter: contact_lens_left_diameter ? parseFloat(contact_lens_left_diameter) : null,
-      contact_lens_left_power: contact_lens_left_power ? parseFloat(contact_lens_left_power) : null
+      prescription_sun_color_id: prescription_sun_color_id ? parseInt(prescription_sun_color_id) : null
     }
   });
 
@@ -637,16 +545,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
 exports.updateCartItem = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { 
-    quantity,
-    // Contact Lens specific fields
-    contact_lens_right_qty,
-    contact_lens_right_base_curve,
-    contact_lens_right_diameter,
-    contact_lens_right_power,
-    contact_lens_left_qty,
-    contact_lens_left_base_curve,
-    contact_lens_left_diameter,
-    contact_lens_left_power
+    quantity
   } = req.body;
 
   // Get user's cart
@@ -684,32 +583,6 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
     updateData.quantity = quantity;
   }
   
-  // Update contact lens fields if provided
-  if (contact_lens_right_qty !== undefined) {
-    updateData.contact_lens_right_qty = contact_lens_right_qty ? parseInt(contact_lens_right_qty) : null;
-  }
-  if (contact_lens_right_base_curve !== undefined) {
-    updateData.contact_lens_right_base_curve = contact_lens_right_base_curve ? parseFloat(contact_lens_right_base_curve) : null;
-  }
-  if (contact_lens_right_diameter !== undefined) {
-    updateData.contact_lens_right_diameter = contact_lens_right_diameter ? parseFloat(contact_lens_right_diameter) : null;
-  }
-  if (contact_lens_right_power !== undefined) {
-    updateData.contact_lens_right_power = contact_lens_right_power ? parseFloat(contact_lens_right_power) : null;
-  }
-  if (contact_lens_left_qty !== undefined) {
-    updateData.contact_lens_left_qty = contact_lens_left_qty ? parseInt(contact_lens_left_qty) : null;
-  }
-  if (contact_lens_left_base_curve !== undefined) {
-    updateData.contact_lens_left_base_curve = contact_lens_left_base_curve ? parseFloat(contact_lens_left_base_curve) : null;
-  }
-  if (contact_lens_left_diameter !== undefined) {
-    updateData.contact_lens_left_diameter = contact_lens_left_diameter ? parseFloat(contact_lens_left_diameter) : null;
-  }
-  if (contact_lens_left_power !== undefined) {
-    updateData.contact_lens_left_power = contact_lens_left_power ? parseFloat(contact_lens_left_power) : null;
-  }
-  
   // Update cart item if there's data to update
   if (Object.keys(updateData).length > 0) {
     const updatedItem = await prisma.cartItem.update({
@@ -723,14 +596,7 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
       lens_coatings: updatedItem.lens_coatings ? JSON.parse(updatedItem.lens_coatings) : null,
       customization: updatedItem.customization ? (typeof updatedItem.customization === 'string' ? JSON.parse(updatedItem.customization) : updatedItem.customization) : null,
       prescription_data: updatedItem.prescription_data ? JSON.parse(updatedItem.prescription_data) : null,
-      treatment_ids: updatedItem.treatment_ids ? JSON.parse(updatedItem.treatment_ids) : null,
-      // Contact lens fields
-      contact_lens_right_base_curve: updatedItem.contact_lens_right_base_curve ? parseFloat(updatedItem.contact_lens_right_base_curve) : null,
-      contact_lens_right_diameter: updatedItem.contact_lens_right_diameter ? parseFloat(updatedItem.contact_lens_right_diameter) : null,
-      contact_lens_right_power: updatedItem.contact_lens_right_power ? parseFloat(updatedItem.contact_lens_right_power) : null,
-      contact_lens_left_base_curve: updatedItem.contact_lens_left_base_curve ? parseFloat(updatedItem.contact_lens_left_base_curve) : null,
-      contact_lens_left_diameter: updatedItem.contact_lens_left_diameter ? parseFloat(updatedItem.contact_lens_left_diameter) : null,
-      contact_lens_left_power: updatedItem.contact_lens_left_power ? parseFloat(updatedItem.contact_lens_left_power) : null
+      treatment_ids: updatedItem.treatment_ids ? JSON.parse(updatedItem.treatment_ids) : null
     };
     
     return success(res, 'Cart item updated', { item: parsedItem });

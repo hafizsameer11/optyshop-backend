@@ -148,13 +148,6 @@ const {
   deleteLensFinish
 } = require('../controllers/lensController');
 const {
-  createContactLensConfig,
-  getContactLensConfigs,
-  getContactLensConfig,
-  updateContactLensConfig,
-  deleteContactLensConfig
-} = require('../controllers/contactLensConfigController');
-const {
   getAllPrescriptionLensTypes,
   createPrescriptionLensType,
   updatePrescriptionLensType,
@@ -410,12 +403,6 @@ router.post('/lens-thickness-options', createLensThicknessOption);
 router.put('/lens-thickness-options/:id', updateLensThicknessOption);
 router.delete('/lens-thickness-options/:id', deleteLensThicknessOption);
 
-// Contact Lens Configurations
-router.get('/contact-lens-configs', getContactLensConfigs);
-router.get('/contact-lens-configs/:id', getContactLensConfig);
-router.post('/contact-lens-configs', uploadProductFiles(), createContactLensConfig);
-router.put('/contact-lens-configs/:id', uploadProductFiles(), updateContactLensConfig);
-router.delete('/contact-lens-configs/:id', deleteContactLensConfig);
 
 // Prescription Sun Lenses
 router.get('/prescription-sun-lenses', getAllPrescriptionSunLenses);
