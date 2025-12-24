@@ -1569,14 +1569,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
     const productData = { ...req.body };
 
-    // Handle image uploads if present
+    // Handle image uploads if present - upload in parallel for better performance
     if (req.files && req.files.images) {
       try {
-        const imageUrls = [];
-        for (const file of req.files.images) {
-          const url = await uploadToS3(file, "products");
-          imageUrls.push(url);
-        }
+        const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
+        const imageUrls = await Promise.all(uploadPromises);
         productData.images = imageUrls; // Keep as array, will be normalized later
       } catch (uploadError) {
         console.error("Image upload error:", uploadError);
@@ -1623,18 +1620,19 @@ exports.createProduct = asyncHandler(async (req, res) => {
           }
         });
 
-        // Upload color-specific images and build color_images structure
+        // Upload color-specific images and build color_images structure - upload in parallel for better performance
         const colorImagesMap = {};
         
-        // Process uploaded files
-        for (const [colorName, files] of Object.entries(colorImageFiles)) {
-          const imageUrls = [];
-          for (const file of files) {
-            const url = await uploadToS3(file, `products/colors/${colorName}`);
-            imageUrls.push(url);
-          }
+        // Process uploaded files in parallel
+        const colorUploadPromises = Object.entries(colorImageFiles).map(async ([colorName, files]) => {
+          const uploadPromises = files.map(file => uploadToS3(file, `products/colors/${colorName}`));
+          const imageUrls = await Promise.all(uploadPromises);
+          return { colorName, imageUrls };
+        });
+        const colorUploadResults = await Promise.all(colorUploadPromises);
+        colorUploadResults.forEach(({ colorName, imageUrls }) => {
           colorImagesMap[colorName] = imageUrls;
-        }
+        });
 
         // Merge with existing color_images data from body
         if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
@@ -1681,39 +1679,24 @@ exports.createProduct = asyncHandler(async (req, res) => {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
-      // Check if slug exists and make it unique if needed
+      // Check if slug exists and make it unique if needed - optimized with findFirst
       let slug = baseSlug;
       let counter = 1;
       while (true) {
-        const existing = await prisma.product.findUnique({
+        const existing = await prisma.product.findFirst({
           where: { slug },
           select: { id: true }
         });
         if (!existing) break;
         slug = `${baseSlug}-${counter}`;
         counter++;
+        // Safety limit to prevent infinite loops
+        if (counter > 1000) {
+          slug = `${baseSlug}-${Date.now()}`;
+          break;
+        }
       }
       productData.slug = slug;
-    } else {
-      // If slug is provided, check if it's unique
-      const existing = await prisma.product.findUnique({
-        where: { slug: productData.slug },
-        select: { id: true }
-      });
-      if (existing) {
-        return error(res, `A product with slug "${productData.slug}" already exists. Please use a different slug.`, 400);
-      }
-    }
-
-    // Check if SKU already exists
-    if (productData.sku) {
-      const existingSku = await prisma.product.findUnique({
-        where: { sku: productData.sku },
-        select: { id: true }
-      });
-      if (existingSku) {
-        return error(res, `A product with SKU "${productData.sku}" already exists. SKU must be unique.`, 400);
-      }
     }
 
     // Convert price to Decimal
@@ -1748,12 +1731,29 @@ exports.createProduct = asyncHandler(async (req, res) => {
       return error(res, "Invalid category ID", 400);
     }
 
-    // Verify category exists
-    const category = await prisma.category.findUnique({
-      where: { id: productData.category_id },
-    });
+    // Check category, slug, and SKU in parallel for better performance
+    const [category, existingSlug, existingSku] = await Promise.all([
+      prisma.category.findUnique({
+        where: { id: productData.category_id },
+      }),
+      productData.slug ? prisma.product.findFirst({
+        where: { slug: productData.slug },
+        select: { id: true }
+      }) : Promise.resolve(null),
+      productData.sku ? prisma.product.findFirst({
+        where: { sku: productData.sku },
+        select: { id: true }
+      }) : Promise.resolve(null)
+    ]);
+
     if (!category) {
       return error(res, `Category with ID ${productData.category_id} not found`, 404);
+    }
+    if (existingSlug) {
+      return error(res, `A product with slug "${productData.slug}" already exists. Please use a different slug.`, 400);
+    }
+    if (existingSku) {
+      return error(res, `A product with SKU "${productData.sku}" already exists. SKU must be unique.`, 400);
     }
 
     // Validate sub_category_id if provided
@@ -2120,12 +2120,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // Upload new images and add to existing
+    // Upload new images and add to existing - upload in parallel for better performance
     const imageUrls = [...existingImages];
-    for (const file of req.files.images) {
-      const url = await uploadToS3(file, "products");
-      imageUrls.push(url);
-    }
+    const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
+    const newImageUrls = await Promise.all(uploadPromises);
+    imageUrls.push(...newImageUrls);
     productData.images = imageUrls; // Will be converted to JSON string later
   }
 
@@ -2185,20 +2184,21 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         });
       }
 
-      // Upload new color images and merge
-      for (const [colorName, files] of Object.entries(colorImageFiles)) {
-        const imageUrls = [];
-        for (const file of files) {
-          const url = await uploadToS3(file, `products/colors/${colorName}`);
-          imageUrls.push(url);
-        }
+      // Upload new color images and merge - upload in parallel for better performance
+      const colorUploadPromises = Object.entries(colorImageFiles).map(async ([colorName, files]) => {
+        const uploadPromises = files.map(file => uploadToS3(file, `products/colors/${colorName}`));
+        const imageUrls = await Promise.all(uploadPromises);
+        return { colorName, imageUrls };
+      });
+      const colorUploadResults = await Promise.all(colorUploadPromises);
+      colorUploadResults.forEach(({ colorName, imageUrls }) => {
         // Merge with existing or create new
         if (colorImagesMap[colorName]) {
           colorImagesMap[colorName] = [...colorImagesMap[colorName], ...imageUrls];
         } else {
           colorImagesMap[colorName] = imageUrls;
         }
-      }
+      });
 
       // Convert to array format
       const colorImagesArray = Object.entries(colorImagesMap).map(([color, images]) => ({
