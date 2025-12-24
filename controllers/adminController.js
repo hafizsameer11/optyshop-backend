@@ -1875,9 +1875,46 @@ exports.createProduct = asyncHandler(async (req, res) => {
       productData.frame_shape = normalizedShape;
     }
 
-    // Normalize frame_material
+    // Normalize frame_material - handle array format from frontend, store as JSON string
     if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
-      productData.frame_material = String(productData.frame_material).trim();
+      let frameMaterial = productData.frame_material;
+      
+      // Handle JSON array string like "[\"acetate\"]" or "[\"acetate\", \"metal\"]"
+      if (typeof frameMaterial === 'string' && frameMaterial.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(frameMaterial);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Store the array as JSON string to preserve multiple selections
+            productData.frame_material = JSON.stringify(parsed);
+            // If only one value, store it as a simple string
+            if (parsed.length === 1) {
+              productData.frame_material = String(parsed[0]).trim();
+            } else {
+              productData.frame_material = JSON.stringify(parsed);
+            }
+          } else {
+            productData.frame_material = null;
+          }
+        } catch (e) {
+          // If parsing fails, use the string as-is
+          productData.frame_material = String(frameMaterial).trim();
+        }
+      } else if (Array.isArray(frameMaterial) && frameMaterial.length > 0) {
+        // If it's an actual array, store as JSON string if multiple, or string if single
+        if (frameMaterial.length === 1) {
+          productData.frame_material = String(frameMaterial[0]).trim();
+        } else {
+          productData.frame_material = JSON.stringify(frameMaterial);
+        }
+      } else {
+        // Single value - store as string
+        productData.frame_material = String(frameMaterial).trim();
+      }
+      
+      // If empty after processing, set to null
+      if (productData.frame_material === '') {
+        productData.frame_material = null;
+      }
     }
 
     // Validate and normalize lens_type enum (LensTypeEnum)
@@ -2319,9 +2356,44 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     productData.frame_shape = normalizedShape;
   }
 
-  // Normalize frame_material if provided
+  // Normalize frame_material if provided - handle array format from frontend, store as JSON string
   if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
-    productData.frame_material = String(productData.frame_material).trim();
+    let frameMaterial = productData.frame_material;
+    
+    // Handle JSON array string like "[\"acetate\"]" or "[\"acetate\", \"metal\"]"
+    if (typeof frameMaterial === 'string' && frameMaterial.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(frameMaterial);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Store the array as JSON string to preserve multiple selections
+          if (parsed.length === 1) {
+            productData.frame_material = String(parsed[0]).trim();
+          } else {
+            productData.frame_material = JSON.stringify(parsed);
+          }
+        } else {
+          productData.frame_material = null;
+        }
+      } catch (e) {
+        // If parsing fails, use the string as-is
+        productData.frame_material = String(frameMaterial).trim();
+      }
+    } else if (Array.isArray(frameMaterial) && frameMaterial.length > 0) {
+      // If it's an actual array, store as JSON string if multiple, or string if single
+      if (frameMaterial.length === 1) {
+        productData.frame_material = String(frameMaterial[0]).trim();
+      } else {
+        productData.frame_material = JSON.stringify(frameMaterial);
+      }
+    } else {
+      // Single value - store as string
+      productData.frame_material = String(frameMaterial).trim();
+    }
+    
+    // If empty after processing, set to null
+    if (productData.frame_material === '') {
+      productData.frame_material = null;
+    }
   }
 
   // Validate and normalize lens_type enum (LensTypeEnum) if provided
