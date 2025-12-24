@@ -415,6 +415,51 @@
 				  },
 				  "description": "Get all prescription lens types (Distance Vision, Near Vision, Progressive) with their variants and colors."
 				}
+			  },
+			  {
+				"name": "Get Contact Lens Configurations",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/products/contact-lens-configs?product_id=&category_id=&sub_category_id=&configuration_type=",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "products",
+					  "contact-lens-configs"
+					],
+					"query": [
+					  {
+						"key": "product_id",
+						"value": "",
+						"description": "Get configurations for a specific product",
+						"disabled": true
+					  },
+					  {
+						"key": "category_id",
+						"value": "",
+						"description": "Get configurations for a category",
+						"disabled": true
+					  },
+					  {
+						"key": "sub_category_id",
+						"value": "",
+						"description": "Get configurations for a sub-subcategory",
+						"disabled": true
+					  },
+					  {
+						"key": "configuration_type",
+						"value": "",
+						"description": "Filter by type: spherical or astigmatism",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get contact lens configurations for frontend dropdowns. Returns only active configurations with all product fields.\n\n**Query Parameters:**\n- `product_id`: Get configurations linked to a specific product\n- `category_id`: Get configurations linked to a category\n- `sub_category_id`: Get configurations linked to a sub-subcategory (must be a sub-subcategory with parent_id)\n- At least one of the above must be provided\n- `configuration_type`: Optional filter by type (`spherical` or `astigmatism`)\n\n**Response:**\nReturns array of configurations with ALL fields:\n- **Product Fields**: name, slug, sku, description, short_description, price, compare_at_price, cost_price, stock_quantity, stock_status, images, color_images, frame_shape, frame_material, frame_color, gender, lens_type\n- **Category Relationships**: category_id, sub_category_id, product_id\n- **Configuration Type**: `configuration_type` (\"spherical\" or \"astigmatism\")\n- **Display**: `display_name` (name to show in dropdown)\n- **Parameter Fields**:\n  - For **Spherical**: Right and left eye parameters (Qty, Base Curve, Diameter, Power) - NO cylinder or axis\n  - For **Astigmatism**: Right and left eye parameters (Qty, Base Curve, Diameter, Power, Cylinder, Axis)\n\n**Use Cases:**\n- Populate dropdown menus for contact lens selection\n- Show configuration forms based on selected configuration\n- Display available options for a product, category, or sub-subcategory\n- Show product details (price, images, stock) for each configuration\n\n**Example Usage:**\n- Get all configurations for a product: `?product_id=5`\n- Get configurations for a category: `?category_id=3`\n- Get spherical configurations for a sub-subcategory: `?sub_category_id=10&configuration_type=spherical`\n- Get astigmatism configurations: `?sub_category_id=10&configuration_type=astigmatism`\n\n**Frontend Integration:**\n1. Fetch configurations when product/category/subcategory is selected\n2. Display configurations as dropdown options (show `display_name` and `price`)\n3. When user selects a configuration:\n   - Show product details (images, price, description)\n   - If `spherical`: Show parameter form with Qty, Base Curve, Diameter, Power fields (for both eyes)\n   - If `astigmatism`: Show parameter form with Qty, Base Curve, Diameter, Power, Cylinder, Axis fields (for both eyes)"
+				}
 			  }
 			]
 		  },
@@ -8059,6 +8104,216 @@
 					]
 				  },
 				  "description": "Delete a lens thickness option. Admin only."
+				}
+			  }
+			]
+		  },
+		  {
+			"name": "Contact Lens Configurations (Admin)",
+			"item": [
+			  {
+				"name": "Get All Contact Lens Configurations",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/contact-lens-configs?page=1&limit=50&product_id=&sub_category_id=&configuration_type=&is_active=true",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "contact-lens-configs"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1"
+					  },
+					  {
+						"key": "limit",
+						"value": "50"
+					  },
+					  {
+						"key": "product_id",
+						"value": "",
+						"description": "Filter by product ID",
+						"disabled": true
+					  },
+					  {
+						"key": "sub_category_id",
+						"value": "",
+						"description": "Filter by subcategory ID (must be a sub-subcategory)",
+						"disabled": true
+					  },
+					  {
+						"key": "configuration_type",
+						"value": "",
+						"description": "Filter by type: spherical or astigmatism",
+						"disabled": true
+					  },
+					  {
+						"key": "is_active",
+						"value": "true",
+						"description": "Filter by active status",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all contact lens configurations with pagination and filters.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `product_id`: Filter by product ID\n- `category_id`: Filter by category ID\n- `sub_category_id`: Filter by subcategory ID (must be a sub-subcategory)\n- `configuration_type`: Filter by type (`spherical` or `astigmatism`)\n- `is_active`: Filter by active status (true/false)\n- `search`: Search in name, display_name, sku, or description\n\n**Response includes:**\n- `configurations`: Array of configuration objects with all product fields (name, slug, sku, price, images, etc.)\n- `pagination`: Pagination metadata\n\n**Configuration Types:**\n- **Spherical**: Contains right and left eye parameters (Qty, Base Curve, Diameter, Power) - NO cylinder or axis\n- **Astigmatism**: Contains right and left eye parameters (Qty, Base Curve, Diameter, Power, Cylinder, Axis)\n\n**All configurations include:**\n- Product fields: name, slug, sku, description, price, stock, images, etc.\n- Category relationships: category_id, sub_category_id, product_id\n- Parameter fields: right/left eye specifications"
+				}
+			  },
+			  {
+				"name": "Get Contact Lens Configuration by ID",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/contact-lens-configs/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "contact-lens-configs",
+					  "1"
+					]
+				  },
+				  "description": "Get a single contact lens configuration by ID. Returns full configuration details including product and subcategory information."
+				}
+			  },
+			  {
+				"name": "Create Spherical Configuration",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Spherical Contact Lens Configuration\",\n  \"category_id\": 3,\n  \"sub_category_id\": 10,\n  \"configuration_type\": \"spherical\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.70,\n  \"right_diameter\": 14.00,\n  \"right_power\": -1.00,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.70,\n  \"left_diameter\": 14.00,\n  \"left_power\": -1.25,\n  \"display_name\": \"Spherical -1.00/-1.25\",\n  \"price\": 29.99,\n  \"compare_at_price\": 39.99,\n  \"stock_quantity\": 100,\n  \"stock_status\": \"in_stock\",\n  \"description\": \"Spherical contact lens configuration\",\n  \"short_description\": \"Daily spherical lenses\",\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/contact-lens-configs",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "contact-lens-configs"
+					]
+				  },
+				  "description": "Create a new spherical contact lens configuration with full product fields.\n\n**Required Fields:**\n- `name`: Configuration name (required)\n- `configuration_type`: Must be `\"spherical\"`\n- `display_name`: Name to show in dropdown (required)\n- At least one of `category_id`, `sub_category_id`, or `product_id` must be provided\n- At least one eye (right or left) must have power\n\n**Product Fields (Optional):**\n- `slug`: URL-friendly slug (auto-generated from name if not provided)\n- `sku`: Stock keeping unit (optional, must be unique)\n- `description`: Full description\n- `short_description`: Short description (max 500 chars)\n- `price`: Price\n- `compare_at_price`: Original/compare price\n- `cost_price`: Wholesale cost\n- `stock_quantity`: Stock quantity (default: 0)\n- `stock_status`: in_stock, out_of_stock, backorder (default: in_stock)\n- `frame_shape`: round, square, oval, cat_eye, aviator, rectangle, wayfarer, geometric\n- `frame_material`: acetate, metal, tr90, titanium, wood, mixed\n- `frame_color`: Frame color\n- `gender`: men, women, unisex, kids (default: unisex)\n- `lens_type`: prescription, sunglasses, reading, computer, photochromic, plastic, glass, polycarbonate, trivex, high_index\n\n**Image Uploads:**\n- `images`: Multiple image files (field name: `images`)\n- `color_images_{colorName}`: Color-specific images (e.g., `color_images_black`, `color_images_brown`)\n\n**Category Relationships:**\n- `category_id`: Link to category\n- `sub_category_id`: Link to sub-subcategory (must have a parent)\n- `product_id`: Optional link to a product\n\n**Right Eye Fields (if right_power is provided):**\n- `right_qty`: Quantity (default: 1)\n- `right_base_curve`: Base curve (B.C) - e.g., 8.70 (required if right_power)\n- `right_diameter`: Diameter (DIA) - e.g., 14.00 (required if right_power)\n- `right_power`: Power (PWR) - e.g., -1.00 (required)\n\n**Left Eye Fields (if left_power is provided):**\n- `left_qty`: Quantity (default: 1)\n- `left_base_curve`: Base curve (B.C) - e.g., 8.70 (required if left_power)\n- `left_diameter`: Diameter (DIA) - e.g., 14.00 (required if left_power)\n- `left_power`: Power (PWR) - e.g., -1.25 (required)\n\n**Note:** Spherical configurations do NOT include cylinder or axis fields. Use astigmatism type for those.\n\n**Optional Fields:**\n- `is_active`: Active status (default: true)\n- `sort_order`: Sort order (default: 0)\n- `spherical_lens_type`: Optional lens type name (e.g., \"Daily\", \"Monthly\")\n\n**Example with all fields:**\n```json\n{\n  \"name\": \"Spherical Contact Lens Configuration\",\n  \"category_id\": 3,\n  \"sub_category_id\": 10,\n  \"configuration_type\": \"spherical\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.70,\n  \"right_diameter\": 14.00,\n  \"right_power\": -1.00,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.70,\n  \"left_diameter\": 14.00,\n  \"left_power\": -1.25,\n  \"display_name\": \"Spherical -1.00/-1.25\",\n  \"price\": 29.99,\n  \"compare_at_price\": 39.99,\n  \"stock_quantity\": 100,\n  \"stock_status\": \"in_stock\",\n  \"description\": \"Spherical contact lens configuration\",\n  \"short_description\": \"Daily spherical lenses\"\n}\n```\n\n**Note:** `sub_category_id` must be a sub-subcategory (must have a parent)."
+				}
+			  },
+			  {
+				"name": "Create Astigmatism Configuration",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Astigmatism Contact Lens Configuration\",\n  \"category_id\": 3,\n  \"sub_category_id\": 11,\n  \"configuration_type\": \"astigmatism\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.70,\n  \"right_diameter\": 14.00,\n  \"right_power\": -2.00,\n  \"right_cylinder\": -0.50,\n  \"right_axis\": 90,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.70,\n  \"left_diameter\": 14.00,\n  \"left_power\": -2.00,\n  \"left_cylinder\": -0.50,\n  \"left_axis\": 90,\n  \"display_name\": \"Astigmatism -2.00/-0.50\",\n  \"price\": 39.99,\n  \"compare_at_price\": 49.99,\n  \"stock_quantity\": 100,\n  \"stock_status\": \"in_stock\",\n  \"description\": \"Astigmatism contact lens configuration\",\n  \"short_description\": \"Toric lenses for astigmatism\",\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/contact-lens-configs",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "contact-lens-configs"
+					]
+				  },
+				  "description": "Create a new astigmatism contact lens configuration with full product fields.\n\n**Required Fields:**\n- `name`: Configuration name (required)\n- `configuration_type`: Must be `\"astigmatism\"`\n- `display_name`: Name to show in dropdown (required)\n- At least one of `category_id`, `sub_category_id`, or `product_id` must be provided\n- At least one eye (right or left) must have power\n\n**Product Fields (Optional):**\n- `slug`: URL-friendly slug (auto-generated from name if not provided)\n- `sku`: Stock keeping unit (optional, must be unique)\n- `description`: Full description\n- `short_description`: Short description (max 500 chars)\n- `price`: Price\n- `compare_at_price`: Original/compare price\n- `cost_price`: Wholesale cost\n- `stock_quantity`: Stock quantity (default: 0)\n- `stock_status`: in_stock, out_of_stock, backorder (default: in_stock)\n- `frame_shape`: round, square, oval, cat_eye, aviator, rectangle, wayfarer, geometric\n- `frame_material`: acetate, metal, tr90, titanium, wood, mixed\n- `frame_color`: Frame color\n- `gender`: men, women, unisex, kids (default: unisex)\n- `lens_type`: prescription, sunglasses, reading, computer, photochromic, plastic, glass, polycarbonate, trivex, high_index\n\n**Image Uploads:**\n- `images`: Multiple image files (field name: `images`)\n- `color_images_{colorName}`: Color-specific images (e.g., `color_images_black`, `color_images_brown`)\n\n**Category Relationships:**\n- `category_id`: Link to category\n- `sub_category_id`: Link to sub-subcategory (must have a parent)\n- `product_id`: Optional link to a product\n\n**Right Eye Fields (if right_power is provided):**\n- `right_qty`: Quantity (default: 1)\n- `right_base_curve`: Base curve (B.C) - e.g., 8.70 (required if right_power)\n- `right_diameter`: Diameter (DIA) - e.g., 14.00 (required if right_power)\n- `right_power`: Power (PWR) - e.g., -2.00 (required)\n- `right_cylinder`: Cylinder (CYL) - e.g., -0.50 (optional)\n- `right_axis`: Axis (AX) - e.g., 90 (required if right_cylinder is provided)\n\n**Left Eye Fields (if left_power is provided):**\n- `left_qty`: Quantity (default: 1)\n- `left_base_curve`: Base curve (B.C) - e.g., 8.70 (required if left_power)\n- `left_diameter`: Diameter (DIA) - e.g., 14.00 (required if left_power)\n- `left_power`: Power (PWR) - e.g., -2.00 (required)\n- `left_cylinder`: Cylinder (CYL) - e.g., -0.50 (optional)\n- `left_axis`: Axis (AX) - e.g., 90 (required if left_cylinder is provided)\n\n**Optional Fields:**\n- `is_active`: Active status (default: true)\n- `sort_order`: Sort order (default: 0)\n\n**Example with all fields:**\n```json\n{\n  \"name\": \"Astigmatism Contact Lens Configuration\",\n  \"category_id\": 3,\n  \"sub_category_id\": 11,\n  \"configuration_type\": \"astigmatism\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.70,\n  \"right_diameter\": 14.00,\n  \"right_power\": -2.00,\n  \"right_cylinder\": -0.50,\n  \"right_axis\": 90,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.70,\n  \"left_diameter\": 14.00,\n  \"left_power\": -2.00,\n  \"left_cylinder\": -0.50,\n  \"left_axis\": 90,\n  \"display_name\": \"Astigmatism -2.00/-0.50\",\n  \"price\": 39.99,\n  \"compare_at_price\": 49.99,\n  \"stock_quantity\": 100,\n  \"stock_status\": \"in_stock\",\n  \"description\": \"Astigmatism contact lens configuration\",\n  \"short_description\": \"Toric lenses for astigmatism\"\n}\n```"
+				}
+			  },
+			  {
+				"name": "Update Contact Lens Configuration",
+				"request": {
+				  "method": "PUT",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"display_name\": \"Updated Configuration Name\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/admin/contact-lens-configs/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "contact-lens-configs",
+					  "1"
+					]
+				  },
+				  "description": "Update a contact lens configuration. You can update any field.\n\n**For Spherical Configurations:**\n- If power is provided, base_curve and diameter must also be provided\n- Cylinder and axis fields are not allowed (will be cleared if provided)\n\n**For Astigmatism Configurations:**\n- If power is provided, base_curve and diameter must also be provided\n- If cylinder is provided, axis must also be provided"
+				}
+			  },
+			  {
+				"name": "Delete Contact Lens Configuration",
+				"request": {
+				  "method": "DELETE",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/admin/contact-lens-configs/1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "admin",
+					  "contact-lens-configs",
+					  "1"
+					]
+				  },
+				  "description": "Delete a contact lens configuration. This action cannot be undone."
 				}
 			  }
 			]

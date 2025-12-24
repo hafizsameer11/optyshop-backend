@@ -22,6 +22,8 @@ const storage = multer.diskStorage({
       } else {
         folder = 'products';
       }
+    } else if (route.includes('/contact-lens-configs') || route.includes('/admin/contact-lens-configs')) {
+      folder = 'contact-lens-configs';
     } else if (route.includes('/subcategories') || route.includes('/admin/subcategories')) {
       folder = 'subcategories';
     } else if (route.includes('/cms') || route.includes('/banners') || route.includes('/admin/banners')) {

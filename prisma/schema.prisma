@@ -46,6 +46,7 @@ model Category {
   updated_at  DateTime  @updatedAt
   products    Product[]
   subcategories SubCategory[]
+  contactLensConfigs ContactLensConfiguration[]
 
   @@map("categories")
 }
@@ -66,6 +67,7 @@ model SubCategory {
   parent      SubCategory? @relation("SubCategoryHierarchy", fields: [parent_id], references: [id], onDelete: SetNull)
   children    SubCategory[] @relation("SubCategoryHierarchy")
   products    Product[]
+  contactLensConfigs ContactLensConfiguration[]
 
   @@unique([name, parent_id])
   @@index([category_id])
@@ -127,6 +129,7 @@ model Product {
   lensCoatings       ProductLensCoating[]
   lensTypes          ProductLensType[]
   variants           ProductVariant[]
+  contactLensConfigs ContactLensConfiguration[]
   category           Category             @relation(fields: [category_id], references: [id])
   subCategory        SubCategory?         @relation(fields: [sub_category_id], references: [id])
   sub_category_id    Int?
@@ -1170,6 +1173,11 @@ enum LensTreatmentType {
   anti_reflective
 }
 
+enum ContactLensConfigType {
+  spherical
+  astigmatism
+}
+
 model LensThicknessMaterial {
   id              Int                 @id @default(autoincrement())
   name            String              @unique @db.VarChar(100)
@@ -1200,4 +1208,65 @@ model LensThicknessOption {
 
   @@index([is_active])
   @@map("lens_thickness_options")
+}
+
+model ContactLensConfiguration {
+  id                  Int                 @id @default(autoincrement())
+  // Product-like fields
+  name                String              @db.VarChar(255)
+  slug                String?             @db.VarChar(255)
+  sku                 String?             @db.VarChar(100)
+  description         String?             @db.Text
+  short_description   String?             @db.VarChar(500)
+  price               Decimal?             @db.Decimal(10, 2)
+  compare_at_price    Decimal?             @db.Decimal(10, 2)
+  cost_price          Decimal?             @db.Decimal(10, 2)
+  stock_quantity      Int                  @default(0)
+  stock_status        StockStatus          @default(in_stock)
+  images              String?              @db.LongText // JSON array of image URLs
+  color_images        String?              @db.LongText // JSON array of color-specific images
+  frame_shape         FrameShape?
+  frame_material      FrameMaterial?
+  frame_color         String?              @db.VarChar(100)
+  gender              Gender               @default(unisex)
+  lens_type           LensTypeEnum?        // Lens type enum (prescription, sunglasses, etc.)
+  // Category relationships
+  category_id         Int?
+  sub_category_id     Int?                 // Sub-subcategory (must have parent)
+  product_id          Int?                 // Optional link to a product
+  configuration_type  ContactLensConfigType // 'spherical' or 'astigmatism'
+  // For Spherical configurations - parameter fields
+  spherical_lens_type String?              @db.VarChar(100) // Lens type name (e.g., "Daily", "Monthly") - optional
+  // Parameter fields (for both spherical and astigmatism) - stored as JSON arrays to allow multiple selections
+  right_qty           String?              @db.LongText // JSON array of integers
+  right_base_curve    String?              @db.LongText // JSON array of decimals
+  right_diameter      String?              @db.LongText // JSON array of decimals
+  right_power         String?              @db.LongText // JSON array of decimals
+  right_cylinder      String?              @db.LongText // JSON array of decimals (astigmatism only)
+  right_axis          String?              @db.LongText // JSON array of integers (astigmatism only)
+  left_qty            String?              @db.LongText // JSON array of integers
+  left_base_curve     String?              @db.LongText // JSON array of decimals
+  left_diameter       String?              @db.LongText // JSON array of decimals
+  left_power          String?              @db.LongText // JSON array of decimals
+  left_cylinder       String?              @db.LongText // JSON array of decimals (astigmatism only)
+  left_axis           String?              @db.LongText // JSON array of integers (astigmatism only)
+  // Common fields
+  display_name        String               @db.VarChar(255) // Name to show in dropdown
+  is_active           Boolean              @default(true)
+  sort_order          Int                  @default(0)
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+  // Relations
+  category            Category?            @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  subCategory         SubCategory?         @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  product             Product?             @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@index([category_id])
+  @@index([sub_category_id])
+  @@index([configuration_type])
+  @@index([is_active])
+  @@index([slug])
+  @@index([sku])
+  @@map("contact_lens_configurations")
 }

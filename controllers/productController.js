@@ -521,6 +521,31 @@ exports.getProduct = asyncHandler(async (req, res) => {
           }
         }
       },
+      contactLensConfigs: {
+        where: { is_active: true },
+        orderBy: [
+          { sort_order: 'asc' },
+          { display_name: 'asc' }
+        ],
+        select: {
+          id: true,
+          configuration_type: true,
+          display_name: true,
+          lens_type: true,
+          right_qty: true,
+          right_base_curve: true,
+          right_diameter: true,
+          right_power: true,
+          right_cylinder: true,
+          right_axis: true,
+          left_qty: true,
+          left_base_curve: true,
+          left_diameter: true,
+          left_power: true,
+          left_cylinder: true,
+          left_axis: true
+        }
+      },
       reviews: {
         where: { is_approved: true },
         take: 10,
@@ -623,6 +648,31 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
           }
         }
       },
+      contactLensConfigs: {
+        where: { is_active: true },
+        orderBy: [
+          { sort_order: 'asc' },
+          { display_name: 'asc' }
+        ],
+        select: {
+          id: true,
+          configuration_type: true,
+          display_name: true,
+          lens_type: true,
+          right_qty: true,
+          right_base_curve: true,
+          right_diameter: true,
+          right_power: true,
+          right_cylinder: true,
+          right_axis: true,
+          left_qty: true,
+          left_base_curve: true,
+          left_diameter: true,
+          left_power: true,
+          left_cylinder: true,
+          left_axis: true
+        }
+      },
       reviews: {
         where: { is_approved: true },
         take: 10,
@@ -687,7 +737,9 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     // Contact lens options (parsed from JSON strings)
     base_curve_options: baseCurveOptions,
     diameter_options: diameterOptions,
-    powers_range: powersRange
+    powers_range: powersRange,
+    // Contact lens configurations (for dropdowns in frontend)
+    contact_lens_configs: product.contactLensConfigs || []
   };
 
   return success(res, 'Product retrieved successfully', { product: transformedProduct });
