@@ -1270,3 +1270,32 @@ model ContactLensConfiguration {
   @@index([sku])
   @@map("contact_lens_configurations")
 }
+
+model AstigmatismDropdownValue {
+  id          Int                   @id @default(autoincrement())
+  field_type  AstigmatismFieldType  // 'power', 'cylinder', 'axis'
+  value       String                @db.VarChar(50) // The actual value (e.g., "-2.00", "0.25", "180")
+  label       String?               @db.VarChar(100) // Display label (optional)
+  eye_type    AstigmatismEyeType?   // 'left', 'right', or null for both
+  is_active   Boolean               @default(true)
+  sort_order  Int                   @default(0)
+  created_at  DateTime              @default(now())
+  updated_at  DateTime              @updatedAt
+
+  @@index([field_type])
+  @@index([eye_type])
+  @@index([is_active])
+  @@map("astigmatism_dropdown_values")
+}
+
+enum AstigmatismFieldType {
+  power
+  cylinder
+  axis
+}
+
+enum AstigmatismEyeType {
+  left
+  right
+  both
+}

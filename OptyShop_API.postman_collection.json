@@ -2110,6 +2110,163 @@
 			]
 		  },
 		  {
+			"name": "Contact Lens Forms (Public)",
+			"item": [
+			  {
+				"name": "Get Form Config by Sub-Category",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/config/:sub_category_id",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "config",
+					  ":sub_category_id"
+					],
+					"variable": [
+					  {
+						"key": "sub_category_id",
+						"value": "1",
+						"description": "Sub-sub-category ID (must have parent_id)"
+					  }
+					]
+				  },
+				  "description": "Get form configuration based on sub-sub-category. Returns 'spherical' or 'astigmatism' form structure with fields and dropdown values."
+				}
+			  },
+			  {
+				"name": "Get Astigmatism Dropdown Values",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/astigmatism/dropdown-values?field_type=power",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "astigmatism",
+					  "dropdown-values"
+					],
+					"query": [
+					  {
+						"key": "field_type",
+						"value": "power",
+						"description": "Filter by field type: power, cylinder, or axis",
+						"disabled": true
+					  },
+					  {
+						"key": "eye_type",
+						"value": "left",
+						"description": "Filter by eye type: left, right, or both",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all active dropdown values for Astigmatism form (Power, Cylinder, Axis). Can filter by field_type and eye_type."
+				}
+			  },
+			  {
+				"name": "Get Spherical Configurations",
+				"request": {
+				  "method": "GET",
+				  "header": [],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/spherical?sub_category_id=1",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "spherical"
+					],
+					"query": [
+					  {
+						"key": "sub_category_id",
+						"value": "1",
+						"description": "Filter by sub-sub-category ID",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all active Spherical configurations. Can filter by sub_category_id."
+				}
+			  },
+			  {
+				"name": "Add Contact Lens to Cart (Checkout)",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{access_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"product_id\": 1,\n  \"form_type\": \"spherical\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.7,\n  \"right_diameter\": 14.0,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.7,\n  \"left_diameter\": 14.0\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/checkout",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "checkout"
+					]
+				  },
+				  "description": "Add contact lens to cart with form data. Requires authentication. For Spherical: right_qty, right_base_curve, right_diameter, left_qty, left_base_curve, left_diameter. For Astigmatism: also include left_power, right_power, left_cylinder, right_cylinder, left_axis, right_axis."
+				}
+			  },
+			  {
+				"name": "Add Astigmatism Contact Lens to Cart",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{access_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"product_id\": 1,\n  \"form_type\": \"astigmatism\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.6,\n  \"right_diameter\": 14.5,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.6,\n  \"left_diameter\": 14.5,\n  \"left_power\": \"-2.00\",\n  \"right_power\": \"-2.25\",\n  \"left_cylinder\": \"-0.25\",\n  \"right_cylinder\": \"-0.50\",\n  \"left_axis\": 180,\n  \"right_axis\": 90\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/checkout",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "checkout"
+					]
+				  },
+				  "description": "Add Astigmatism contact lens to cart with all form fields including power, cylinder, and axis values."
+				}
+			  }
+			]
+		  },
+		  {
 			"name": "Banners (Public)",
 			"item": [
 			  {
@@ -8930,9 +9087,310 @@
 			  }
 			]
 		  }
-		]
-	  },
-	  {
+			]
+		  },
+		  {
+			"name": "Contact Lens Forms (Admin)",
+			"item": [
+			  {
+				"name": "Get All Spherical Configs (Admin)",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/spherical?page=1&limit=50",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "spherical"
+					],
+					"query": [
+					  {
+						"key": "page",
+						"value": "1",
+						"disabled": true
+					  },
+					  {
+						"key": "limit",
+						"value": "50",
+						"disabled": true
+					  },
+					  {
+						"key": "sub_category_id",
+						"value": "1",
+						"description": "Filter by sub-sub-category ID",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all Spherical configurations with pagination. Admin only."
+				}
+			  },
+			  {
+				"name": "Create Spherical Config (Admin)",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"left_qty\": [1, 2, 3],\n  \"left_base_curve\": [8.6, 8.7, 8.8],\n  \"left_diameter\": [14.0, 14.2, 14.5],\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/spherical",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "spherical"
+					]
+				  },
+				  "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter."
+				}
+			  },
+			  {
+				"name": "Update Spherical Config (Admin)",
+				"request": {
+				  "method": "PUT",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"price\": 34.99,\n  \"is_active\": true\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/spherical/:id",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "spherical",
+					  ":id"
+					],
+					"variable": [
+					  {
+						"key": "id",
+						"value": "1"
+					  }
+					]
+				  },
+				  "description": "Update a Spherical configuration. Only include fields to update."
+				}
+			  },
+			  {
+				"name": "Delete Spherical Config (Admin)",
+				"request": {
+				  "method": "DELETE",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/spherical/:id",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "spherical",
+					  ":id"
+					],
+					"variable": [
+					  {
+						"key": "id",
+						"value": "1"
+					  }
+					]
+				  },
+				  "description": "Delete a Spherical configuration. Admin only."
+				}
+			  },
+			  {
+				"name": "Get Astigmatism Dropdown Values (Admin)",
+				"request": {
+				  "method": "GET",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/dropdown-values?field_type=power",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "astigmatism",
+					  "dropdown-values"
+					],
+					"query": [
+					  {
+						"key": "field_type",
+						"value": "power",
+						"description": "Filter by field type: power, cylinder, or axis",
+						"disabled": true
+					  },
+					  {
+						"key": "eye_type",
+						"value": "left",
+						"description": "Filter by eye type: left, right, or both",
+						"disabled": true
+					  }
+					]
+				  },
+				  "description": "Get all Astigmatism dropdown values (including inactive). Admin only."
+				}
+			  },
+			  {
+				"name": "Create Astigmatism Dropdown Value (Admin)",
+				"request": {
+				  "method": "POST",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"field_type\": \"power\",\n  \"value\": \"-2.00\",\n  \"label\": \"-2.00 D\",\n  \"eye_type\": \"both\",\n  \"sort_order\": 0\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/dropdown-values",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "astigmatism",
+					  "dropdown-values"
+					]
+				  },
+				  "description": "Create a new dropdown value for Astigmatism form. field_type: power, cylinder, or axis. eye_type: left, right, or both (null for both)."
+				}
+			  },
+			  {
+				"name": "Update Astigmatism Dropdown Value (Admin)",
+				"request": {
+				  "method": "PUT",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					},
+					{
+					  "key": "Content-Type",
+					  "value": "application/json"
+					}
+				  ],
+				  "body": {
+					"mode": "raw",
+					"raw": "{\n  \"value\": \"-2.25\",\n  \"label\": \"-2.25 D\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+				  },
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/dropdown-values/:id",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "astigmatism",
+					  "dropdown-values",
+					  ":id"
+					],
+					"variable": [
+					  {
+						"key": "id",
+						"value": "1"
+					  }
+					]
+				  },
+				  "description": "Update an Astigmatism dropdown value. Only include fields to update."
+				}
+			  },
+			  {
+				"name": "Delete Astigmatism Dropdown Value (Admin)",
+				"request": {
+				  "method": "DELETE",
+				  "header": [
+					{
+					  "key": "Authorization",
+					  "value": "Bearer {{admin_token}}"
+					}
+				  ],
+				  "url": {
+					"raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/dropdown-values/:id",
+					"host": [
+					  "{{base_url}}"
+					],
+					"path": [
+					  "api",
+					  "contact-lens-forms",
+					  "admin",
+					  "astigmatism",
+					  "dropdown-values",
+					  ":id"
+					],
+					"variable": [
+					  {
+						"key": "id",
+						"value": "1"
+					  }
+					]
+				  },
+				  "description": "Delete an Astigmatism dropdown value. Admin only."
+				}
+			  }
+			]
+		  },
+		  {
 			"name": "Analytics (Admin)",
 			"item": [
 			  {

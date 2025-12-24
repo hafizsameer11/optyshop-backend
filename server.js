@@ -42,6 +42,7 @@ const lensRoutes = require('./routes/lens');
 const customizationRoutes = require('./routes/productCustomization');
 const prescriptionSunLensRoutes = require('./routes/prescriptionSunLenses');
 const photochromicLensRoutes = require('./routes/photochromicLenses');
+const contactLensFormRoutes = require('./routes/contactLensForms');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -177,7 +178,8 @@ app.get('/api', (req, res) => {
       pages: '/api/pages',
       lens: '/api/lens',
       prescriptionSunLenses: '/api/prescription-sun-lenses',
-      photochromicLenses: '/api/photochromic-lenses'
+      photochromicLenses: '/api/photochromic-lenses',
+      contactLensForms: '/api/contact-lens-forms'
     },
     timestamp: new Date().toISOString()
   });
@@ -213,6 +215,7 @@ app.use('/api/lens', lensRoutes);
 app.use('/api/customization', customizationRoutes);
 app.use('/api/prescription-sun-lenses', prescriptionSunLensRoutes);
 app.use('/api/photochromic-lenses', photochromicLensRoutes);
+app.use('/api/contact-lens-forms', contactLensFormRoutes);
 
 // Handle double /api/api paths (fallback for cases where middleware doesn't catch it)
 app.use('/api/api/auth', authRoutes);
@@ -239,6 +242,7 @@ app.use('/api/api/pages', pageRoutes);
 app.use('/api/api/customization', customizationRoutes);
 app.use('/api/api/prescription-sun-lenses', prescriptionSunLensRoutes);
 app.use('/api/api/photochromic-lenses', photochromicLensRoutes);
+app.use('/api/api/contact-lens-forms', contactLensFormRoutes);
 
 // 404 handler
 app.use((req, res) => {
