@@ -1289,6 +1289,9 @@ model AstigmatismDropdownValue {
 }
 
 enum AstigmatismFieldType {
+  qty
+  base_curve
+  diameter
   power
   cylinder
   axis

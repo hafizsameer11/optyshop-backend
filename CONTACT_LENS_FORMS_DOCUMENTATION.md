@@ -2,17 +2,17 @@
 
 ## Overview
 
-The Contact Lens Forms System provides a dynamic form interface for contact lens products based on sub-sub-category selection. The system supports two form types:
-- **Spherical**: Simple form with basic parameters (Qty, Base Curve, Diameter)
-- **Astigmatism**: Advanced form with additional dropdown fields (Power, Cylinder, Axis)
+The Contact Lens Forms System provides a dynamic form interface for contact lens products based on sub-sub-category selection. **ALL form fields are dropdowns managed by the admin panel** - no manual input fields. The system supports two form types:
+- **Spherical**: Form with dropdowns for Qty, Base Curve (B.C), Diameter (DIA), and Power (PWR)
+- **Astigmatism**: Advanced form with dropdowns for Qty, Base Curve (B.C), Diameter (DIA), Power (PWR), Cylinder (CYL), and Axis (AX)
 
 ## System Architecture
 
 ### 1. Database Models
 
 #### `AstigmatismDropdownValue`
-Stores dropdown values for Astigmatism forms:
-- `field_type`: `power`, `cylinder`, or `axis`
+Stores dropdown values for contact lens forms (used by both Spherical and Astigmatism):
+- `field_type`: `power` (used in both forms), `cylinder` (Astigmatism only), or `axis` (Astigmatism only)
 - `value`: The actual value (e.g., "-2.00", "0.25", "180")
 - `label`: Display label (optional)
 - `eye_type`: `left`, `right`, `both`, or `null` (for both)
@@ -25,8 +25,8 @@ Stores Spherical configurations:
 - Parameter fields stored as JSON arrays (allows multiple values):
   - `right_qty`, `right_base_curve`, `right_diameter`
   - `left_qty`, `left_base_curve`, `left_diameter`
-  - `right_power`, `left_power` (for astigmatism)
-  - `right_cylinder`, `left_cylinder`, `right_axis`, `left_axis` (for astigmatism)
+  - `right_power`, `left_power` (used in both Spherical and Astigmatism forms)
+  - `right_cylinder`, `left_cylinder`, `right_axis`, `left_axis` (Astigmatism only)
 
 ### 2. API Endpoints
 
@@ -47,11 +47,53 @@ GET /api/contact-lens-forms/config/:sub_category_id
     "subCategory": { "id": 1, "name": "Spherical", "slug": "spherical" },
     "formFields": {
       "rightEye": {
-        "qty": { "type": "number", "label": "Qty", "required": true, "default": 1 },
-        "baseCurve": { "type": "number", "label": "Raggio Base (B.C)", "required": true, "step": 0.1 },
-        "diameter": { "type": "number", "label": "Diametro (DIA)", "required": true, "step": 0.1 }
+        "qty": {
+          "type": "select",
+          "label": "Qty",
+          "required": true,
+          "options": [
+            { "value": "1", "label": "1" },
+            { "value": "2", "label": "2" },
+            { "value": "3", "label": "3" }
+          ]
+        },
+        "baseCurve": {
+          "type": "select",
+          "label": "Raggio Base (B.C)",
+          "required": true,
+          "options": [
+            { "value": "8.6", "label": "8.6" },
+            { "value": "8.7", "label": "8.7" },
+            { "value": "8.8", "label": "8.8" }
+          ]
+        },
+        "diameter": {
+          "type": "select",
+          "label": "Diametro (DIA)",
+          "required": true,
+          "options": [
+            { "value": "14.0", "label": "14.0" },
+            { "value": "14.2", "label": "14.2" },
+            { "value": "14.5", "label": "14.5" }
+          ]
+        },
+        "power": {
+          "type": "select",
+          "label": "* Power (PWR)",
+          "required": true,
+          "options": [
+            { "value": "-2.00", "label": "-2.00 D" },
+            { "value": "-1.75", "label": "-1.75 D" }
+          ]
+        }
       },
-      "leftEye": { /* same structure */ }
+      "leftEye": { /* same structure with all dropdowns */ }
+    },
+    "dropdownValues": {
+      "qty": [ /* qty values */ ],
+      "base_curve": [ /* base curve values */ ],
+      "diameter": [ /* diameter values */ ],
+      "power": [ /* power values */ ]
     }
   }
 }
@@ -65,11 +107,15 @@ GET /api/contact-lens-forms/config/:sub_category_id
     "formType": "astigmatism",
     "subCategory": { "id": 2, "name": "Astigmatism", "slug": "astigmatism" },
     "formFields": {
-      "rightEye": { /* basic fields */ },
+      "rightEye": {
+        "qty": { "type": "select", "label": "Qty", "required": true, "options": [ /* ... */ ] },
+        "baseCurve": { "type": "select", "label": "Raggio Base (B.C)", "required": true, "options": [ /* ... */ ] },
+        "diameter": { "type": "select", "label": "Diametro (DIA)", "required": true, "options": [ /* ... */ ] }
+      },
       "leftEye": {
-        "qty": { /* ... */ },
-        "baseCurve": { /* ... */ },
-        "diameter": { /* ... */ },
+        "qty": { "type": "select", "label": "Qty", "required": true, "options": [ /* ... */ ] },
+        "baseCurve": { "type": "select", "label": "Raggio Base (B.C)", "required": true, "options": [ /* ... */ ] },
+        "diameter": { "type": "select", "label": "Diametro (DIA)", "required": true, "options": [ /* ... */ ] },
         "leftPower": {
           "type": "select",
           "label": "* Occhio Sinistro PWR Power",
@@ -87,6 +133,9 @@ GET /api/contact-lens-forms/config/:sub_category_id
       }
     },
     "dropdownValues": {
+      "qty": [ /* ... */ ],
+      "base_curve": [ /* ... */ ],
+      "diameter": [ /* ... */ ],
       "power": [ /* ... */ ],
       "cylinder": [ /* ... */ ],
       "axis": [ /* ... */ ]
@@ -95,12 +144,12 @@ GET /api/contact-lens-forms/config/:sub_category_id
 }
 ```
 
-##### Get Astigmatism Dropdown Values (Public)
+##### Get Dropdown Values (Public)
 ```
 GET /api/contact-lens-forms/astigmatism/dropdown-values?field_type=power&eye_type=left
 ```
 **Query Parameters**:
-- `field_type` (optional): `power`, `cylinder`, or `axis`
+- `field_type` (optional): `qty`, `base_curve`, `diameter`, `power`, `cylinder`, or `axis`
 - `eye_type` (optional): `left`, `right`, or `both`
 
 ##### Get Spherical Configurations (Public)
@@ -123,12 +172,14 @@ Authorization: Bearer {access_token}
 {
   "product_id": 1,
   "form_type": "spherical",
-  "right_qty": 1,
-  "right_base_curve": 8.7,
-  "right_diameter": 14.0,
-  "left_qty": 1,
-  "left_base_curve": 8.7,
-  "left_diameter": 14.0
+  "right_qty": "1",
+  "right_base_curve": "8.7",
+  "right_diameter": "14.0",
+  "right_power": "-2.00",
+  "left_qty": "1",
+  "left_base_curve": "8.7",
+  "left_diameter": "14.0",
+  "left_power": "-2.25"
 }
 ```
 
@@ -272,20 +323,17 @@ Backend:
 ### 2. Form Display
 
 **For Spherical**:
-- Frontend displays simple form with:
-  - Right Eye: Qty, Base Curve (B.C), Diameter (DIA)
-  - Left Eye: Qty, Base Curve (B.C), Diameter (DIA)
+- Frontend displays form with ALL fields as dropdowns (from admin-managed values):
+  - Right Eye: Qty dropdown, Base Curve (B.C) dropdown, Diameter (DIA) dropdown, Power (PWR) dropdown
+  - Left Eye: Qty dropdown, Base Curve (B.C) dropdown, Diameter (DIA) dropdown, Power (PWR) dropdown
 
 **For Astigmatism**:
-- Frontend displays advanced form with:
-  - Right Eye: Qty, Base Curve (B.C), Diameter (DIA)
-  - Left Eye: Qty, Base Curve (B.C), Diameter (DIA)
-  - Left Power dropdown (from admin-managed values)
-  - Right Power dropdown (from admin-managed values)
-  - Left Cylinder dropdown (from admin-managed values)
-  - Right Cylinder dropdown (from admin-managed values)
-  - Left Axis dropdown (from admin-managed values)
-  - Right Axis dropdown (from admin-managed values)
+- Frontend displays advanced form with ALL fields as dropdowns (from admin-managed values):
+  - Right Eye: Qty dropdown, Base Curve (B.C) dropdown, Diameter (DIA) dropdown
+  - Left Eye: Qty dropdown, Base Curve (B.C) dropdown, Diameter (DIA) dropdown
+  - Left Power dropdown, Right Power dropdown
+  - Left Cylinder dropdown, Right Cylinder dropdown
+  - Left Axis dropdown, Right Axis dropdown
 
 ### 3. Admin Management
 
@@ -294,21 +342,25 @@ Backend:
 2. Each config can have multiple values (arrays) for each parameter
 3. These are used as reference/defaults for the form
 
-**Setting Up Astigmatism Dropdown Values**:
-1. Admin creates dropdown values for:
-   - Power (e.g., -2.00, -1.75, -1.50, etc.)
-   - Cylinder (e.g., -0.25, -0.50, -0.75, etc.)
-   - Axis (e.g., 0, 90, 180, etc.)
+**Setting Up Dropdown Values (ALL fields for both Spherical and Astigmatism)**:
+1. Admin creates dropdown values for ALL field types:
+   - **Qty** (both forms): e.g., 1, 2, 3, 6, 12, etc.
+   - **Base Curve** (both forms): e.g., 8.6, 8.7, 8.8, 8.9, etc.
+   - **Diameter** (both forms): e.g., 14.0, 14.2, 14.5, etc.
+   - **Power** (both forms): e.g., -2.00, -1.75, -1.50, etc.
+   - **Cylinder** (Astigmatism only): e.g., -0.25, -0.50, -0.75, etc.
+   - **Axis** (Astigmatism only): e.g., 0, 90, 180, etc.
 2. Each value can be specific to left eye, right eye, or both
 3. Values are sorted by `sort_order` and `value`
+4. Qty, Base Curve, Diameter, and Power values are shared between Spherical and Astigmatism forms
 
 ### 4. User Fills Form and Checks Out
 
 **Spherical Flow**:
 ```
-User fills form → 
-POST /api/contact-lens-forms/checkout with form data →
-Backend validates and creates CartItem with contact lens fields →
+User fills form (including Power dropdown selection) → 
+POST /api/contact-lens-forms/checkout with form data (including power values) →
+Backend validates and creates CartItem with contact lens fields (including power) →
 Item added to cart →
 User proceeds to checkout/order
 ```

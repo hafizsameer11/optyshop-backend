@@ -2216,7 +2216,7 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"product_id\": 1,\n  \"form_type\": \"spherical\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.7,\n  \"right_diameter\": 14.0,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.7,\n  \"left_diameter\": 14.0\n}"
+					"raw": "{\n  \"product_id\": 1,\n  \"form_type\": \"spherical\",\n  \"right_qty\": \"1\",\n  \"right_base_curve\": \"8.7\",\n  \"right_diameter\": \"14.0\",\n  \"right_power\": \"-2.00\",\n  \"left_qty\": \"1\",\n  \"left_base_curve\": \"8.7\",\n  \"left_diameter\": \"14.0\",\n  \"left_power\": \"-2.25\"\n}"
 				  },
 				  "url": {
 					"raw": "{{base_url}}/api/contact-lens-forms/checkout",
@@ -2229,7 +2229,7 @@
 					  "checkout"
 					]
 				  },
-				  "description": "Add contact lens to cart with form data. Requires authentication. For Spherical: right_qty, right_base_curve, right_diameter, left_qty, left_base_curve, left_diameter. For Astigmatism: also include left_power, right_power, left_cylinder, right_cylinder, left_axis, right_axis."
+				  "description": "Add contact lens to cart with form data. Requires authentication. All values come from admin-managed dropdowns. For Spherical: right_qty, right_base_curve, right_diameter, right_power, left_qty, left_base_curve, left_diameter, left_power (all as strings from dropdowns). For Astigmatism: also include left_cylinder, right_cylinder, left_axis, right_axis."
 				}
 			  },
 			  {
@@ -2248,7 +2248,7 @@
 				  ],
 				  "body": {
 					"mode": "raw",
-					"raw": "{\n  \"product_id\": 1,\n  \"form_type\": \"astigmatism\",\n  \"right_qty\": 1,\n  \"right_base_curve\": 8.6,\n  \"right_diameter\": 14.5,\n  \"left_qty\": 1,\n  \"left_base_curve\": 8.6,\n  \"left_diameter\": 14.5,\n  \"left_power\": \"-2.00\",\n  \"right_power\": \"-2.25\",\n  \"left_cylinder\": \"-0.25\",\n  \"right_cylinder\": \"-0.50\",\n  \"left_axis\": 180,\n  \"right_axis\": 90\n}"
+					"raw": "{\n  \"product_id\": 1,\n  \"form_type\": \"astigmatism\",\n  \"right_qty\": \"1\",\n  \"right_base_curve\": \"8.6\",\n  \"right_diameter\": \"14.5\",\n  \"left_qty\": \"1\",\n  \"left_base_curve\": \"8.6\",\n  \"left_diameter\": \"14.5\",\n  \"left_power\": \"-2.00\",\n  \"right_power\": \"-2.25\",\n  \"left_cylinder\": \"-0.25\",\n  \"right_cylinder\": \"-0.50\",\n  \"left_axis\": \"180\",\n  \"right_axis\": \"90\"\n}"
 				  },
 				  "url": {
 					"raw": "{{base_url}}/api/contact-lens-forms/checkout",

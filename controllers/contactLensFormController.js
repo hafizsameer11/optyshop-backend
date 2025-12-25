@@ -61,55 +61,185 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
   };
 
   if (formType === 'spherical') {
-    // For Spherical: Return form structure (simple form with Qty, B.C, DIA)
+    // For Spherical: Get ALL dropdown values from database (Qty, Base Curve, Diameter, Power)
+    const [qtyValues, baseCurveValues, diameterValues, powerValues] = await Promise.all([
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'qty', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      }),
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'base_curve', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      }),
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'diameter', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      }),
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'power', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      })
+    ]);
+
+    // For Spherical: Return form structure with ALL fields as dropdowns
     formConfig.formFields = {
       rightEye: {
-        qty: { type: 'number', label: 'Qty', required: true, default: 1 },
-        baseCurve: { type: 'number', label: 'Raggio Base (B.C)', required: true, step: 0.1 },
-        diameter: { type: 'number', label: 'Diametro (DIA)', required: true, step: 0.1 }
+        qty: {
+          type: 'select',
+          label: 'Qty',
+          required: true,
+          options: qtyValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        baseCurve: {
+          type: 'select',
+          label: 'Raggio Base (B.C)',
+          required: true,
+          options: baseCurveValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        diameter: {
+          type: 'select',
+          label: 'Diametro (DIA)',
+          required: true,
+          options: diameterValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        power: {
+          type: 'select',
+          label: '* Power (PWR)',
+          required: true,
+          options: powerValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        }
       },
       leftEye: {
-        qty: { type: 'number', label: 'Qty', required: true, default: 1 },
-        baseCurve: { type: 'number', label: 'Raggio Base (B.C)', required: true, step: 0.1 },
-        diameter: { type: 'number', label: 'Diametro (DIA)', required: true, step: 0.1 }
+        qty: {
+          type: 'select',
+          label: 'Qty',
+          required: true,
+          options: qtyValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        baseCurve: {
+          type: 'select',
+          label: 'Raggio Base (B.C)',
+          required: true,
+          options: baseCurveValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        diameter: {
+          type: 'select',
+          label: 'Diametro (DIA)',
+          required: true,
+          options: diameterValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        power: {
+          type: 'select',
+          label: '* Power (PWR)',
+          required: true,
+          options: powerValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        }
       }
     };
+
+    formConfig.dropdownValues = {
+      qty: qtyValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
+      base_curve: baseCurveValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
+      diameter: diameterValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
+      power: powerValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type }))
+    };
   } else if (formType === 'astigmatism') {
-    // For Astigmatism: Get dropdown values from database
-    const [powerValues, cylinderValues, axisValues] = await Promise.all([
+    // For Astigmatism: Get ALL dropdown values from database (Qty, Base Curve, Diameter, Power, Cylinder, Axis)
+    const [qtyValues, baseCurveValues, diameterValues, powerValues, cylinderValues, axisValues] = await Promise.all([
       prisma.astigmatismDropdownValue.findMany({
-        where: {
-          field_type: 'power',
-          is_active: true
-        },
+        where: { field_type: 'qty', is_active: true },
         orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
       }),
       prisma.astigmatismDropdownValue.findMany({
-        where: {
-          field_type: 'cylinder',
-          is_active: true
-        },
+        where: { field_type: 'base_curve', is_active: true },
         orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
       }),
       prisma.astigmatismDropdownValue.findMany({
-        where: {
-          field_type: 'axis',
-          is_active: true
-        },
+        where: { field_type: 'diameter', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      }),
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'power', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      }),
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'cylinder', is_active: true },
+        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      }),
+      prisma.astigmatismDropdownValue.findMany({
+        where: { field_type: 'axis', is_active: true },
         orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
       })
     ]);
 
     formConfig.formFields = {
       rightEye: {
-        qty: { type: 'number', label: 'Qty', required: true, default: 1 },
-        baseCurve: { type: 'number', label: 'Raggio Base (B.C)', required: true, step: 0.1 },
-        diameter: { type: 'number', label: 'Diametro (DIA)', required: true, step: 0.1 }
+        qty: {
+          type: 'select',
+          label: 'Qty',
+          required: true,
+          options: qtyValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        baseCurve: {
+          type: 'select',
+          label: 'Raggio Base (B.C)',
+          required: true,
+          options: baseCurveValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        diameter: {
+          type: 'select',
+          label: 'Diametro (DIA)',
+          required: true,
+          options: diameterValues
+            .filter(v => !v.eye_type || v.eye_type === 'right' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        }
       },
       leftEye: {
-        qty: { type: 'number', label: 'Qty', required: true, default: 1 },
-        baseCurve: { type: 'number', label: 'Raggio Base (B.C)', required: true, step: 0.1 },
-        diameter: { type: 'number', label: 'Diametro (DIA)', required: true, step: 0.1 },
+        qty: {
+          type: 'select',
+          label: 'Qty',
+          required: true,
+          options: qtyValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        baseCurve: {
+          type: 'select',
+          label: 'Raggio Base (B.C)',
+          required: true,
+          options: baseCurveValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
+        diameter: {
+          type: 'select',
+          label: 'Diametro (DIA)',
+          required: true,
+          options: diameterValues
+            .filter(v => !v.eye_type || v.eye_type === 'left' || v.eye_type === 'both')
+            .map(v => ({ value: v.value, label: v.label || v.value }))
+        },
         leftPower: {
           type: 'select',
           label: '* Occhio Sinistro PWR Power',
@@ -162,9 +292,12 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
     };
 
     formConfig.dropdownValues = {
+      qty: qtyValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
+      base_curve: baseCurveValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
+      diameter: diameterValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
       power: powerValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
-      cylinder: cylinderValues.map(v => ({ value: v.value, label: v.label || v.value })),
-      axis: axisValues.map(v => ({ value: v.value, label: v.label || v.value }))
+      cylinder: cylinderValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type })),
+      axis: axisValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type }))
     };
   }
 
@@ -471,8 +604,8 @@ exports.createAstigmatismDropdownValue = asyncHandler(async (req, res) => {
   }
 
   // Validate field_type
-  if (!['power', 'cylinder', 'axis'].includes(field_type)) {
-    return error(res, 'field_type must be one of: power, cylinder, axis', 400);
+  if (!['qty', 'base_curve', 'diameter', 'power', 'cylinder', 'axis'].includes(field_type)) {
+    return error(res, 'field_type must be one of: qty, base_curve, diameter, power, cylinder, axis', 400);
   }
 
   // Validate eye_type if provided
@@ -652,16 +785,16 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     product_id,
     sub_category_id,
     form_type, // 'spherical' or 'astigmatism'
-    // Spherical form data
+    // Common form data (both Spherical and Astigmatism)
     right_qty,
     right_base_curve,
     right_diameter,
+    right_power,
     left_qty,
     left_base_curve,
     left_diameter,
-    // Astigmatism form data
     left_power,
-    right_power,
+    // Astigmatism form data only
     left_cylinder,
     right_cylinder,
     left_axis,
@@ -689,27 +822,29 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     return error(res, 'Product not found', 404);
   }
 
-  // Prepare contact lens data
+  // Prepare contact lens data (common for both Spherical and Astigmatism)
+  // All values come from dropdowns as strings, so we parse them
   const contactLensData = {
-    contact_lens_right_qty: right_qty ? parseInt(right_qty) : 1,
-    contact_lens_right_base_curve: right_base_curve ? parseFloat(right_base_curve) : null,
-    contact_lens_right_diameter: right_diameter ? parseFloat(right_diameter) : null,
-    contact_lens_left_qty: left_qty ? parseInt(left_qty) : 1,
-    contact_lens_left_base_curve: left_base_curve ? parseFloat(left_base_curve) : null,
-    contact_lens_left_diameter: left_diameter ? parseFloat(left_diameter) : null
+    contact_lens_right_qty: right_qty ? parseInt(String(right_qty)) : 1,
+    contact_lens_right_base_curve: right_base_curve ? parseFloat(String(right_base_curve)) : null,
+    contact_lens_right_diameter: right_diameter ? parseFloat(String(right_diameter)) : null,
+    contact_lens_right_power: right_power ? parseFloat(String(right_power)) : null,
+    contact_lens_left_qty: left_qty ? parseInt(String(left_qty)) : 1,
+    contact_lens_left_base_curve: left_base_curve ? parseFloat(String(left_base_curve)) : null,
+    contact_lens_left_diameter: left_diameter ? parseFloat(String(left_diameter)) : null,
+    contact_lens_left_power: left_power ? parseFloat(String(left_power)) : null
   };
 
-  // Add astigmatism fields if form type is astigmatism
+  // Add astigmatism-specific fields if form type is astigmatism
   if (form_type === 'astigmatism') {
-    contactLensData.contact_lens_left_power = left_power ? parseFloat(left_power) : null;
-    contactLensData.contact_lens_right_power = right_power ? parseFloat(right_power) : null;
     // Note: CartItem schema doesn't have separate left/right cylinder and axis fields
-    // These would need to be stored in customization field as JSON
+    // These are stored in customization field as JSON
+    // All values come from dropdowns as strings
     const astigmatismData = {
-      left_cylinder: left_cylinder ? parseFloat(left_cylinder) : null,
-      right_cylinder: right_cylinder ? parseFloat(right_cylinder) : null,
-      left_axis: left_axis ? parseInt(left_axis) : null,
-      right_axis: right_axis ? parseInt(right_axis) : null
+      left_cylinder: left_cylinder ? parseFloat(String(left_cylinder)) : null,
+      right_cylinder: right_cylinder ? parseFloat(String(right_cylinder)) : null,
+      left_axis: left_axis ? parseInt(String(left_axis)) : null,
+      right_axis: right_axis ? parseInt(String(right_axis)) : null
     };
     contactLensData.customization = JSON.stringify(astigmatismData);
   }
