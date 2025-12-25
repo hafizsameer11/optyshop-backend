@@ -12,6 +12,10 @@ const {
   deleteAstigmatismDropdownValue,
   getAstigmatismDropdownValuesPublic,
   getSphericalConfigsPublic,
+  getAstigmatismConfigs,
+  createAstigmatismConfig,
+  updateAstigmatismConfig,
+  deleteAstigmatismConfig,
   addContactLensToCart
 } = require('../controllers/contactLensFormController');
 const { protect, authorize } = require('../middleware/auth');
@@ -29,6 +33,12 @@ router.get('/admin/spherical', protect, authorize('admin', 'staff'), getSpherica
 router.post('/admin/spherical', protect, authorize('admin', 'staff'), createSphericalConfig);
 router.put('/admin/spherical/:id', protect, authorize('admin', 'staff'), updateSphericalConfig);
 router.delete('/admin/spherical/:id', protect, authorize('admin', 'staff'), deleteSphericalConfig);
+
+// Admin routes - Astigmatism configurations
+router.get('/admin/astigmatism', protect, authorize('admin', 'staff'), getAstigmatismConfigs);
+router.post('/admin/astigmatism', protect, authorize('admin', 'staff'), createAstigmatismConfig);
+router.put('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), updateAstigmatismConfig);
+router.delete('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), deleteAstigmatismConfig);
 
 // Admin routes - Astigmatism dropdown values
 router.get('/admin/astigmatism/dropdown-values', protect, authorize('admin', 'staff'), getAstigmatismDropdownValues);

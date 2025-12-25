@@ -572,6 +572,281 @@ exports.deleteSphericalConfig = asyncHandler(async (req, res) => {
   return success(res, 'Spherical configuration deleted successfully');
 });
 
+// ==================== ADMIN ROUTES FOR ASTIGMATISM CONFIGURATIONS ====================
+
+// @desc    Get all Astigmatism configurations
+// @route   GET /api/admin/contact-lens-forms/astigmatism
+// @access  Admin
+exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 50, sub_category_id } = req.query;
+  const skip = (page - 1) * limit;
+
+  const where = {
+    configuration_type: 'astigmatism',
+    is_active: true
+  };
+
+  if (sub_category_id) {
+    where.sub_category_id = parseInt(sub_category_id);
+  }
+
+  const [configs, total] = await Promise.all([
+    prisma.contactLensConfiguration.findMany({
+      where,
+      include: {
+        subCategory: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: parseInt(limit),
+      skip: parseInt(skip)
+    }),
+    prisma.contactLensConfiguration.count({ where })
+  ]);
+
+  // Parse JSON fields
+  const formattedConfigs = configs.map(config => ({
+    ...config,
+    right_qty: parseJsonField(config.right_qty),
+    right_base_curve: parseJsonField(config.right_base_curve),
+    right_diameter: parseJsonField(config.right_diameter),
+    right_power: parseJsonField(config.right_power),
+    right_cylinder: parseJsonField(config.right_cylinder),
+    right_axis: parseJsonField(config.right_axis),
+    left_qty: parseJsonField(config.left_qty),
+    left_base_curve: parseJsonField(config.left_base_curve),
+    left_diameter: parseJsonField(config.left_diameter),
+    left_power: parseJsonField(config.left_power),
+    left_cylinder: parseJsonField(config.left_cylinder),
+    left_axis: parseJsonField(config.left_axis)
+  }));
+
+  return success(res, 'Astigmatism configurations retrieved successfully', {
+    configs: formattedConfigs,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit)
+    }
+  });
+});
+
+// @desc    Create Astigmatism configuration
+// @route   POST /api/admin/contact-lens-forms/astigmatism
+// @access  Admin
+exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
+  const {
+    name,
+    sub_category_id,
+    category_id,
+    right_qty,
+    right_base_curve,
+    right_diameter,
+    right_power,
+    right_cylinder,
+    right_axis,
+    left_qty,
+    left_base_curve,
+    left_diameter,
+    left_power,
+    left_cylinder,
+    left_axis,
+    price,
+    display_name
+  } = req.body;
+
+  // Validate required fields
+  if (!name || !sub_category_id) {
+    return error(res, 'Name and sub_category_id are required', 400);
+  }
+
+  // Verify sub-category exists and is a sub-sub-category
+  const subCategory = await prisma.subCategory.findUnique({
+    where: { id: parseInt(sub_category_id) }
+  });
+
+  if (!subCategory) {
+    return error(res, 'Sub-sub-category not found', 404);
+  }
+
+  // Create configuration
+  const config = await prisma.contactLensConfiguration.create({
+    data: {
+      name,
+      sub_category_id: parseInt(sub_category_id),
+      category_id: category_id ? parseInt(category_id) : subCategory.category_id,
+      configuration_type: 'astigmatism',
+      right_qty: Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1]),
+      right_base_curve: Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]),
+      right_diameter: Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]),
+      right_power: Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]),
+      right_cylinder: Array.isArray(right_cylinder) ? JSON.stringify(right_cylinder) : JSON.stringify([right_cylinder]),
+      right_axis: Array.isArray(right_axis) ? JSON.stringify(right_axis) : JSON.stringify([right_axis]),
+      left_qty: Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty || 1]),
+      left_base_curve: Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]),
+      left_diameter: Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]),
+      left_power: Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]),
+      left_cylinder: Array.isArray(left_cylinder) ? JSON.stringify(left_cylinder) : JSON.stringify([left_cylinder]),
+      left_axis: Array.isArray(left_axis) ? JSON.stringify(left_axis) : JSON.stringify([left_axis]),
+      price: price ? parseFloat(price) : null,
+      display_name: display_name || name
+    },
+    include: {
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
+  });
+
+  return success(res, 'Astigmatism configuration created successfully', {
+    config: {
+      ...config,
+      right_qty: parseJsonField(config.right_qty),
+      right_base_curve: parseJsonField(config.right_base_curve),
+      right_diameter: parseJsonField(config.right_diameter),
+      right_power: parseJsonField(config.right_power),
+      right_cylinder: parseJsonField(config.right_cylinder),
+      right_axis: parseJsonField(config.right_axis),
+      left_qty: parseJsonField(config.left_qty),
+      left_base_curve: parseJsonField(config.left_base_curve),
+      left_diameter: parseJsonField(config.left_diameter),
+      left_power: parseJsonField(config.left_power),
+      left_cylinder: parseJsonField(config.left_cylinder),
+      left_axis: parseJsonField(config.left_axis)
+    }
+  }, 201);
+});
+
+// @desc    Update Astigmatism configuration
+// @route   PUT /api/admin/contact-lens-forms/astigmatism/:id
+// @access  Admin
+exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    right_qty,
+    right_base_curve,
+    right_diameter,
+    right_power,
+    right_cylinder,
+    right_axis,
+    left_qty,
+    left_base_curve,
+    left_diameter,
+    left_power,
+    left_cylinder,
+    left_axis,
+    price,
+    display_name,
+    is_active
+  } = req.body;
+
+  // Check if config exists
+  const existingConfig = await prisma.contactLensConfiguration.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!existingConfig) {
+    return error(res, 'Configuration not found', 404);
+  }
+
+  if (existingConfig.configuration_type !== 'astigmatism') {
+    return error(res, 'This is not an Astigmatism configuration', 400);
+  }
+
+  // Prepare update data
+  const updateData = {};
+  if (name) updateData.name = name;
+  if (display_name) updateData.display_name = display_name;
+  if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
+  if (is_active !== undefined) updateData.is_active = is_active;
+
+  const fields = [
+    'right_qty', 'right_base_curve', 'right_diameter', 'right_power', 'right_cylinder', 'right_axis',
+    'left_qty', 'left_base_curve', 'left_diameter', 'left_power', 'left_cylinder', 'left_axis'
+  ];
+
+  fields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      updateData[field] = Array.isArray(req.body[field]) ? JSON.stringify(req.body[field]) : JSON.stringify([req.body[field]]);
+    }
+  });
+
+  const config = await prisma.contactLensConfiguration.update({
+    where: { id: parseInt(id) },
+    data: updateData,
+    include: {
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
+  });
+
+  return success(res, 'Astigmatism configuration updated successfully', {
+    config: {
+      ...config,
+      right_qty: parseJsonField(config.right_qty),
+      right_base_curve: parseJsonField(config.right_base_curve),
+      right_diameter: parseJsonField(config.right_diameter),
+      right_power: parseJsonField(config.right_power),
+      right_cylinder: parseJsonField(config.right_cylinder),
+      right_axis: parseJsonField(config.right_axis),
+      left_qty: parseJsonField(config.left_qty),
+      left_base_curve: parseJsonField(config.left_base_curve),
+      left_diameter: parseJsonField(config.left_diameter),
+      left_power: parseJsonField(config.left_power),
+      left_cylinder: parseJsonField(config.left_cylinder),
+      left_axis: parseJsonField(config.left_axis)
+    }
+  });
+});
+
+// @desc    Delete Astigmatism configuration
+// @route   DELETE /api/admin/contact-lens-forms/astigmatism/:id
+// @access  Admin
+exports.deleteAstigmatismConfig = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const config = await prisma.contactLensConfiguration.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!config) {
+    return error(res, 'Configuration not found', 404);
+  }
+
+  if (config.configuration_type !== 'astigmatism') {
+    return error(res, 'This is not an Astigmatism configuration', 400);
+  }
+
+  await prisma.contactLensConfiguration.delete({
+    where: { id: parseInt(id) }
+  });
+
+  return success(res, 'Astigmatism configuration deleted successfully');
+});
+
 // ==================== ADMIN ROUTES FOR ASTIGMATISM DROPDOWN VALUES ====================
 
 // @desc    Get all Astigmatism dropdown values
