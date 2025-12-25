@@ -270,15 +270,15 @@ exports.getRelatedCategories = asyncHandler(async (req, res) => {
 
     // Group by category and find matches
     const categoryMap = new Map();
-    
+
     allSubcategories.forEach(sub => {
         const subName = sub.name.toLowerCase();
-        const isMatch = relatedSubcategoryNames.some(name => 
+        const isMatch = relatedSubcategoryNames.some(name =>
             name.includes(subName) || subName.includes(name) ||
             name.split(' ').some(word => subName.includes(word)) ||
             subName.split(' ').some(word => name.includes(word))
         );
-        
+
         if (isMatch) {
             const categoryId = sub.category.id;
             if (!categoryMap.has(categoryId)) {
@@ -494,6 +494,293 @@ exports.getSubCategoriesByParent = asyncHandler(async (req, res) => {
             parent_id: sub.parent_id
         }))
     });
+});
+
+// @desc    Get contact lens options for a sub-subcategory
+// @route   GET /api/subcategories/:id/contact-lens-options
+// @access  Public
+exports.getContactLensOptions = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Get the subcategory with parent and category info
+    const subcategory = await prisma.subCategory.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            parent: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            }
+        }
+    });
+
+    if (!subcategory) {
+        return error(res, 'Subcategory not found', 404);
+    }
+
+    // Verify this is a sub-subcategory (has parent_id)
+    if (!subcategory.parent_id) {
+        return error(res, 'This endpoint only works for sub-subcategories (third level)', 400);
+    }
+
+    // Detect subcategory type based on name
+    const subCategoryName = subcategory.name.toLowerCase();
+    const isSpherical = subCategoryName.includes('spherical') ||
+        subCategoryName.includes('sferiche') ||
+        subCategoryName.includes('sferica');
+    const isAstigmatism = subCategoryName.includes('astigmatism') ||
+        subCategoryName.includes('astigmatismo') ||
+        subCategoryName.includes('toric') ||
+        subCategoryName.includes('torica');
+
+    if (!isSpherical && !isAstigmatism) {
+        return error(res, 'This subcategory is not a contact lens type (Spherical or Astigmatism/Toric)', 400);
+    }
+
+    // Get all products in this sub-subcategory
+    const products = await prisma.product.findMany({
+        where: {
+            sub_category_id: parseInt(id),
+            is_active: true
+        },
+        select: {
+            id: true,
+            base_curve_options: true,
+            diameter_options: true,
+            powers_range: true
+        }
+    });
+
+    // Aggregate unique options
+    const baseCurveSet = new Set();
+    const diameterSet = new Set();
+    const powerSet = new Set();
+
+    products.forEach(product => {
+        // Parse base curve options
+        const baseCurves = parseJsonOption(product.base_curve_options);
+        if (Array.isArray(baseCurves)) {
+            baseCurves.forEach(bc => baseCurveSet.add(parseFloat(bc)));
+        }
+
+        // Parse diameter options
+        const diameters = parseJsonOption(product.diameter_options);
+        if (Array.isArray(diameters)) {
+            diameters.forEach(d => diameterSet.add(parseFloat(d)));
+        }
+
+        // Parse power range
+        const powers = parseJsonOption(product.powers_range);
+        if (Array.isArray(powers)) {
+            powers.forEach(p => powerSet.add(p.toString()));
+        } else if (typeof powers === 'string') {
+            // Parse range string like "-0.50 to -6.00 in 0.25 steps"
+            const rangeMatch = powers.match(/([-+]?\d+\.?\d*)\s+to\s+([-+]?\d+\.?\d*)\s+in\s+([-+]?\d+\.?\d*)/i);
+            if (rangeMatch) {
+                const start = parseFloat(rangeMatch[1]);
+                const end = parseFloat(rangeMatch[2]);
+                const step = parseFloat(rangeMatch[3]);
+
+                for (let val = start; start < end ? val <= end : val >= end; val = parseFloat((val + (start < end ? step : -step)).toFixed(2))) {
+                    powerSet.add(val.toFixed(2));
+                }
+            }
+        }
+    });
+
+    // Convert sets to sorted arrays
+    const baseCurveOptions = Array.from(baseCurveSet).sort((a, b) => a - b);
+    const diameterOptions = Array.from(diameterSet).sort((a, b) => a - b);
+    const powerOptions = Array.from(powerSet).sort((a, b) => parseFloat(a) - parseFloat(b));
+
+    const responseData = {
+        subcategory: {
+            id: subcategory.id,
+            name: subcategory.name,
+            slug: subcategory.slug,
+            parent: subcategory.parent,
+            category: subcategory.category
+        },
+        powerOptions,
+        baseCurveOptions,
+        diameterOptions,
+        productCount: products.length,
+        type: isSpherical ? 'spherical' : 'astigmatism'
+    };
+
+    // Add cylinder and axis options for astigmatism
+    if (isAstigmatism) {
+        // Standard cylinder options from -0.25 to -6.00 in 0.25 steps
+        const cylinderOptions = [];
+        for (let i = -0.25; i >= -6.00; i -= 0.25) {
+            cylinderOptions.push(parseFloat(i.toFixed(2)));
+        }
+
+        // Standard axis options from 0 to 180
+        const axisOptions = [];
+        for (let i = 0; i <= 180; i++) {
+            axisOptions.push(i);
+        }
+
+        responseData.cylinderOptions = cylinderOptions;
+        responseData.axisOptions = axisOptions;
+    }
+
+    return success(res, 'Contact lens options retrieved successfully', responseData);
+});
+
+// @desc    Get contact lens options for a sub-subcategory by slug
+// @route   GET /api/subcategories/slug/:slug/contact-lens-options
+// @access  Public
+exports.getContactLensOptionsBySlug = asyncHandler(async (req, res) => {
+    const { slug } = req.params;
+
+    // Get the subcategory with parent and category info
+    const subcategory = await prisma.subCategory.findFirst({
+        where: {
+            slug,
+            is_active: true
+        },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            parent: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            }
+        }
+    });
+
+    if (!subcategory) {
+        return error(res, 'Subcategory not found', 404);
+    }
+
+    // Verify this is a sub-subcategory (has parent_id)
+    if (!subcategory.parent_id) {
+        return error(res, 'This endpoint only works for sub-subcategories (third level)', 400);
+    }
+
+    // Detect subcategory type based on name
+    const subCategoryName = subcategory.name.toLowerCase();
+    const isSpherical = subCategoryName.includes('spherical') ||
+        subCategoryName.includes('sferiche') ||
+        subCategoryName.includes('sferica');
+    const isAstigmatism = subCategoryName.includes('astigmatism') ||
+        subCategoryName.includes('astigmatismo') ||
+        subCategoryName.includes('toric') ||
+        subCategoryName.includes('torica');
+
+    if (!isSpherical && !isAstigmatism) {
+        return error(res, 'This subcategory is not a contact lens type (Spherical or Astigmatism/Toric)', 400);
+    }
+
+    // Get all products in this sub-subcategory
+    const products = await prisma.product.findMany({
+        where: {
+            sub_category_id: subcategory.id,
+            is_active: true
+        },
+        select: {
+            id: true,
+            base_curve_options: true,
+            diameter_options: true,
+            powers_range: true
+        }
+    });
+
+    // Aggregate unique options
+    const baseCurveSet = new Set();
+    const diameterSet = new Set();
+    const powerSet = new Set();
+
+    products.forEach(product => {
+        // Parse base curve options
+        const baseCurves = parseJsonOption(product.base_curve_options);
+        if (Array.isArray(baseCurves)) {
+            baseCurves.forEach(bc => baseCurveSet.add(parseFloat(bc)));
+        }
+
+        // Parse diameter options
+        const diameters = parseJsonOption(product.diameter_options);
+        if (Array.isArray(diameters)) {
+            diameters.forEach(d => diameterSet.add(parseFloat(d)));
+        }
+
+        // Parse power range
+        const powers = parseJsonOption(product.powers_range);
+        if (Array.isArray(powers)) {
+            powers.forEach(p => powerSet.add(p.toString()));
+        } else if (typeof powers === 'string') {
+            // Parse range string like "-0.50 to -6.00 in 0.25 steps"
+            const rangeMatch = powers.match(/([-+]?\d+\.?\d*)\s+to\s+([-+]?\d+\.?\d*)\s+in\s+([-+]?\d+\.?\d*)/i);
+            if (rangeMatch) {
+                const start = parseFloat(rangeMatch[1]);
+                const end = parseFloat(rangeMatch[2]);
+                const step = parseFloat(rangeMatch[3]);
+
+                for (let val = start; start < end ? val <= end : val >= end; val = parseFloat((val + (start < end ? step : -step)).toFixed(2))) {
+                    powerSet.add(val.toFixed(2));
+                }
+            }
+        }
+    });
+
+    // Convert sets to sorted arrays
+    const baseCurveOptions = Array.from(baseCurveSet).sort((a, b) => a - b);
+    const diameterOptions = Array.from(diameterSet).sort((a, b) => a - b);
+    const powerOptions = Array.from(powerSet).sort((a, b) => parseFloat(a) - parseFloat(b));
+
+    const responseData = {
+        subcategory: {
+            id: subcategory.id,
+            name: subcategory.name,
+            slug: subcategory.slug,
+            parent: subcategory.parent,
+            category: subcategory.category
+        },
+        powerOptions,
+        baseCurveOptions,
+        diameterOptions,
+        productCount: products.length,
+        type: isSpherical ? 'spherical' : 'astigmatism'
+    };
+
+    // Add cylinder and axis options for astigmatism
+    if (isAstigmatism) {
+        // Standard cylinder options from -0.25 to -6.00 in 0.25 steps
+        const cylinderOptions = [];
+        for (let i = -0.25; i >= -6.00; i -= 0.25) {
+            cylinderOptions.push(parseFloat(i.toFixed(2)));
+        }
+
+        // Standard axis options from 0 to 180
+        const axisOptions = [];
+        for (let i = 0; i <= 180; i++) {
+            axisOptions.push(i);
+        }
+
+        responseData.cylinderOptions = cylinderOptions;
+        responseData.axisOptions = axisOptions;
+    }
+
+    return success(res, 'Contact lens options retrieved successfully', responseData);
 });
 
 // Helper function to parse JSON option fields

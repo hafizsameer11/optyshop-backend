@@ -47,27 +47,31 @@ model Category {
   products           Product[]
   subcategories      SubCategory[]
   contactLensConfigs ContactLensConfiguration[]
+  sphericalConfigs   SphericalConfiguration[]
+  astigmatismConfigs AstigmatismConfiguration[]
 
   @@map("categories")
 }
 
 model SubCategory {
-  id                 Int                        @id @default(autoincrement())
-  category_id        Int
-  parent_id          Int?
-  name               String                     @db.VarChar(100)
-  slug               String                     @db.VarChar(100)
-  description        String?                    @db.Text
-  image              String?                    @db.VarChar(500)
-  is_active          Boolean                    @default(true)
-  sort_order         Int                        @default(0)
-  created_at         DateTime                   @default(now())
-  updated_at         DateTime                   @updatedAt
-  category           Category                   @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  parent             SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id], onDelete: SetNull)
-  children           SubCategory[]              @relation("SubCategoryHierarchy")
-  products           Product[]
-  contactLensConfigs ContactLensConfiguration[]
+  id                        Int                        @id @default(autoincrement())
+  category_id               Int
+  parent_id                 Int?
+  name                      String                     @db.VarChar(100)
+  slug                      String                     @db.VarChar(100)
+  description               String?                    @db.Text
+  image                     String?                    @db.VarChar(500)
+  is_active                 Boolean                    @default(true)
+  sort_order                Int                        @default(0)
+  created_at                DateTime                   @default(now())
+  updated_at                DateTime                   @updatedAt
+  category                  Category                   @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  parent                    SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id], onDelete: SetNull)
+  children                  SubCategory[]              @relation("SubCategoryHierarchy")
+  products                  Product[]
+  contactLensConfigs        ContactLensConfiguration[]
+  sphericalConfigurations   SphericalConfiguration[]
+  astigmatismConfigurations AstigmatismConfiguration[]
 
   @@unique([name, parent_id])
   @@index([category_id])
@@ -130,6 +134,8 @@ model Product {
   lensTypes             ProductLensType[]
   variants              ProductVariant[]
   contactLensConfigs    ContactLensConfiguration[]
+  sphericalConfigs      SphericalConfiguration[]
+  astigmatismConfigs    AstigmatismConfiguration[]
   category              Category                   @relation(fields: [category_id], references: [id])
   subCategory           SubCategory?               @relation(fields: [sub_category_id], references: [id])
   sub_category_id       Int?
@@ -1210,6 +1216,74 @@ model LensThicknessOption {
   @@map("lens_thickness_options")
 }
 
+model SphericalConfiguration {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(255)
+  display_name    String   @db.VarChar(255)
+  sub_category_id Int
+  category_id     Int?
+  price           Decimal? @db.Decimal(10, 2)
+  is_active       Boolean  @default(true)
+  sort_order      Int      @default(0)
+
+  // Parameter fields - stored as JSON arrays
+  right_qty        String? @db.LongText // JSON array
+  right_base_curve String? @db.LongText // JSON array
+  right_diameter   String? @db.LongText // JSON array
+  right_power      String? @db.LongText // JSON array
+
+  left_qty        String? @db.LongText // JSON array
+  left_base_curve String? @db.LongText // JSON array
+  left_diameter   String? @db.LongText // JSON array
+  left_power      String? @db.LongText // JSON array
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  subCategory SubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  category    Category?   @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  product     Product?    @relation(fields: [productId], references: [id])
+  productId   Int?
+
+  @@map("spherical_configurations")
+}
+
+model AstigmatismConfiguration {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(255)
+  display_name    String   @db.VarChar(255)
+  sub_category_id Int
+  category_id     Int?
+  price           Decimal? @db.Decimal(10, 2)
+  is_active       Boolean  @default(true)
+  sort_order      Int      @default(0)
+
+  // Parameter fields - stored as JSON arrays
+  right_qty        String? @db.LongText // JSON array
+  right_base_curve String? @db.LongText // JSON array
+  right_diameter   String? @db.LongText // JSON array
+  right_power      String? @db.LongText // JSON array
+  right_cylinder   String? @db.LongText // JSON array
+  right_axis       String? @db.LongText // JSON array
+
+  left_qty        String? @db.LongText // JSON array
+  left_base_curve String? @db.LongText // JSON array
+  left_diameter   String? @db.LongText // JSON array
+  left_power      String? @db.LongText // JSON array
+  left_cylinder   String? @db.LongText // JSON array
+  left_axis       String? @db.LongText // JSON array
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  subCategory SubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  category    Category?   @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  product     Product?    @relation(fields: [productId], references: [id])
+  productId   Int?
+
+  @@map("astigmatism_configurations")
+}
+
 model ContactLensConfiguration {
   id                  Int                   @id @default(autoincrement())
   // Product-like fields
@@ -1272,15 +1346,15 @@ model ContactLensConfiguration {
 }
 
 model AstigmatismDropdownValue {
-  id          Int                   @id @default(autoincrement())
-  field_type  AstigmatismFieldType  // 'power', 'cylinder', 'axis'
-  value       String                @db.VarChar(50) // The actual value (e.g., "-2.00", "0.25", "180")
-  label       String?               @db.VarChar(100) // Display label (optional)
-  eye_type    AstigmatismEyeType?   // 'left', 'right', or null for both
-  is_active   Boolean               @default(true)
-  sort_order  Int                   @default(0)
-  created_at  DateTime              @default(now())
-  updated_at  DateTime              @updatedAt
+  id         Int                  @id @default(autoincrement())
+  field_type AstigmatismFieldType // 'power', 'cylinder', 'axis'
+  value      String               @db.VarChar(50) // The actual value (e.g., "-2.00", "0.25", "180")
+  label      String?              @db.VarChar(100) // Display label (optional)
+  eye_type   AstigmatismEyeType? // 'left', 'right', or null for both
+  is_active  Boolean              @default(true)
+  sort_order Int                  @default(0)
+  created_at DateTime             @default(now())
+  updated_at DateTime             @updatedAt
 
   @@index([field_type])
   @@index([eye_type])

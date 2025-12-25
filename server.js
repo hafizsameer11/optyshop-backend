@@ -157,7 +157,7 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'OptyShop API is running',
     version: '1.0.0',
-      endpoints: {
+    endpoints: {
       auth: '/api/auth',
       products: '/api/products',
       cart: '/api/cart',
@@ -210,12 +210,14 @@ app.use('/api/faqs', faqRoutes);
 app.use('/api/pages', pageRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/shipping-methods', shippingRoutes);
-app.use('/api/lens', lensRoutes);
-app.use('/api/customization', customizationRoutes);
-app.use('/api/prescription-sun-lenses', prescriptionSunLensRoutes);
-app.use('/api/photochromic-lenses', photochromicLensRoutes);
-app.use('/api/contact-lens-forms', contactLensFormRoutes);
+app.use('/api/api/shipping-methods', shippingRoutes);
+app.use('/api/api/lens', lensRoutes);
+app.use('/api/api/contact-lens-forms', contactLensFormRoutes);
+app.use('/api/api/subcategories', subCategoryRoutes);
+app.use('/api/api/transactions', transactionRoutes);
+app.use('/api/api/payments', paymentRoutes);
+app.use('/api/api/prescription-sun-lenses', prescriptionSunLensRoutes);
+app.use('/api/api/photochromic-lenses', photochromicLensRoutes);
 
 // Handle double /api/api paths (fallback for cases where middleware doesn't catch it)
 app.use('/api/api/auth', authRoutes);
@@ -243,6 +245,11 @@ app.use('/api/api/customization', customizationRoutes);
 app.use('/api/api/prescription-sun-lenses', prescriptionSunLensRoutes);
 app.use('/api/api/photochromic-lenses', photochromicLensRoutes);
 app.use('/api/api/contact-lens-forms', contactLensFormRoutes);
+app.use('/api/api/subcategories', subCategoryRoutes);
+app.use('/api/api/transactions', transactionRoutes);
+app.use('/api/api/payments', paymentRoutes);
+app.use('/api/api/shipping-methods', shippingRoutes);
+app.use('/api/api/lens', lensRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -1118,16 +1118,22 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
   }
 
   // Prepare contact lens data (common for both Spherical and Astigmatism)
-  // All values come from dropdowns as strings, so we parse them
+  // All values come from dropdowns as strings, so we parse them carefully
+  const parseNum = (val, type = 'float') => {
+    if (val === undefined || val === null || val === '') return null;
+    const parsed = type === 'int' ? parseInt(String(val)) : parseFloat(String(val));
+    return isNaN(parsed) ? null : parsed;
+  };
+
   const contactLensData = {
-    contact_lens_right_qty: right_qty ? parseInt(String(right_qty)) : 1,
-    contact_lens_right_base_curve: right_base_curve ? parseFloat(String(right_base_curve)) : null,
-    contact_lens_right_diameter: right_diameter ? parseFloat(String(right_diameter)) : null,
-    contact_lens_right_power: right_power ? parseFloat(String(right_power)) : null,
-    contact_lens_left_qty: left_qty ? parseInt(String(left_qty)) : 1,
-    contact_lens_left_base_curve: left_base_curve ? parseFloat(String(left_base_curve)) : null,
-    contact_lens_left_diameter: left_diameter ? parseFloat(String(left_diameter)) : null,
-    contact_lens_left_power: left_power ? parseFloat(String(left_power)) : null
+    contact_lens_right_qty: parseNum(right_qty, 'int') || 1,
+    contact_lens_right_base_curve: parseNum(right_base_curve),
+    contact_lens_right_diameter: parseNum(right_diameter),
+    contact_lens_right_power: parseNum(right_power),
+    contact_lens_left_qty: parseNum(left_qty, 'int') || 1,
+    contact_lens_left_base_curve: parseNum(left_base_curve),
+    contact_lens_left_diameter: parseNum(left_diameter),
+    contact_lens_left_power: parseNum(left_power)
   };
 
   // Add astigmatism-specific fields if form type is astigmatism
@@ -1136,10 +1142,10 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     // These are stored in customization field as JSON
     // All values come from dropdowns as strings
     const astigmatismData = {
-      left_cylinder: left_cylinder ? parseFloat(String(left_cylinder)) : null,
-      right_cylinder: right_cylinder ? parseFloat(String(right_cylinder)) : null,
-      left_axis: left_axis ? parseInt(String(left_axis)) : null,
-      right_axis: right_axis ? parseInt(String(right_axis)) : null
+      left_cylinder: parseNum(left_cylinder),
+      right_cylinder: parseNum(right_cylinder),
+      left_axis: parseNum(left_axis, 'int'),
+      right_axis: parseNum(right_axis, 'int')
     };
     contactLensData.customization = JSON.stringify(astigmatismData);
   }
