@@ -1441,10 +1441,12 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       colorImages = colorImages ? [colorImages] : [];
     }
 
-    // Create colors array for frontend color swatches
+    // Create colors array for frontend color swatches with variant name and price
     const colors = colorImages.map((colorData, index) => ({
-      name: colorData.color || `Color ${index + 1}`,
-      value: colorData.color?.toLowerCase() || `color-${index + 1}`,
+      name: colorData.name || colorData.color || `Color ${index + 1}`, // Custom variant name
+      display_name: colorData.display_name || colorData.name || colorData.color || `Color ${index + 1}`, // Display name
+      value: colorData.color?.toLowerCase() || `color-${index + 1}`, // Color value for matching
+      price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
       images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
       primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
         ? colorData.images[0] 
@@ -1462,6 +1464,11 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
 
     // Get first image URL for easy access in frontend
     const firstImage = currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null);
+    
+    // Get current variant price (from selected color, or base product price)
+    const currentVariantPrice = defaultColor && colors.length > 0 && colors[0].price !== null
+      ? colors[0].price
+      : parseFloat(product.price);
 
     return {
       ...product,
@@ -1471,8 +1478,9 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       // Also add thumbnail for backward compatibility
       thumbnail: firstImage,
       color_images: colorImages,
-      colors: colors, // Array of color objects for swatches
+      colors: colors, // Array of color objects for swatches with name, display_name, price
       selectedColor: defaultColor, // Default selected color value
+      currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
       model_3d_url: product.model_3d_url || null
     };
   };
@@ -1634,22 +1642,47 @@ exports.createProduct = asyncHandler(async (req, res) => {
           colorImagesMap[colorName] = imageUrls;
         });
 
-        // Merge with existing color_images data from body
+        // Merge with existing color_images data from body (preserve name, display_name, price)
         if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
           colorImagesData.forEach(item => {
-            if (item.color && item.images) {
-              // If images are URLs, use them; otherwise merge with uploaded files
-              const existingUrls = Array.isArray(item.images) ? item.images : [];
+            if (item.color) {
+              const existingUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
               const uploadedUrls = colorImagesMap[item.color] || [];
-              colorImagesMap[item.color] = [...existingUrls, ...uploadedUrls];
+              
+              // Store full color data structure
+              colorImagesMap[item.color] = {
+                color: item.color,
+                name: item.name || item.color,
+                display_name: item.display_name || item.name || item.color,
+                price: item.price !== undefined ? parseFloat(item.price) : null,
+                images: [...existingUrls, ...uploadedUrls]
+              };
             }
           });
         }
+        
+        // Convert simple image arrays to full structure for colors that only have uploaded files
+        Object.keys(colorImagesMap).forEach(color => {
+          if (Array.isArray(colorImagesMap[color])) {
+            // This is just an array of images, convert to full structure
+            colorImagesMap[color] = {
+              color: color,
+              name: color,
+              display_name: color,
+              price: null,
+              images: colorImagesMap[color]
+            };
+          }
+        });
 
-        // Convert to array format: [{color: "black", images: ["url1", "url2"]}, ...]
-        const colorImagesArray = Object.entries(colorImagesMap).map(([color, images]) => ({
-          color,
-          images: Array.isArray(images) ? images : [images]
+        // Convert to array format with support for name, display_name, and price
+        // Format: [{color: "black", name: "Black Classic", display_name: "Black Classic", price: 99.99, images: ["url1", "url2"]}, ...]
+        const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
+          color: colorData.color,
+          name: colorData.name || colorData.color,
+          display_name: colorData.display_name || colorData.name || colorData.color,
+          price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+          images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
         }));
 
         if (colorImagesArray.length > 0) {
@@ -2212,11 +2245,17 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       // Upload color-specific images
       const colorImagesMap = {};
       
-      // Start with existing color_images data
+      // Start with existing color_images data (preserve name, display_name, price)
       if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
         colorImagesData.forEach(item => {
-          if (item.color && item.images) {
-            colorImagesMap[item.color] = Array.isArray(item.images) ? item.images : [item.images];
+          if (item.color) {
+            colorImagesMap[item.color] = {
+              color: item.color,
+              name: item.name || item.color,
+              display_name: item.display_name || item.name || item.color,
+              price: item.price !== undefined ? parseFloat(item.price) : null,
+              images: item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : []
+            };
           }
         });
       }
@@ -2231,16 +2270,27 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       colorUploadResults.forEach(({ colorName, imageUrls }) => {
         // Merge with existing or create new
         if (colorImagesMap[colorName]) {
-          colorImagesMap[colorName] = [...colorImagesMap[colorName], ...imageUrls];
+          // Merge images, preserve existing metadata
+          colorImagesMap[colorName].images = [...colorImagesMap[colorName].images, ...imageUrls];
         } else {
-          colorImagesMap[colorName] = imageUrls;
+          // Create new entry
+          colorImagesMap[colorName] = {
+            color: colorName,
+            name: colorName,
+            display_name: colorName,
+            price: null,
+            images: imageUrls
+          };
         }
       });
 
-      // Convert to array format
-      const colorImagesArray = Object.entries(colorImagesMap).map(([color, images]) => ({
-        color,
-        images: Array.isArray(images) ? images : [images]
+      // Convert to array format with support for name, display_name, and price
+      const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
+        color: colorData.color,
+        name: colorData.name || colorData.color,
+        display_name: colorData.display_name || colorData.name || colorData.color,
+        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+        images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
       }));
 
       productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;

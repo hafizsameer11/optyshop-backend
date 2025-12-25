@@ -121,11 +121,13 @@ const formatProductMedia = (product) => {
     colorImages = colorImages ? [colorImages] : [];
   }
 
-  // Create colors array for frontend color swatches
+  // Create colors array for frontend color swatches with variant name and price
   // Extract colors from color_images and create a user-friendly structure
   const colors = colorImages.map((colorData, index) => ({
-    name: colorData.color || `Color ${index + 1}`,
-    value: colorData.color?.toLowerCase() || `color-${index + 1}`,
+    name: colorData.name || colorData.color || `Color ${index + 1}`, // Custom variant name
+    display_name: colorData.display_name || colorData.name || colorData.color || `Color ${index + 1}`, // Display name
+    value: colorData.color?.toLowerCase() || `color-${index + 1}`, // Color value for matching
+    price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
     images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
     primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
       ? colorData.images[0] 
@@ -141,14 +143,20 @@ const formatProductMedia = (product) => {
       ? colors[0].images 
       : images
     : images;
+  
+  // Get current variant price (from selected color, or base product price)
+  const currentVariantPrice = defaultColor && colors.length > 0 && colors[0].price !== null
+    ? colors[0].price
+    : parseFloat(product.price);
 
   return {
     ...product,
     images,
     image: currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null),
     color_images: colorImages,
-    colors: colors, // Array of color objects for swatches: [{name, value, images, primaryImage, hexCode}]
+    colors: colors, // Array of color objects for swatches: [{name, display_name, value, price, images, primaryImage, hexCode}]
     selectedColor: defaultColor, // Default selected color value
+    currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
     // model_3d_url is already in the product object from Prisma
     model_3d_url: product.model_3d_url || null
   };

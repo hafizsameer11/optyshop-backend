@@ -1233,15 +1233,34 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     }
   });
 
-  // Parse customization for response
+  // Parse customization and images for response
+  let productImages = cartItem.product.images;
+  if (productImages) {
+    try {
+      productImages = typeof productImages === 'string' ? JSON.parse(productImages) : productImages;
+      if (!Array.isArray(productImages)) {
+        productImages = productImages ? [productImages] : [];
+      }
+    } catch (e) {
+      productImages = [];
+    }
+  } else {
+    productImages = [];
+  }
+
   const parsedItem = {
     ...cartItem,
-    customization: cartItem.customization ? JSON.parse(cartItem.customization) : null
+    customization: cartItem.customization ? JSON.parse(cartItem.customization) : null,
+    product: {
+      ...cartItem.product,
+      images: productImages
+    }
   };
 
+  // Return success response (using 200 instead of 201 for consistency with frontend expectations)
   return success(res, 'Contact lens added to cart successfully', {
     item: parsedItem
-  }, 201);
+  }, 200);
 });
 
 // Helper function to parse JSON fields
