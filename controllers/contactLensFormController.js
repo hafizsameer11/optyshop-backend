@@ -61,8 +61,9 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
   };
 
   if (formType === 'spherical') {
-    // For Spherical: Get ALL dropdown values from database (Qty, Base Curve, Diameter, Power)
-    const [qtyValues, baseCurveValues, diameterValues, powerValues] = await Promise.all([
+    // For Spherical: Get Qty, Base Curve, Diameter from astigmatism dropdown values
+    // But get Power values from Spherical configurations themselves
+    const [qtyValues, baseCurveValues, diameterValues, sphericalConfigs] = await Promise.all([
       prisma.astigmatismDropdownValue.findMany({
         where: { field_type: 'qty', is_active: true },
         orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
@@ -75,11 +76,63 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
         where: { field_type: 'diameter', is_active: true },
         orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
       }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'power', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+      prisma.contactLensConfiguration.findMany({
+        where: {
+          configuration_type: 'spherical',
+          sub_category_id: parseInt(sub_category_id),
+          is_active: true
+        },
+        select: {
+          right_power: true,
+          left_power: true
+        }
       })
     ]);
+
+    // Extract unique power values from spherical configurations
+    const powerValueSet = new Set();
+    sphericalConfigs.forEach(config => {
+      const rightPower = parseJsonField(config.right_power);
+      const leftPower = parseJsonField(config.left_power);
+      
+      if (Array.isArray(rightPower)) {
+        rightPower.forEach(val => {
+          if (val !== null && val !== undefined) {
+            powerValueSet.add(String(val));
+          }
+        });
+      }
+      if (Array.isArray(leftPower)) {
+        leftPower.forEach(val => {
+          if (val !== null && val !== undefined) {
+            powerValueSet.add(String(val));
+          }
+        });
+      }
+    });
+
+    // Convert power values to dropdown format (sorted)
+    const powerValues = Array.from(powerValueSet)
+      .sort((a, b) => {
+        // Sort numerically if possible, otherwise alphabetically
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return a.localeCompare(b);
+      })
+      .map(value => ({
+        id: null, // Not from database, so no ID
+        field_type: 'power',
+        value: value,
+        label: value,
+        eye_type: null, // Can be used for both eyes
+        is_active: true,
+        sort_order: 0,
+        created_at: null,
+        updated_at: null
+      }));
 
     // For Spherical: Return form structure with ALL fields as dropdowns
     formConfig.formFields = {
