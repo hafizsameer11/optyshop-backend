@@ -3,14 +3,75 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
 
+// Helper function to format contact lens details for display
+const formatContactLensDetails = (item) => {
+  const hasContactLensData = item.contact_lens_right_qty !== null || 
+                              item.contact_lens_left_qty !== null ||
+                              item.contact_lens_right_power !== null ||
+                              item.contact_lens_left_power !== null;
+  
+  if (!hasContactLensData) return null;
+
+  const details = {
+    right_eye: null,
+    left_eye: null,
+    astigmatism: null
+  };
+
+  // Right eye details
+  if (item.contact_lens_right_qty !== null || item.contact_lens_right_power !== null) {
+    details.right_eye = {
+      quantity: item.contact_lens_right_qty,
+      base_curve: item.contact_lens_right_base_curve,
+      diameter: item.contact_lens_right_diameter,
+      power: item.contact_lens_right_power
+    };
+  }
+
+  // Left eye details
+  if (item.contact_lens_left_qty !== null || item.contact_lens_left_power !== null) {
+    details.left_eye = {
+      quantity: item.contact_lens_left_qty,
+      base_curve: item.contact_lens_left_base_curve,
+      diameter: item.contact_lens_left_diameter,
+      power: item.contact_lens_left_power
+    };
+  }
+
+  // Astigmatism details (from customization)
+  if (item.customization) {
+    const customization = typeof item.customization === 'string' 
+      ? JSON.parse(item.customization) 
+      : item.customization;
+    
+    if (customization && (customization.left_cylinder || customization.right_cylinder)) {
+      details.astigmatism = {
+        left_cylinder: customization.left_cylinder,
+        right_cylinder: customization.right_cylinder,
+        left_axis: customization.left_axis,
+        right_axis: customization.right_axis
+      };
+    }
+  }
+
+  return details;
+};
+
 // Helper function to parse JSON strings in order items
 const parseOrderItems = (items) => {
   if (!items) return items;
-  return items.map(item => ({
-    ...item,
-    lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
-    customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null
-  }));
+  return items.map(item => {
+    const parsedItem = {
+      ...item,
+      lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
+      customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null
+    };
+    
+    // Add formatted contact lens details
+    parsedItem.contact_lens_details = formatContactLensDetails(item);
+    
+    return parsedItem;
+  });
 };
 
 // @desc    Create new order

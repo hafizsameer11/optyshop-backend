@@ -59,19 +59,78 @@ exports.getCart = asyncHandler(async (req, res) => {
     });
   }
 
+  // Helper function to format contact lens details for display
+  const formatContactLensDetails = (item) => {
+    const hasContactLensData = item.contact_lens_right_qty !== null || 
+                                item.contact_lens_left_qty !== null ||
+                                item.contact_lens_right_power !== null ||
+                                item.contact_lens_left_power !== null;
+    
+    if (!hasContactLensData) return null;
+
+    const details = {
+      right_eye: null,
+      left_eye: null,
+      astigmatism: null
+    };
+
+    // Right eye details
+    if (item.contact_lens_right_qty !== null || item.contact_lens_right_power !== null) {
+      details.right_eye = {
+        quantity: item.contact_lens_right_qty,
+        base_curve: item.contact_lens_right_base_curve,
+        diameter: item.contact_lens_right_diameter,
+        power: item.contact_lens_right_power
+      };
+    }
+
+    // Left eye details
+    if (item.contact_lens_left_qty !== null || item.contact_lens_left_power !== null) {
+      details.left_eye = {
+        quantity: item.contact_lens_left_qty,
+        base_curve: item.contact_lens_left_base_curve,
+        diameter: item.contact_lens_left_diameter,
+        power: item.contact_lens_left_power
+      };
+    }
+
+    // Astigmatism details (from customization)
+    if (item.customization) {
+      const customization = typeof item.customization === 'string' 
+        ? JSON.parse(item.customization) 
+        : item.customization;
+      
+      if (customization && (customization.left_cylinder || customization.right_cylinder)) {
+        details.astigmatism = {
+          left_cylinder: customization.left_cylinder,
+          right_cylinder: customization.right_cylinder,
+          left_axis: customization.left_axis,
+          right_axis: customization.right_axis
+        };
+      }
+    }
+
+    return details;
+  };
+
   // Calculate totals and parse JSON strings
   let subtotal = 0;
   if (cart.items && cart.items.length > 0) {
     cart.items = cart.items.map(item => {
       subtotal += parseFloat(item.unit_price) * item.quantity;
       // Parse lens_coatings and customization from JSON strings
-      return {
+      const parsedItem = {
         ...item,
         lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
         customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null,
         prescription_data: item.prescription_data ? JSON.parse(item.prescription_data) : null,
         treatment_ids: item.treatment_ids ? JSON.parse(item.treatment_ids) : null
       };
+      
+      // Add formatted contact lens details
+      parsedItem.contact_lens_details = formatContactLensDetails(item);
+      
+      return parsedItem;
     });
   }
 
@@ -435,6 +494,9 @@ exports.addToCart = asyncHandler(async (req, res) => {
     prescription_data: cartItem.prescription_data ? JSON.parse(cartItem.prescription_data) : null,
     treatment_ids: cartItem.treatment_ids ? JSON.parse(cartItem.treatment_ids) : null
   };
+  
+  // Add formatted contact lens details
+  parsedItem.contact_lens_details = formatContactLensDetails(cartItem);
 
   // Apply coupon automatically if provided
   let couponInfo = null;
@@ -599,10 +661,23 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
       treatment_ids: updatedItem.treatment_ids ? JSON.parse(updatedItem.treatment_ids) : null
     };
     
+    // Add formatted contact lens details
+    parsedItem.contact_lens_details = formatContactLensDetails(updatedItem);
+    
     return success(res, 'Cart item updated', { item: parsedItem });
   }
 
-  return success(res, 'Cart item updated', { item: cartItem });
+  // If no update, still format the existing item
+  const formattedItem = {
+    ...cartItem,
+    lens_coatings: cartItem.lens_coatings ? JSON.parse(cartItem.lens_coatings) : null,
+    customization: cartItem.customization ? (typeof cartItem.customization === 'string' ? JSON.parse(cartItem.customization) : cartItem.customization) : null,
+    prescription_data: cartItem.prescription_data ? JSON.parse(cartItem.prescription_data) : null,
+    treatment_ids: cartItem.treatment_ids ? JSON.parse(cartItem.treatment_ids) : null,
+    contact_lens_details: formatContactLensDetails(cartItem)
+  };
+  
+  return success(res, 'Cart item updated', { item: formattedItem });
 });
 
 // @desc    Remove item from cart
