@@ -41,7 +41,7 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
   // Determine form type based on sub-sub-category name (case-insensitive)
   const subCategoryName = subCategory.name.toLowerCase();
   let formType = null;
-  
+
   if (subCategoryName.includes('spherical') || subCategoryName === 'spherical') {
     formType = 'spherical';
   } else if (subCategoryName.includes('astigmatism') || subCategoryName === 'astigmatism') {
@@ -354,9 +354,11 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
     right_qty: parseJsonField(config.right_qty),
     right_base_curve: parseJsonField(config.right_base_curve),
     right_diameter: parseJsonField(config.right_diameter),
+    right_power: parseJsonField(config.right_power),
     left_qty: parseJsonField(config.left_qty),
     left_base_curve: parseJsonField(config.left_base_curve),
-    left_diameter: parseJsonField(config.left_diameter)
+    left_diameter: parseJsonField(config.left_diameter),
+    left_power: parseJsonField(config.left_power)
   }));
 
   return success(res, 'Spherical configurations retrieved successfully', {
@@ -381,9 +383,11 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     right_qty,
     right_base_curve,
     right_diameter,
+    right_power,
     left_qty,
     left_base_curve,
     left_diameter,
+    left_power,
     price,
     display_name
   } = req.body;
@@ -416,9 +420,11 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       right_qty: Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1]),
       right_base_curve: Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]),
       right_diameter: Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]),
+      right_power: Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]),
       left_qty: Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty || 1]),
       left_base_curve: Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]),
       left_diameter: Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]),
+      left_power: Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]),
       price: price ? parseFloat(price) : null,
       display_name: display_name || name
     },
@@ -441,7 +447,9 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       right_diameter: parseJsonField(config.right_diameter),
       left_qty: parseJsonField(config.left_qty),
       left_base_curve: parseJsonField(config.left_base_curve),
-      left_diameter: parseJsonField(config.left_diameter)
+      left_diameter: parseJsonField(config.left_diameter),
+      right_power: parseJsonField(config.right_power),
+      left_power: parseJsonField(config.left_power)
     }
   }, 201);
 });
@@ -456,9 +464,11 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     right_qty,
     right_base_curve,
     right_diameter,
+    right_power,
     left_qty,
     left_base_curve,
     left_diameter,
+    left_power,
     price,
     display_name,
     is_active
@@ -492,6 +502,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (right_diameter !== undefined) {
     updateData.right_diameter = Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]);
   }
+  if (right_power !== undefined) {
+    updateData.right_power = Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]);
+  }
   if (left_qty !== undefined) {
     updateData.left_qty = Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty]);
   }
@@ -500,6 +513,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   }
   if (left_diameter !== undefined) {
     updateData.left_diameter = Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]);
+  }
+  if (left_power !== undefined) {
+    updateData.left_power = Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]);
   }
 
   const config = await prisma.contactLensConfiguration.update({
@@ -524,7 +540,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
       right_diameter: parseJsonField(config.right_diameter),
       left_qty: parseJsonField(config.left_qty),
       left_base_curve: parseJsonField(config.left_base_curve),
-      left_diameter: parseJsonField(config.left_diameter)
+      left_diameter: parseJsonField(config.left_diameter),
+      right_power: parseJsonField(config.right_power),
+      left_power: parseJsonField(config.left_power)
     }
   });
 });
@@ -765,9 +783,11 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
     right_qty: parseJsonField(config.right_qty),
     right_base_curve: parseJsonField(config.right_base_curve),
     right_diameter: parseJsonField(config.right_diameter),
+    right_power: parseJsonField(config.right_power),
     left_qty: parseJsonField(config.left_qty),
     left_base_curve: parseJsonField(config.left_base_curve),
-    left_diameter: parseJsonField(config.left_diameter)
+    left_diameter: parseJsonField(config.left_diameter),
+    left_power: parseJsonField(config.left_power)
   }));
 
   return success(res, 'Spherical configurations retrieved successfully', {
