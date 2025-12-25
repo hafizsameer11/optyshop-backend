@@ -211,7 +211,8 @@ app.use('/api/pages', pageRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/contact-lens-forms', contactLensFormRoutes); // Standard route
-app.use('/api/api/shipping-methods', shippingRoutes);
+app.use('/api/shipping-methods', shippingRoutes); // Standard route
+app.use('/api/api/shipping-methods', shippingRoutes); // Keep for backward compatibility
 app.use('/api/api/lens', lensRoutes);
 app.use('/api/api/contact-lens-forms', contactLensFormRoutes); // Keep for backward compatibility
 app.use('/api/api/subcategories', subCategoryRoutes);
