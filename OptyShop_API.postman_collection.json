@@ -2957,7 +2957,7 @@
                     "create-intent"
                   ]
                 },
-                "description": "Create a Stripe payment intent for an order. Returns client_secret for frontend Stripe integration. If amount is not provided, uses order total."
+                "description": "Create a Stripe payment intent for an order. Returns client_secret for frontend Stripe integration.\n\n**Request Body:**\n- `order_id` (required): The order ID to create payment intent for\n- `amount` (optional): Payment amount. If not provided, uses order total\n- `currency` (optional): Currency code (default: 'USD')\n\n**Response:**\n- `clientSecret`: Stripe client secret for frontend integration\n- `paymentIntentId`: Stripe payment intent ID\n- `transactionId`: Internal transaction ID (created as pending)\n- `transactionNumber`: Internal transaction number\n\n**Note:** A pending transaction is automatically created when payment intent is created."
               }
             },
             {
@@ -3015,6 +3015,39 @@
                   ]
                 },
                 "description": "Get the current status of a payment intent from Stripe. Users can only access their own payment intents."
+              }
+            },
+            {
+              "name": "Stripe Webhook",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Stripe-Signature",
+                    "value": "t=1234567890,v1=signature_here",
+                    "description": "Stripe webhook signature for verification"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"evt_1234567890\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_1234567890\",\n      \"object\": \"payment_intent\",\n      \"status\": \"succeeded\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/payments/webhook",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "webhook"
+                  ]
+                },
+                "description": "Stripe webhook endpoint for handling payment events. This endpoint is called by Stripe when payment events occur (payment_intent.succeeded, payment_intent.payment_failed, etc.). No authentication required - uses Stripe signature verification. Configure this URL in your Stripe Dashboard under Webhooks.\n\n**Important:**\n- This endpoint requires raw body (not JSON parsed) for signature verification\n- Must include Stripe-Signature header\n- Configure STRIPE_WEBHOOK_SECRET in environment variables\n- Used for automatic transaction and order status updates"
               }
             }
           ]

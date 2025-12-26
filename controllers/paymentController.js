@@ -24,8 +24,8 @@ const generateTransactionNumber = () => {
 exports.createPaymentIntent = asyncHandler(async (req, res) => {
   const { order_id, amount, currency = 'USD' } = req.body;
 
-  if (!order_id || !amount) {
-    return error(res, 'Order ID and amount are required', 400);
+  if (!order_id) {
+    return error(res, 'Order ID is required', 400);
   }
 
   // Verify order exists and belongs to user
