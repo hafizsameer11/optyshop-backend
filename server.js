@@ -292,6 +292,22 @@ const startServer = async () => {
       console.log(`🔐 CORS: All origins allowed`);
     });
 
+    // Handle port already in use error
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use.`);
+        console.error(`💡 To fix this, you can:`);
+        console.error(`   1. Stop the process using port ${PORT}`);
+        console.error(`   2. On Windows: netstat -ano | findstr :${PORT} then taskkill /PID <PID> /F`);
+        console.error(`   3. On Linux/Mac: lsof -ti:${PORT} | xargs kill -9`);
+        console.error(`   4. Or change the PORT in your .env file`);
+        process.exit(1);
+      } else {
+        console.error('❌ Server error:', error);
+        process.exit(1);
+      }
+    });
+
     // Remove timeout restrictions - allow long-running requests (file uploads, etc.)
     server.timeout = 0; // 0 = no timeout
     server.keepAliveTimeout = 0; // 0 = no keep-alive timeout

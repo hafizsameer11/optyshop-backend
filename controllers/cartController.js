@@ -3,6 +3,60 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { sendCartNotificationToAdmin } = require('../utils/email');
 
+// Helper function to format contact lens details for display
+const formatContactLensDetails = (item) => {
+    const hasContactLensData = item.contact_lens_right_qty !== null || 
+                                item.contact_lens_left_qty !== null ||
+                                item.contact_lens_right_power !== null ||
+                                item.contact_lens_left_power !== null;
+    
+    if (!hasContactLensData) return null;
+
+    const details = {
+      right_eye: null,
+      left_eye: null,
+      astigmatism: null
+    };
+
+    // Right eye details
+    if (item.contact_lens_right_qty !== null || item.contact_lens_right_power !== null) {
+      details.right_eye = {
+        quantity: item.contact_lens_right_qty,
+        base_curve: item.contact_lens_right_base_curve,
+        diameter: item.contact_lens_right_diameter,
+        power: item.contact_lens_right_power
+      };
+    }
+
+    // Left eye details
+    if (item.contact_lens_left_qty !== null || item.contact_lens_left_power !== null) {
+      details.left_eye = {
+        quantity: item.contact_lens_left_qty,
+        base_curve: item.contact_lens_left_base_curve,
+        diameter: item.contact_lens_left_diameter,
+        power: item.contact_lens_left_power
+      };
+    }
+
+    // Astigmatism details (from customization)
+    if (item.customization) {
+      const customization = typeof item.customization === 'string' 
+        ? JSON.parse(item.customization) 
+        : item.customization;
+      
+      if (customization && (customization.left_cylinder || customization.right_cylinder)) {
+        details.astigmatism = {
+          left_cylinder: customization.left_cylinder,
+          right_cylinder: customization.right_cylinder,
+          left_axis: customization.left_axis,
+          right_axis: customization.right_axis
+        };
+      }
+    }
+
+  return details;
+};
+
 // @desc    Get user's cart
 // @route   GET /api/cart
 // @access  Private
@@ -58,60 +112,6 @@ exports.getCart = asyncHandler(async (req, res) => {
       }
     });
   }
-
-  // Helper function to format contact lens details for display
-  const formatContactLensDetails = (item) => {
-    const hasContactLensData = item.contact_lens_right_qty !== null || 
-                                item.contact_lens_left_qty !== null ||
-                                item.contact_lens_right_power !== null ||
-                                item.contact_lens_left_power !== null;
-    
-    if (!hasContactLensData) return null;
-
-    const details = {
-      right_eye: null,
-      left_eye: null,
-      astigmatism: null
-    };
-
-    // Right eye details
-    if (item.contact_lens_right_qty !== null || item.contact_lens_right_power !== null) {
-      details.right_eye = {
-        quantity: item.contact_lens_right_qty,
-        base_curve: item.contact_lens_right_base_curve,
-        diameter: item.contact_lens_right_diameter,
-        power: item.contact_lens_right_power
-      };
-    }
-
-    // Left eye details
-    if (item.contact_lens_left_qty !== null || item.contact_lens_left_power !== null) {
-      details.left_eye = {
-        quantity: item.contact_lens_left_qty,
-        base_curve: item.contact_lens_left_base_curve,
-        diameter: item.contact_lens_left_diameter,
-        power: item.contact_lens_left_power
-      };
-    }
-
-    // Astigmatism details (from customization)
-    if (item.customization) {
-      const customization = typeof item.customization === 'string' 
-        ? JSON.parse(item.customization) 
-        : item.customization;
-      
-      if (customization && (customization.left_cylinder || customization.right_cylinder)) {
-        details.astigmatism = {
-          left_cylinder: customization.left_cylinder,
-          right_cylinder: customization.right_cylinder,
-          left_axis: customization.left_axis,
-          right_axis: customization.right_axis
-        };
-      }
-    }
-
-    return details;
-  };
 
   // Calculate totals and parse JSON strings
   let subtotal = 0;
