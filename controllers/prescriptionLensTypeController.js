@@ -50,27 +50,57 @@ const formatColor = (color) => ({
 // @route   GET /api/prescription-lens-types
 // @access  Public
 exports.getPrescriptionLensTypes = asyncHandler(async (req, res) => {
-  const types = await prisma.prescriptionLensType.findMany({
-    where: { is_active: true },
-    include: {
-      colors: {
-        where: { is_active: true },
-        orderBy: { sort_order: 'asc' }
+  const { prescriptionType, isActive, page, limit } = req.query;
+  const pageNum = parseInt(page) || 1;
+  const limitNum = parseInt(limit) || 100;
+  const skip = (pageNum - 1) * limitNum;
+
+  const where = {};
+
+  // Filter by active status (default to true if not specified)
+  if (isActive !== undefined) {
+    where.is_active = isActive === 'true' || isActive === true;
+  } else {
+    where.is_active = true; // Default to active only
+  }
+
+  // Filter by prescription type
+  if (prescriptionType) {
+    where.prescription_type = prescriptionType;
+  }
+
+  const [types, total] = await Promise.all([
+    prisma.prescriptionLensType.findMany({
+      where,
+      include: {
+        colors: {
+          where: { is_active: true },
+          orderBy: { sort_order: 'asc' }
+        },
+        variants: {
+          where: { is_active: true },
+          orderBy: { sort_order: 'asc' }
+        }
       },
-      variants: {
-        where: { is_active: true },
-        orderBy: { sort_order: 'asc' }
-      }
-    },
-    orderBy: [
-      { sort_order: 'asc' },
-      { created_at: 'asc' }
-    ]
-  });
+      orderBy: [
+        { sort_order: 'asc' },
+        { created_at: 'asc' }
+      ],
+      skip,
+      take: limitNum
+    }),
+    prisma.prescriptionLensType.count({ where })
+  ]);
 
   return success(res, 'Prescription lens types retrieved successfully', {
     prescriptionLensTypes: types.map(formatPrescriptionLensType),
-    count: types.length
+    count: types.length,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      pages: Math.ceil(total / limitNum)
+    }
   });
 });
 

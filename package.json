@@ -14,6 +14,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js",
+    "setup-prescription-types": "node scripts/setup-prescription-lens-types.js",
     "update-db-url": "node update-database-url.js"
   },
   "keywords": [

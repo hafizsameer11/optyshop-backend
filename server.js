@@ -42,6 +42,7 @@ const lensRoutes = require('./routes/lens');
 const customizationRoutes = require('./routes/productCustomization');
 const prescriptionSunLensRoutes = require('./routes/prescriptionSunLenses');
 const photochromicLensRoutes = require('./routes/photochromicLenses');
+const prescriptionLensTypesRoutes = require('./routes/prescriptionLensTypes');
 const contactLensFormRoutes = require('./routes/contactLensForms');
 
 // Import middleware
@@ -212,8 +213,13 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/contact-lens-forms', contactLensFormRoutes); // Standard route
 app.use('/api/shipping-methods', shippingRoutes); // Standard route
+app.use('/api/customization', customizationRoutes); // Standard route
+app.use('/api/photochromic-lenses', photochromicLensRoutes); // Standard route
+app.use('/api/prescription-sun-lenses', prescriptionSunLensRoutes); // Standard route
+app.use('/api/prescription-lens-types', prescriptionLensTypesRoutes); // Standard route
+app.use('/api/lens', lensRoutes); // Standard route - includes prescription-lens-types, prescription-sun-colors, etc.
 app.use('/api/api/shipping-methods', shippingRoutes); // Keep for backward compatibility
-app.use('/api/api/lens', lensRoutes);
+app.use('/api/api/lens', lensRoutes); // Keep for backward compatibility
 app.use('/api/api/contact-lens-forms', contactLensFormRoutes); // Keep for backward compatibility
 app.use('/api/api/subcategories', subCategoryRoutes);
 app.use('/api/api/transactions', transactionRoutes);

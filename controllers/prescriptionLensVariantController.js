@@ -2,6 +2,18 @@ const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 
+// Helper function to format lens color
+const formatLensColor = (color) => ({
+  id: color.id,
+  name: color.name,
+  colorCode: color.color_code,
+  hexCode: color.hex_code,
+  imageUrl: color.image_url,
+  priceAdjustment: parseFloat(color.price_adjustment),
+  isActive: color.is_active,
+  sortOrder: color.sort_order
+});
+
 // Helper function to format prescription lens variant
 const formatPrescriptionLensVariant = (variant) => ({
   id: variant.id,
@@ -15,6 +27,7 @@ const formatPrescriptionLensVariant = (variant) => ({
   isActive: variant.is_active,
   sortOrder: variant.sort_order,
   prescriptionLensTypeId: variant.prescription_lens_type_id,
+  colors: variant.colors ? variant.colors.map(formatLensColor) : [],
   createdAt: variant.created_at,
   updatedAt: variant.updated_at
 });
@@ -26,6 +39,10 @@ const formatPrescriptionLensVariant = (variant) => ({
 // @access  Public
 exports.getPrescriptionLensVariants = asyncHandler(async (req, res) => {
   const { typeId } = req.params;
+  const { isActive, isRecommended, page, limit } = req.query;
+  const pageNum = parseInt(page) || 1;
+  const limitNum = parseInt(limit) || 100;
+  const skip = (pageNum - 1) * limitNum;
 
   // Verify prescription lens type exists
   const prescriptionLensType = await prisma.prescriptionLensType.findUnique({
@@ -36,16 +53,40 @@ exports.getPrescriptionLensVariants = asyncHandler(async (req, res) => {
     return error(res, 'Prescription lens type not found', 404);
   }
 
-  const variants = await prisma.prescriptionLensVariant.findMany({
-    where: {
-      prescription_lens_type_id: parseInt(typeId),
-      is_active: true
-    },
-    orderBy: [
-      { sort_order: 'asc' },
-      { created_at: 'asc' }
-    ]
-  });
+  const where = {
+    prescription_lens_type_id: parseInt(typeId)
+  };
+
+  // Filter by active status (default to true if not specified)
+  if (isActive !== undefined) {
+    where.is_active = isActive === 'true' || isActive === true;
+  } else {
+    where.is_active = true; // Default to active only
+  }
+
+  // Filter by recommended status
+  if (isRecommended !== undefined) {
+    where.is_recommended = isRecommended === 'true' || isRecommended === true;
+  }
+
+  const [variants, total] = await Promise.all([
+    prisma.prescriptionLensVariant.findMany({
+      where,
+      include: {
+        colors: {
+          where: { is_active: true },
+          orderBy: { sort_order: 'asc' }
+        }
+      },
+      orderBy: [
+        { sort_order: 'asc' },
+        { created_at: 'asc' }
+      ],
+      skip,
+      take: limitNum
+    }),
+    prisma.prescriptionLensVariant.count({ where })
+  ]);
 
   return success(res, 'Prescription lens variants retrieved successfully', {
     prescriptionLensType: {
@@ -54,7 +95,13 @@ exports.getPrescriptionLensVariants = asyncHandler(async (req, res) => {
       slug: prescriptionLensType.slug
     },
     variants: variants.map(formatPrescriptionLensVariant),
-    count: variants.length
+    count: variants.length,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      pages: Math.ceil(total / limitNum)
+    }
   });
 });
 
