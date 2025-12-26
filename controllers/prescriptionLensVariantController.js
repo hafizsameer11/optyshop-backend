@@ -27,7 +27,6 @@ const formatPrescriptionLensVariant = (variant) => ({
   isActive: variant.is_active,
   sortOrder: variant.sort_order,
   prescriptionLensTypeId: variant.prescription_lens_type_id,
-  colors: variant.colors ? variant.colors.map(formatLensColor) : [],
   createdAt: variant.created_at,
   updatedAt: variant.updated_at
 });
@@ -69,15 +68,20 @@ exports.getPrescriptionLensVariants = asyncHandler(async (req, res) => {
     where.is_recommended = isRecommended === 'true' || isRecommended === true;
   }
 
+  // Get colors from the parent prescription lens type
+  const prescriptionLensTypeWithColors = await prisma.prescriptionLensType.findUnique({
+    where: { id: parseInt(typeId) },
+    include: {
+      colors: {
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+      }
+    }
+  });
+
   const [variants, total] = await Promise.all([
     prisma.prescriptionLensVariant.findMany({
       where,
-      include: {
-        colors: {
-          where: { is_active: true },
-          orderBy: { sort_order: 'asc' }
-        }
-      },
       orderBy: [
         { sort_order: 'asc' },
         { created_at: 'asc' }
@@ -88,13 +92,19 @@ exports.getPrescriptionLensVariants = asyncHandler(async (req, res) => {
     prisma.prescriptionLensVariant.count({ where })
   ]);
 
+  // Map colors from parent type to each variant
+  const typeColors = prescriptionLensTypeWithColors?.colors || [];
+
   return success(res, 'Prescription lens variants retrieved successfully', {
     prescriptionLensType: {
       id: prescriptionLensType.id,
       name: prescriptionLensType.name,
       slug: prescriptionLensType.slug
     },
-    variants: variants.map(formatPrescriptionLensVariant),
+    variants: variants.map(variant => ({
+      ...formatPrescriptionLensVariant(variant),
+      colors: typeColors.map(formatLensColor) // Use colors from parent type
+    })),
     count: variants.length,
     pagination: {
       page: pageNum,
@@ -131,9 +141,23 @@ exports.getPrescriptionLensVariant = asyncHandler(async (req, res) => {
     return error(res, 'Prescription lens variant not found', 404);
   }
 
+  // Get colors from the parent prescription lens type
+  const prescriptionLensTypeWithColors = await prisma.prescriptionLensType.findUnique({
+    where: { id: variant.prescription_lens_type_id },
+    include: {
+      colors: {
+        where: { is_active: true },
+        orderBy: { sort_order: 'asc' }
+      }
+    }
+  });
+
+  const typeColors = prescriptionLensTypeWithColors?.colors || [];
+
   return success(res, 'Prescription lens variant retrieved successfully', {
     variant: {
       ...formatPrescriptionLensVariant(variant),
+      colors: typeColors.map(formatLensColor), // Use colors from parent type
       prescriptionLensType: {
         id: variant.prescriptionLensType.id,
         name: variant.prescriptionLensType.name,
