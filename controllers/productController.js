@@ -168,11 +168,6 @@ const formatProductMedia = (product) => {
   };
 };
 
-// Export formatProductMedia and helper functions for use in other controllers
-exports.formatProductMedia = formatProductMedia;
-exports.getColorHexCode = getColorHexCode;
-exports.getColorNameFromHex = getColorNameFromHex;
-
 // Helper function to get hex code from color name
 const getColorHexCode = (colorName) => {
   if (!colorName) return null;
@@ -232,6 +227,11 @@ const getColorNameFromHex = (hexCode) => {
   return colorMap[hex] || `Color ${hexCode}`;
 };
 
+// Export formatProductMedia and helper functions for use in other controllers
+// (Exported after function definitions to avoid hoisting issues)
+exports.formatProductMedia = formatProductMedia;
+exports.getColorHexCode = getColorHexCode;
+exports.getColorNameFromHex = getColorNameFromHex;
 
 // @desc    Get product form options (dropdowns, presets)
 // @route   GET /api/products/options
