@@ -69,8 +69,33 @@ exports.getLensOptions = asyncHandler(async (req, res) => {
     is_active: true
   };
 
+  // Valid LensOptionType enum values
+  const validTypes = ['classic', 'mirror', 'gradient', 'polarized', 'photochromic', 'transitions', 'eyeqlenz', 'standard', 'blokz_photochromic'];
+
   if (type) {
-    where.type = type;
+    // Handle special case: prescription_sun maps to prescription sun lens types
+    if (type === 'prescription_sun' || type.startsWith('prescription_')) {
+      // Filter by name patterns that indicate prescription sun lenses AND relevant types
+      where.AND = [
+        {
+          OR: [
+            { name: { contains: 'Polarized' } },
+            { name: { contains: 'Classic' } },
+            { name: { contains: 'Blokz' } },
+            { name: { contains: 'Sunglasses' } }
+          ]
+        },
+        {
+          type: { in: ['polarized', 'classic', 'photochromic'] }
+        }
+      ];
+    } else if (validTypes.includes(type)) {
+      // Valid enum type
+      where.type = type;
+    } else {
+      // Invalid type - return error or empty result
+      return error(res, `Invalid lens option type: ${type}. Valid types are: ${validTypes.join(', ')}`, 400);
+    }
   }
 
   const options = await prisma.lensOption.findMany({
