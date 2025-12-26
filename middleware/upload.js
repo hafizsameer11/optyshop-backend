@@ -143,7 +143,8 @@ exports.uploadFields = (fields) => {
   };
 };
 
-// Product upload middleware - accepts images, model_3d, and dynamic color_images_* fields
+// Product upload middleware - accepts images, model_3d, and dynamic color fields
+// Supports: images, model_3d, color_images_{colorName} (old format), image_#RRGGBB (new format)
 exports.uploadProductFiles = () => {
   // Use upload.any() to accept any field names, then validate
   const anyUpload = upload.any();
@@ -179,9 +180,11 @@ exports.uploadProductFiles = () => {
         // Validate each field
         for (const fieldname of Object.keys(filesByField)) {
           const isAllowed = allowedFields.includes(fieldname);
+          // Support both old format (color_images_*) and new format (image_#RRGGBB)
           const isColorImage = fieldname.startsWith('color_images_');
+          const isImageWithColor = fieldname.startsWith('image_#') && fieldname.match(/^image_#[0-9A-Fa-f]{6}$/);
           
-          if (!isAllowed && !isColorImage) {
+          if (!isAllowed && !isColorImage && !isImageWithColor) {
             invalidFields.push(fieldname);
           }
           
@@ -194,17 +197,17 @@ exports.uploadProductFiles = () => {
             return next(new Error(`Too many files for 'model_3d' field. Maximum is 1, received ${filesByField[fieldname].length}.`));
           }
           
-          // Limit color_images_* fields to 5 files each
-          if (isColorImage && filesByField[fieldname].length > 5) {
+          // Limit color_images_* and image_#* fields to 5 files each
+          if ((isColorImage || isImageWithColor) && filesByField[fieldname].length > 5) {
             return next(new Error(`Too many files for '${fieldname}' field. Maximum is 5, received ${filesByField[fieldname].length}.`));
           }
         }
         
         if (invalidFields.length > 0) {
-          return next(new Error(`Unexpected field(s): ${invalidFields.join(', ')}. Allowed fields: images, model_3d, or color_images_{colorName} (e.g., color_images_black, color_images_brown).`));
+          return next(new Error(`Unexpected field(s): ${invalidFields.join(', ')}. Allowed fields: images, model_3d, color_images_{colorName} (e.g., color_images_black), or image_#RRGGBB (e.g., image_#000000, image_#FFD700).`));
         }
         
-        // Convert to object format - controller expects req.files.images, req.files.model_3d, req.files['color_images_black'], etc.
+        // Convert to object format - controller expects req.files.images, req.files.model_3d, req.files['color_images_black'], req.files['image_#000000'], etc.
         req.files = filesByField;
       } else if (!req.files) {
         // Ensure req.files exists as an object even if no files were uploaded
