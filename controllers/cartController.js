@@ -154,6 +154,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
     lens_coating, 
     lens_coatings, 
     prescription_id,
+    // Color/Variant selection
+    selected_color, // Color value (e.g., "black", "brown") from product colors array
     // Lens configuration fields
     lens_type, // 'distance_vision', 'near_vision', 'progressive'
     prescription_data, // JSON object with PD, OD (SPH, CYL, AXIS), OS (SPH, CYL, AXIS)
@@ -203,6 +205,56 @@ exports.addToCart = asyncHandler(async (req, res) => {
     return error(res, 'Product is not active', 400);
   }
 
+  // Handle color/variant selection
+  let selectedColorVariant = null;
+  let variantPrice = null;
+  let customizationData = null;
+
+  if (selected_color) {
+    // Parse color_images to find matching variant
+    let colorImages = product.color_images;
+    if (typeof colorImages === 'string') {
+      try {
+        colorImages = JSON.parse(colorImages);
+      } catch (e) {
+        colorImages = [];
+      }
+    }
+    if (!Array.isArray(colorImages)) {
+      colorImages = colorImages ? [colorImages] : [];
+    }
+
+    // Find matching color variant (case-insensitive)
+    const normalizedSelectedColor = selected_color.toLowerCase().trim();
+    selectedColorVariant = colorImages.find(colorData => {
+      const colorValue = colorData.color?.toLowerCase() || colorData.name?.toLowerCase() || '';
+      return colorValue === normalizedSelectedColor || 
+             colorValue.includes(normalizedSelectedColor) ||
+             normalizedSelectedColor.includes(colorValue);
+    });
+
+    if (selectedColorVariant) {
+      // Use variant price if available, otherwise use base product price
+      variantPrice = selectedColorVariant.price !== undefined && selectedColorVariant.price !== null
+        ? parseFloat(selectedColorVariant.price)
+        : parseFloat(product.price);
+
+      // Store color selection in customization
+      customizationData = {
+        selected_color: selectedColorVariant.color || selectedColorVariant.name,
+        color_name: selectedColorVariant.name || selectedColorVariant.color,
+        color_display_name: selectedColorVariant.display_name || selectedColorVariant.name || selectedColorVariant.color,
+        variant_price: variantPrice,
+        variant_images: Array.isArray(selectedColorVariant.images) 
+          ? selectedColorVariant.images 
+          : (selectedColorVariant.images ? [selectedColorVariant.images] : [])
+      };
+    } else {
+      // Color not found, but continue with base product
+      console.warn(`Color variant "${selected_color}" not found for product ${product_id}, using base product`);
+    }
+  }
+
   // Check stock
   const stockQuantity = product.stock_quantity;
   
@@ -210,18 +262,77 @@ exports.addToCart = asyncHandler(async (req, res) => {
     return error(res, 'Insufficient stock', 400);
   }
 
-  // Check if item already exists in cart
+  // Check if item already exists in cart (with same product, lens_index, and color)
+  // Build where clause for existing item check
+  const existingItemWhere = {
+    cart_id: cart.id,
+    product_id: product_id,
+    lens_index: lens_index || null
+  };
+
+  // If color is selected, check customization field for matching color
+  // Note: This is a simplified check - in production, you might want to parse customization JSON
   const existingItem = await prisma.cartItem.findFirst({
-    where: {
-      cart_id: cart.id,
-      product_id: product_id,
-      lens_index: lens_index || null
-    }
+    where: existingItemWhere
   });
 
-  if (existingItem) {
+  // Additional check: if color is selected, verify it matches existing item's color
+  let shouldUpdateExisting = false;
+  if (existingItem && selected_color && customizationData) {
+    // Parse existing item's customization to check color match
+    let existingCustomization = null;
+    if (existingItem.customization) {
+      try {
+        existingCustomization = typeof existingItem.customization === 'string'
+          ? JSON.parse(existingItem.customization)
+          : existingItem.customization;
+      } catch (e) {
+        existingCustomization = null;
+      }
+    }
+    
+    // If existing item has same color, update quantity
+    if (existingCustomization && existingCustomization.selected_color) {
+      const existingColor = existingCustomization.selected_color.toLowerCase().trim();
+      const newColor = customizationData.selected_color.toLowerCase().trim();
+      shouldUpdateExisting = existingColor === newColor;
+    } else if (!existingCustomization || !existingCustomization.selected_color) {
+      // Existing item has no color, treat as different item if color is now selected
+      shouldUpdateExisting = false;
+    }
+  } else if (existingItem && !selected_color) {
+    // No color selected, check if existing item also has no color
+    let existingCustomization = null;
+    if (existingItem.customization) {
+      try {
+        existingCustomization = typeof existingItem.customization === 'string'
+          ? JSON.parse(existingItem.customization)
+          : existingItem.customization;
+      } catch (e) {
+        existingCustomization = null;
+      }
+    }
+    shouldUpdateExisting = !existingCustomization || !existingCustomization.selected_color;
+  } else if (existingItem) {
+    // Existing item found, update it
+    shouldUpdateExisting = true;
+  }
+
+  if (existingItem && shouldUpdateExisting) {
     // Prepare update data
-    const updateData = { quantity: { increment: quantity } };
+    const updateData = { 
+      quantity: { increment: quantity }
+    };
+
+    // Update price if variant price is different
+    if (variantPrice !== null && variantPrice !== parseFloat(existingItem.unit_price)) {
+      updateData.unit_price = variantPrice;
+    }
+
+    // Update customization if color is selected
+    if (customizationData) {
+      updateData.customization = JSON.stringify(customizationData);
+    }
     
     // Update item
     const updatedItem = await prisma.cartItem.update({
@@ -410,7 +521,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
   }
 
   // Calculate unit price including all add-ons
-  let calculatedPrice = parseFloat(product.price);
+  // Start with variant price if color is selected, otherwise use base product price
+  let calculatedPrice = variantPrice !== null ? variantPrice : parseFloat(product.price);
   
   // Add progressive variant price if selected
   if (progressive_variant_id) {
@@ -465,6 +577,9 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   }
 
+  // Prepare customization data (include color selection if provided)
+  let finalCustomizationData = customizationData;
+  
   const cartItem = await prisma.cartItem.create({
     data: {
       cart_id: cart.id,
@@ -474,6 +589,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
       lens_index: lens_index || null,
       lens_coatings: lensCoatingsValue,
       prescription_id: prescription_id || null,
+      customization: finalCustomizationData ? JSON.stringify(finalCustomizationData) : null,
       // New lens configuration fields
       lens_type: lens_type || null,
       prescription_data: prescriptionDataValue,
