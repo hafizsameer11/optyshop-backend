@@ -3,6 +3,73 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { sendCartNotificationToAdmin } = require('../utils/email');
 
+// Helper function to get display images for cart item
+const getCartItemDisplayImages = (item, product) => {
+  // Get selected color images from customization
+  let selectedColorImages = null;
+  let customization = item.customization;
+  if (typeof customization === 'string') {
+    try {
+      customization = JSON.parse(customization);
+    } catch (e) {
+      customization = null;
+    }
+  }
+  
+  if (customization && customization.variant_images) {
+    selectedColorImages = customization.variant_images;
+  } else if (customization && customization.selected_color) {
+    // Try to find color images from product's color_images
+    if (product && product.color_images) {
+      try {
+        let colorImages = product.color_images;
+        if (typeof colorImages === 'string') {
+          colorImages = JSON.parse(colorImages);
+        }
+        if (Array.isArray(colorImages)) {
+          const selectedColor = customization.selected_color || customization.hex_code;
+          const colorVariant = colorImages.find(c => {
+            const hexCode = c.hexCode || c.hex_code;
+            const colorName = c.name || c.color;
+            return (hexCode && hexCode.toLowerCase() === selectedColor.toLowerCase()) ||
+                   (colorName && colorName.toLowerCase() === selectedColor.toLowerCase());
+          });
+          if (colorVariant && colorVariant.images) {
+            selectedColorImages = Array.isArray(colorVariant.images) ? colorVariant.images : [colorVariant.images];
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing color images:', e);
+      }
+    }
+  }
+  
+  // Parse product images
+  let productImages = product ? product.images : null;
+  if (productImages) {
+    try {
+      productImages = typeof productImages === 'string' ? JSON.parse(productImages) : productImages;
+      if (!Array.isArray(productImages)) {
+        productImages = productImages ? [productImages] : [];
+      }
+    } catch (e) {
+      productImages = [];
+    }
+  } else {
+    productImages = [];
+  }
+  
+  // Use selected color images if available, otherwise use product images
+  const displayImages = selectedColorImages && selectedColorImages.length > 0 
+    ? selectedColorImages 
+    : productImages;
+  
+  return {
+    display_images: displayImages,
+    display_image: displayImages && displayImages.length > 0 ? displayImages[0] : null
+  };
+};
+
 // Helper function to format contact lens details for display
 const formatContactLensDetails = (item) => {
     const hasContactLensData = item.contact_lens_right_qty !== null || 
@@ -73,6 +140,7 @@ exports.getCart = asyncHandler(async (req, res) => {
               slug: true,
               price: true,
               images: true,
+              color_images: true,
               stock_quantity: true,
               stock_status: true
             }
@@ -126,6 +194,20 @@ exports.getCart = asyncHandler(async (req, res) => {
         prescription_data: item.prescription_data ? JSON.parse(item.prescription_data) : null,
         treatment_ids: item.treatment_ids ? JSON.parse(item.treatment_ids) : null
       };
+      
+      // Get display images using helper function
+      const imageInfo = getCartItemDisplayImages(item, item.product);
+      parsedItem.display_images = imageInfo.display_images;
+      parsedItem.display_image = imageInfo.display_image;
+      
+      // Get lens color images
+      let lensColorImage = null;
+      if (item.photochromicColor && item.photochromicColor.image_url) {
+        lensColorImage = item.photochromicColor.image_url;
+      } else if (item.prescriptionSunColor && item.prescriptionSunColor.image_url) {
+        lensColorImage = item.prescriptionSunColor.image_url;
+      }
+      parsedItem.lens_color_image = lensColorImage;
       
       // Add formatted contact lens details
       parsedItem.contact_lens_details = formatContactLensDetails(item);
@@ -630,6 +712,32 @@ exports.addToCart = asyncHandler(async (req, res) => {
     treatment_ids: cartItem.treatment_ids ? JSON.parse(cartItem.treatment_ids) : null
   };
   
+  // Get display images using helper function
+  const imageInfo = getCartItemDisplayImages(cartItem, product);
+  parsedItem.display_images = imageInfo.display_images;
+  parsedItem.display_image = imageInfo.display_image;
+  
+  // Get lens color images
+  let lensColorImage = null;
+  if (photochromic_color_id) {
+    const color = await prisma.lensColor.findUnique({
+      where: { id: parseInt(photochromic_color_id) },
+      select: { image_url: true }
+    });
+    if (color && color.image_url) {
+      lensColorImage = color.image_url;
+    }
+  } else if (prescription_sun_color_id) {
+    const color = await prisma.lensColor.findUnique({
+      where: { id: parseInt(prescription_sun_color_id) },
+      select: { image_url: true }
+    });
+    if (color && color.image_url) {
+      lensColorImage = color.image_url;
+    }
+  }
+  parsedItem.lens_color_image = lensColorImage;
+  
   // Add formatted contact lens details
   parsedItem.contact_lens_details = formatContactLensDetails(cartItem);
 
@@ -754,7 +862,11 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
   // Find cart item
   const cartItem = await prisma.cartItem.findFirst({
     where: { id: parseInt(id), cart_id: cart.id },
-    include: { product: true }
+    include: { 
+      product: true,
+      photochromicColor: true,
+      prescriptionSunColor: true
+    }
   });
 
   if (!cartItem) {
@@ -796,6 +908,20 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
       treatment_ids: updatedItem.treatment_ids ? JSON.parse(updatedItem.treatment_ids) : null
     };
     
+    // Get display images
+    const imageInfo = getCartItemDisplayImages(updatedItem, cartItem.product);
+    parsedItem.display_images = imageInfo.display_images;
+    parsedItem.display_image = imageInfo.display_image;
+    
+    // Get lens color image
+    let lensColorImage = null;
+    if (cartItem.photochromicColor && cartItem.photochromicColor.image_url) {
+      lensColorImage = cartItem.photochromicColor.image_url;
+    } else if (cartItem.prescriptionSunColor && cartItem.prescriptionSunColor.image_url) {
+      lensColorImage = cartItem.prescriptionSunColor.image_url;
+    }
+    parsedItem.lens_color_image = lensColorImage;
+    
     // Add formatted contact lens details
     parsedItem.contact_lens_details = formatContactLensDetails(updatedItem);
     
@@ -811,6 +937,20 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
     treatment_ids: cartItem.treatment_ids ? JSON.parse(cartItem.treatment_ids) : null,
     contact_lens_details: formatContactLensDetails(cartItem)
   };
+  
+  // Get display images
+  const imageInfo = getCartItemDisplayImages(cartItem, cartItem.product);
+  formattedItem.display_images = imageInfo.display_images;
+  formattedItem.display_image = imageInfo.display_image;
+  
+  // Get lens color image
+  let lensColorImage = null;
+  if (cartItem.photochromicColor && cartItem.photochromicColor.image_url) {
+    lensColorImage = cartItem.photochromicColor.image_url;
+  } else if (cartItem.prescriptionSunColor && cartItem.prescriptionSunColor.image_url) {
+    lensColorImage = cartItem.prescriptionSunColor.image_url;
+  }
+  formattedItem.lens_color_image = lensColorImage;
   
   return success(res, 'Cart item updated', { item: formattedItem });
 });

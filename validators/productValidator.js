@@ -1,5 +1,5 @@
 const { body, query, param, validationResult } = require('express-validator');
-const { FRAME_SHAPES, FRAME_MATERIALS, LENS_TYPES, GENDERS } = require('../utils/constants');
+const { GENDERS } = require('../utils/constants');
 
 // Validation result handler
 const handleValidationErrors = (req, res, next) => {
@@ -52,15 +52,11 @@ exports.validateCreateProduct = [
     })
     .withMessage('Price must be a positive number'),
   body('frame_shape')
-    .optional()
-    .isIn(FRAME_SHAPES)
-    .withMessage(`Frame shape must be one of: ${FRAME_SHAPES.join(', ')}`),
+    .optional(),
   body('frame_material')
     .optional(),
   body('lens_type')
-    .optional()
-    .isIn(LENS_TYPES)
-    .withMessage(`Lens type must be one of: ${LENS_TYPES.join(', ')}`),
+    .optional(),
   body('gender')
     .optional()
     .isIn(GENDERS)
@@ -80,9 +76,7 @@ exports.validateUpdateProduct = [
     .isFloat({ min: 0 })
     .withMessage('Price must be a positive number'),
   body('frame_shape')
-    .optional()
-    .isIn(FRAME_SHAPES)
-    .withMessage(`Frame shape must be one of: ${FRAME_SHAPES.join(', ')}`),
+    .optional(),
   body('frame_material')
     .optional(),
   handleValidationErrors
@@ -99,9 +93,7 @@ exports.validateProductQuery = [
     .isInt({ min: 1, max: 100 })
     .withMessage('Limit must be between 1 and 100'),
   query('frameShape')
-    .optional()
-    .isIn(FRAME_SHAPES)
-    .withMessage(`Frame shape must be one of: ${FRAME_SHAPES.join(', ')}`),
+    .optional(),
   query('frameMaterial')
     .optional(),
   query('minPrice')

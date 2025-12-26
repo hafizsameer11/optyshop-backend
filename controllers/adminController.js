@@ -1978,23 +1978,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
       productData.gender = gender;
     }
 
-    // Validate and normalize frame_shape enum
+    // Normalize frame_shape - just trim whitespace, accept any value
     if (productData.frame_shape !== undefined && productData.frame_shape !== null && productData.frame_shape !== '') {
-      const validFrameShapes = ['round', 'square', 'oval', 'cat_eye', 'aviator', 'rectangle', 'wayfarer', 'geometric'];
-      const frameShape = String(productData.frame_shape).toLowerCase().trim();
-
-      const frameShapeMap = {
-        'cat-eye': 'cat_eye',
-        'cat eye': 'cat_eye'
-      };
-
-      const normalizedShape = frameShapeMap[frameShape] || frameShape;
-
-      if (!validFrameShapes.includes(normalizedShape)) {
-        return error(res, `Invalid frame_shape "${productData.frame_shape}". Valid values are: ${validFrameShapes.join(', ')}`, 400);
+      productData.frame_shape = String(productData.frame_shape).trim();
+      if (productData.frame_shape === '') {
+        productData.frame_shape = null;
       }
-
-      productData.frame_shape = normalizedShape;
     }
 
     // Normalize frame_material - handle array format from frontend, store as JSON string
@@ -2039,16 +2028,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // Validate and normalize lens_type enum (LensTypeEnum)
+    // Normalize lens_type - just trim whitespace, accept any value
     if (productData.lens_type !== undefined && productData.lens_type !== null && productData.lens_type !== '') {
-      const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic', 'plastic', 'glass', 'polycarbonate', 'trivex', 'high_index'];
-      const lensType = String(productData.lens_type).toLowerCase().trim();
-
-      if (!validLensTypes.includes(lensType)) {
-        return error(res, `Invalid lens_type "${productData.lens_type}". Valid values are: ${validLensTypes.join(', ')}`, 400);
+      productData.lens_type = String(productData.lens_type).trim();
+      if (productData.lens_type === '') {
+        productData.lens_type = null;
       }
-
-      productData.lens_type = lensType;
     }
 
     // Normalize images coming from form-data / JSON
@@ -2687,23 +2672,12 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     productData.gender = gender;
   }
 
-  // Validate and normalize frame_shape enum if provided
+  // Normalize frame_shape - just trim whitespace, accept any value
   if (productData.frame_shape !== undefined && productData.frame_shape !== null && productData.frame_shape !== '') {
-    const validFrameShapes = ['round', 'square', 'oval', 'cat_eye', 'aviator', 'rectangle', 'wayfarer', 'geometric'];
-    const frameShape = String(productData.frame_shape).toLowerCase().trim();
-
-    const frameShapeMap = {
-      'cat-eye': 'cat_eye',
-      'cat eye': 'cat_eye'
-    };
-
-    const normalizedShape = frameShapeMap[frameShape] || frameShape;
-
-    if (!validFrameShapes.includes(normalizedShape)) {
-      return error(res, `Invalid frame_shape "${productData.frame_shape}". Valid values are: ${validFrameShapes.join(', ')}`, 400);
+    productData.frame_shape = String(productData.frame_shape).trim();
+    if (productData.frame_shape === '') {
+      productData.frame_shape = null;
     }
-
-    productData.frame_shape = normalizedShape;
   }
 
   // Normalize frame_material if provided - handle array format from frontend, store as JSON string
@@ -2746,16 +2720,12 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // Validate and normalize lens_type enum (LensTypeEnum) if provided
+  // Normalize lens_type - just trim whitespace, accept any value
   if (productData.lens_type !== undefined && productData.lens_type !== null && productData.lens_type !== '') {
-    const validLensTypes = ['prescription', 'sunglasses', 'reading', 'computer', 'photochromic', 'plastic', 'glass', 'polycarbonate', 'trivex', 'high_index'];
-    const lensType = String(productData.lens_type).toLowerCase().trim();
-
-    if (!validLensTypes.includes(lensType)) {
-      return error(res, `Invalid lens_type "${productData.lens_type}". Valid values are: ${validLensTypes.join(', ')}`, 400);
+    productData.lens_type = String(productData.lens_type).trim();
+    if (productData.lens_type === '') {
+      productData.lens_type = null;
     }
-
-    productData.lens_type = lensType;
   }
 
   // Convert boolean fields from strings (form-data sends "true"/"false" as strings)

@@ -94,11 +94,11 @@ model Product {
   stock_status          StockStatus                @default(in_stock)
   images                String?                    @db.LongText
   color_images          String?                    @db.LongText
-  frame_shape           FrameShape?
+  frame_shape           String?                    @db.VarChar(255)
   frame_material        String?                    @db.VarChar(255)
   frame_color           String?                    @db.VarChar(100)
   gender                Gender                     @default(unisex)
-  lens_type             LensTypeEnum?
+  lens_type             String?                    @db.VarChar(255)
   lens_index_options    String?                    @db.LongText
   treatment_options     String?                    @db.LongText
   model_3d_url          String?                    @db.VarChar(500)
@@ -1299,11 +1299,11 @@ model ContactLensConfiguration {
   stock_status        StockStatus           @default(in_stock)
   images              String?               @db.LongText // JSON array of image URLs
   color_images        String?               @db.LongText // JSON array of color-specific images
-  frame_shape         FrameShape?
+  frame_shape         String?               @db.VarChar(255)
   frame_material      String?               @db.VarChar(255)
   frame_color         String?               @db.VarChar(100)
   gender              Gender                @default(unisex)
-  lens_type           LensTypeEnum? // Lens type enum (prescription, sunglasses, etc.)
+  lens_type           String?               @db.VarChar(255) // Lens type (prescription, sunglasses, etc.)
   // Category relationships
   category_id         Int?
   sub_category_id     Int? // Sub-subcategory (must have parent)
