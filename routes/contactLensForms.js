@@ -12,6 +12,7 @@ const {
   deleteAstigmatismDropdownValue,
   getAstigmatismDropdownValuesPublic,
   getSphericalConfigsPublic,
+  getAstigmatismConfigsPublic,
   getAstigmatismConfigs,
   createAstigmatismConfig,
   updateAstigmatismConfig,
@@ -23,6 +24,7 @@ const { protect, authorize } = require('../middleware/auth');
 // Public routes (Website)
 router.get('/config/:sub_category_id', getFormConfig);
 router.get('/astigmatism/dropdown-values', getAstigmatismDropdownValuesPublic);
+router.get('/astigmatism', getAstigmatismConfigsPublic);
 router.get('/spherical', getSphericalConfigsPublic);
 
 // Checkout route (requires authentication)

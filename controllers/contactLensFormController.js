@@ -1123,6 +1123,77 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get Astigmatism configurations (public)
+// @route   GET /api/contact-lens-forms/astigmatism
+// @access  Public
+exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
+  const { sub_category_id } = req.query;
+
+  const where = {
+    configuration_type: 'astigmatism',
+    is_active: true
+  };
+
+  if (sub_category_id) {
+    where.sub_category_id = parseInt(sub_category_id);
+  }
+
+  const configs = await prisma.contactLensConfiguration.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      display_name: true,
+      price: true,
+      right_qty: true,
+      right_base_curve: true,
+      right_diameter: true,
+      right_power: true,
+      right_cylinder: true,
+      right_axis: true,
+      left_qty: true,
+      left_base_curve: true,
+      left_diameter: true,
+      left_power: true,
+      left_cylinder: true,
+      left_axis: true,
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    },
+    orderBy: { sort_order: 'asc' }
+  });
+
+  // Parse JSON fields
+  const formattedConfigs = configs.map(config => ({
+    id: config.id,
+    name: config.name,
+    display_name: config.display_name,
+    price: config.price,
+    subCategory: config.subCategory,
+    right_qty: parseJsonField(config.right_qty),
+    right_base_curve: parseJsonField(config.right_base_curve),
+    right_diameter: parseJsonField(config.right_diameter),
+    right_power: parseJsonField(config.right_power),
+    right_cylinder: parseJsonField(config.right_cylinder),
+    right_axis: parseJsonField(config.right_axis),
+    left_qty: parseJsonField(config.left_qty),
+    left_base_curve: parseJsonField(config.left_base_curve),
+    left_diameter: parseJsonField(config.left_diameter),
+    left_power: parseJsonField(config.left_power),
+    left_cylinder: parseJsonField(config.left_cylinder),
+    left_axis: parseJsonField(config.left_axis)
+  }));
+
+  return success(res, 'Astigmatism configurations retrieved successfully', {
+    configs: formattedConfigs
+  });
+});
+
 // ==================== CHECKOUT ROUTES ====================
 
 // @desc    Add contact lens to cart (checkout)
