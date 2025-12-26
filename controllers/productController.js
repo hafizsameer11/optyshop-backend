@@ -121,20 +121,26 @@ const formatProductMedia = (product) => {
     colorImages = colorImages ? [colorImages] : [];
   }
 
-  // Create colors array for frontend color swatches with variant name and price
+  // Create colors array for frontend color swatches with hex codes
   // Extract colors from color_images and create a user-friendly structure
-  const colors = colorImages.map((colorData, index) => ({
-    name: colorData.name || colorData.color || `Color ${index + 1}`, // Custom variant name
-    display_name: colorData.display_name || colorData.name || colorData.color || `Color ${index + 1}`, // Display name
-    value: colorData.color?.toLowerCase() || `color-${index + 1}`, // Color value for matching
-    price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
-    images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
-    primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
-      ? colorData.images[0] 
-      : (colorData.images || null),
-    // Try to extract hex code from color name or use a default
-    hexCode: getColorHexCode(colorData.color) || '#000000'
-  }));
+  // New format: [{hexCode: "#000000", name: "Black", price: 99.99, images: [...]}]
+  const colors = colorImages.map((colorData, index) => {
+    // Support both new format (hexCode) and old format (color) for backward compatibility
+    const hexCode = colorData.hexCode || colorData.hex_code || (colorData.color ? getColorHexCode(colorData.color) : null) || '#000000';
+    const colorName = colorData.name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
+    
+    return {
+      name: colorName,
+      display_name: colorData.display_name || colorName,
+      value: hexCode, // Use hex code as value for matching
+      hexCode: hexCode, // Hex code for color picker
+      price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
+      images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
+      primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
+        ? colorData.images[0] 
+        : (colorData.images || null)
+    };
+  });
 
   // Determine default/selected color (first color or use main images)
   const defaultColor = colors.length > 0 ? colors[0].value : null;
@@ -191,6 +197,34 @@ const getColorHexCode = (colorName) => {
 
   const normalized = colorName.toLowerCase().trim();
   return colorMap[normalized] || null;
+};
+
+// Helper function to get color name from hex code
+const getColorNameFromHex = (hexCode) => {
+  if (!hexCode || !hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+    return 'Unknown';
+  }
+  
+  const hex = hexCode.toLowerCase();
+  const colorMap = {
+    '#000000': 'Black',
+    '#ffffff': 'White',
+    '#8b4513': 'Brown',
+    '#0000ff': 'Blue',
+    '#ff0000': 'Red',
+    '#008000': 'Green',
+    '#808080': 'Gray',
+    '#ffd700': 'Gold',
+    '#c0c0c0': 'Silver',
+    '#800080': 'Purple',
+    '#ffa500': 'Orange',
+    '#ffc0cb': 'Pink',
+    '#ffff00': 'Yellow',
+    '#a52a2a': 'Brown',
+    '#4b0082': 'Indigo'
+  };
+  
+  return colorMap[hex] || `Color ${hexCode}`;
 };
 
 

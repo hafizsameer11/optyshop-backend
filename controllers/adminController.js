@@ -6,6 +6,60 @@ const csv = require("csv-parser");
 const { Readable } = require("stream");
 const bcrypt = require('bcryptjs');
 
+// Helper function to get color name from hex code
+const getColorNameFromHex = (hexCode) => {
+  if (!hexCode || !hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+    return 'Unknown';
+  }
+  
+  const hex = hexCode.toLowerCase();
+  const colorMap = {
+    '#000000': 'Black',
+    '#ffffff': 'White',
+    '#8b4513': 'Brown',
+    '#0000ff': 'Blue',
+    '#ff0000': 'Red',
+    '#008000': 'Green',
+    '#808080': 'Gray',
+    '#ffd700': 'Gold',
+    '#c0c0c0': 'Silver',
+    '#800080': 'Purple',
+    '#ffa500': 'Orange',
+    '#ffc0cb': 'Pink',
+    '#ffff00': 'Yellow',
+    '#a52a2a': 'Brown',
+    '#4b0082': 'Indigo'
+  };
+  
+  return colorMap[hex] || `Color ${hexCode}`;
+};
+
+// Helper function to get hex code from color name (for backward compatibility)
+const getHexFromColorName = (colorName) => {
+  if (!colorName) return '000000';
+  
+  const name = colorName.toLowerCase().trim();
+  const colorMap = {
+    'black': '000000',
+    'white': 'ffffff',
+    'brown': '8b4513',
+    'blue': '0000ff',
+    'red': 'ff0000',
+    'green': '008000',
+    'gray': '808080',
+    'grey': '808080',
+    'gold': 'ffd700',
+    'silver': 'c0c0c0',
+    'purple': '800080',
+    'orange': 'ffa500',
+    'pink': 'ffc0cb',
+    'yellow': 'ffff00',
+    'indigo': '4b0082'
+  };
+  
+  return colorMap[name] || '000000';
+};
+
 // ==================== DASHBOARD ====================
 
 // @desc    Get dashboard statistics
@@ -1442,17 +1496,23 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     }
 
     // Create colors array for frontend color swatches with variant name and price
-    const colors = colorImages.map((colorData, index) => ({
-      name: colorData.name || colorData.color || `Color ${index + 1}`, // Custom variant name
-      display_name: colorData.display_name || colorData.name || colorData.color || `Color ${index + 1}`, // Display name
-      value: colorData.color?.toLowerCase() || `color-${index + 1}`, // Color value for matching
-      price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
-      images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
-      primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
-        ? colorData.images[0] 
-        : (colorData.images || null),
-      hexCode: getColorHexCode(colorData.color) || '#000000'
-    }));
+    // Support both new format (hexCode) and old format (color) for backward compatibility
+    const colors = colorImages.map((colorData, index) => {
+      const hexCode = colorData.hexCode || colorData.hex_code || (colorData.color ? getColorHexCode(colorData.color) : null) || '#000000';
+      const colorName = colorData.name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
+      
+      return {
+        name: colorName,
+        display_name: colorData.display_name || colorName,
+        value: hexCode, // Use hex code as value for matching
+        hexCode: hexCode, // Hex code for color picker
+        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
+        images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
+        primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
+          ? colorData.images[0] 
+          : (colorData.images || null)
+      };
+    });
 
     // Determine default/selected color
     const defaultColor = colors.length > 0 ? colors[0].value : null;
@@ -1577,11 +1637,21 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
     const productData = { ...req.body };
 
-    // Handle image uploads if present - upload in parallel for better performance
+    // Handle images with color codes
+    // New approach: Upload multiple images, each with its own hex color code
+    // Format 1: JSON body with images_with_colors array: [{"hexCode": "#000000", "imageUrl": "url1"}, ...]
+    // Format 2: Files with pattern: image_#000000, image_#FFD700 (each can have multiple files)
+    // Format 3: images array + image_colors array (parallel arrays mapping images to colors)
+    
+    let generalImages = [];
+    const colorImagesMap = {};
+    
+    // Handle general images (without color codes) - these go to main images array
     if (req.files && req.files.images) {
       try {
         const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
         const imageUrls = await Promise.all(uploadPromises);
+        generalImages = imageUrls;
         productData.images = imageUrls; // Keep as array, will be normalized later
       } catch (uploadError) {
         console.error("Image upload error:", uploadError);
@@ -1589,109 +1659,128 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // Handle color-specific image uploads
-    // Expected format: color_images[color_name] = [files]
-    // Or color_images as JSON string in body: [{color: "black", images: ["url1", "url2"]}]
-    // Also handle file uploads with field names like color_images_black, color_images_brown, etc.
-    const hasColorImagesInBody = req.body.color_images;
-    const hasColorImageFiles = req.files && Object.keys(req.files).some(key => key.startsWith('color_images_'));
-    
-    if (hasColorImagesInBody || hasColorImageFiles) {
+    // Handle images with color codes from JSON body
+    if (req.body.images_with_colors) {
       try {
-        let colorImagesData = [];
-        
-        // If color_images is provided in body, parse it
-        if (hasColorImagesInBody) {
-          if (typeof req.body.color_images === 'string') {
-            try {
-              colorImagesData = JSON.parse(req.body.color_images);
-            } catch (e) {
-              console.error("Error parsing color_images JSON:", e);
-              colorImagesData = [];
-            }
-          } else if (Array.isArray(req.body.color_images)) {
-            colorImagesData = req.body.color_images;
-          }
+        let imagesWithColors = [];
+        if (typeof req.body.images_with_colors === 'string') {
+          imagesWithColors = JSON.parse(req.body.images_with_colors);
+        } else if (Array.isArray(req.body.images_with_colors)) {
+          imagesWithColors = req.body.images_with_colors;
         }
-
-        // Handle file uploads for color images
-        // Look for files with pattern: color_images_<color_name>
-        const colorImageFiles = {};
-        Object.keys(req.files || {}).forEach(key => {
-          if (key.startsWith('color_images_')) {
-            const colorName = key.replace('color_images_', '');
-            if (!colorImageFiles[colorName]) {
-              colorImageFiles[colorName] = [];
-            }
-            const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
-            files.forEach(file => colorImageFiles[colorName].push(file));
-          }
-        });
-
-        // Upload color-specific images and build color_images structure - upload in parallel for better performance
-        const colorImagesMap = {};
         
-        // Process uploaded files in parallel
-        const colorUploadPromises = Object.entries(colorImageFiles).map(async ([colorName, files]) => {
-          const uploadPromises = files.map(file => uploadToS3(file, `products/colors/${colorName}`));
-          const imageUrls = await Promise.all(uploadPromises);
-          return { colorName, imageUrls };
-        });
-        const colorUploadResults = await Promise.all(colorUploadPromises);
-        colorUploadResults.forEach(({ colorName, imageUrls }) => {
-          colorImagesMap[colorName] = imageUrls;
-        });
-
-        // Merge with existing color_images data from body (preserve name, display_name, price)
-        if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
-          colorImagesData.forEach(item => {
-            if (item.color) {
-              const existingUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
-              const uploadedUrls = colorImagesMap[item.color] || [];
-              
-              // Store full color data structure
-              colorImagesMap[item.color] = {
-                color: item.color,
-                name: item.name || item.color,
-                display_name: item.display_name || item.name || item.color,
+        // Group images by hex code
+        imagesWithColors.forEach(item => {
+          const hexCode = item.hexCode || item.hex_code;
+          if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/) && item.imageUrl) {
+            if (!colorImagesMap[hexCode]) {
+              colorImagesMap[hexCode] = {
+                hexCode: hexCode,
+                name: item.name || getColorNameFromHex(hexCode),
                 price: item.price !== undefined ? parseFloat(item.price) : null,
-                images: [...existingUrls, ...uploadedUrls]
+                images: []
               };
             }
-          });
-        }
-        
-        // Convert simple image arrays to full structure for colors that only have uploaded files
-        Object.keys(colorImagesMap).forEach(color => {
-          if (Array.isArray(colorImagesMap[color])) {
-            // This is just an array of images, convert to full structure
-            colorImagesMap[color] = {
-              color: color,
-              name: color,
-              display_name: color,
-              price: null,
-              images: colorImagesMap[color]
-            };
+            colorImagesMap[hexCode].images.push(item.imageUrl);
           }
         });
-
-        // Convert to array format with support for name, display_name, and price
-        // Format: [{color: "black", name: "Black Classic", display_name: "Black Classic", price: 99.99, images: ["url1", "url2"]}, ...]
-        const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
-          color: colorData.color,
-          name: colorData.name || colorData.color,
-          display_name: colorData.display_name || colorData.name || colorData.color,
-          price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-          images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
-        }));
-
-        if (colorImagesArray.length > 0) {
-          productData.color_images = JSON.stringify(colorImagesArray);
-        }
-      } catch (uploadError) {
-        console.error("Color image upload error:", uploadError);
-        return error(res, `Color image upload failed: ${uploadError.message}`, 500);
+      } catch (e) {
+        console.error("Error parsing images_with_colors:", e);
       }
+    }
+
+    // Handle images with color codes from file uploads
+    // Pattern: image_#000000, image_#FFD700 (each can have multiple files)
+    if (req.files) {
+      const colorImageUploadPromises = [];
+      
+      Object.keys(req.files).forEach(key => {
+        if (key.startsWith('image_#')) {
+          const hexCode = key.replace('image_', '');
+          // Validate hex code format
+          if (hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+            const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
+            
+            // Upload files in parallel for this color
+            const uploadPromise = Promise.all(
+              files.map(file => uploadToS3(file, `products/colors/${hexCode.replace('#', '')}`))
+            ).then(imageUrls => {
+              if (!colorImagesMap[hexCode]) {
+                colorImagesMap[hexCode] = {
+                  hexCode: hexCode,
+                  name: getColorNameFromHex(hexCode),
+                  price: null,
+                  images: []
+                };
+              }
+              colorImagesMap[hexCode].images.push(...imageUrls);
+            }).catch(err => {
+              console.error(`Error uploading images for ${hexCode}:`, err);
+            });
+            
+            colorImageUploadPromises.push(uploadPromise);
+          }
+        }
+      });
+      
+      // Wait for all color image uploads to complete
+      if (colorImageUploadPromises.length > 0) {
+        await Promise.all(colorImageUploadPromises);
+      }
+    }
+
+    // Handle parallel arrays: images array + image_colors array
+    if (req.body.image_colors && req.files && req.files.images) {
+      try {
+        let imageColors = [];
+        if (typeof req.body.image_colors === 'string') {
+          imageColors = JSON.parse(req.body.image_colors);
+        } else if (Array.isArray(req.body.image_colors)) {
+          imageColors = req.body.image_colors;
+        }
+        
+        // Upload images first
+        const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
+        const uploadedUrls = await Promise.all(uploadPromises);
+        
+        // Map each uploaded image to its color
+        uploadedUrls.forEach((url, index) => {
+          const hexCode = imageColors[index];
+          if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+            if (!colorImagesMap[hexCode]) {
+              colorImagesMap[hexCode] = {
+                hexCode: hexCode,
+                name: getColorNameFromHex(hexCode),
+                price: null,
+                images: []
+              };
+            }
+            colorImagesMap[hexCode].images.push(url);
+          } else {
+            // No color specified, add to general images
+            generalImages.push(url);
+          }
+        });
+        
+        // Update general images if any were added
+        if (generalImages.length > 0) {
+          productData.images = generalImages;
+        }
+      } catch (e) {
+        console.error("Error processing image_colors:", e);
+      }
+    }
+
+    // Convert colorImagesMap to array format
+    if (Object.keys(colorImagesMap).length > 0) {
+      const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
+        hexCode: colorData.hexCode,
+        name: colorData.name || getColorNameFromHex(colorData.hexCode),
+        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+        images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
+      }));
+      
+      productData.color_images = JSON.stringify(colorImagesArray);
     }
 
     // Handle 3D model upload
@@ -2175,7 +2264,35 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     return error(res, "Product not found", 404);
   }
 
-  // Handle image uploads
+  // Handle images with color codes (same approach as create)
+  let generalImages = [];
+  const colorImagesMap = {};
+  
+  // Parse existing color images
+  if (product.color_images) {
+    try {
+      const existingColorImages = typeof product.color_images === 'string'
+        ? JSON.parse(product.color_images)
+        : (Array.isArray(product.color_images) ? product.color_images : []);
+      
+      // Group existing by hex code
+      existingColorImages.forEach(item => {
+        const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+          colorImagesMap[hexCode] = {
+            hexCode: hexCode,
+            name: item.name || getColorNameFromHex(hexCode),
+            price: item.price !== undefined ? parseFloat(item.price) : null,
+            images: item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : []
+          };
+        }
+      });
+    } catch (e) {
+      console.error("Error parsing existing color_images:", e);
+    }
+  }
+
+  // Handle general images (without color codes)
   if (req.files && req.files.images) {
     // Parse existing images from JSON string to array
     let existingImages = [];
@@ -2195,109 +2312,214 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
     const newImageUrls = await Promise.all(uploadPromises);
     imageUrls.push(...newImageUrls);
+    generalImages = imageUrls;
     productData.images = imageUrls; // Will be converted to JSON string later
   }
 
-  // Handle color-specific image uploads (same logic as create)
-  if (req.body.color_images || (req.files && Object.keys(req.files).some(key => key.startsWith('color_images_')))) {
+  // Handle images with color codes from JSON body
+  if (req.body.images_with_colors) {
     try {
-      let colorImagesData = [];
+      let imagesWithColors = [];
+      if (typeof req.body.images_with_colors === 'string') {
+        imagesWithColors = JSON.parse(req.body.images_with_colors);
+      } else if (Array.isArray(req.body.images_with_colors)) {
+        imagesWithColors = req.body.images_with_colors;
+      }
       
-      // Parse existing color_images
-      if (product.color_images) {
-        try {
-          colorImagesData = typeof product.color_images === 'string'
-            ? JSON.parse(product.color_images)
-            : (Array.isArray(product.color_images) ? product.color_images : []);
-        } catch (e) {
-          console.error("Error parsing existing color_images:", e);
-          colorImagesData = [];
-        }
-      }
-
-      // If color_images is provided in body, use it (replaces existing)
-      if (req.body.color_images) {
-        if (typeof req.body.color_images === 'string') {
-          try {
-            colorImagesData = JSON.parse(req.body.color_images);
-          } catch (e) {
-            console.error("Error parsing color_images JSON:", e);
-            colorImagesData = [];
+      // Group images by hex code
+      imagesWithColors.forEach(item => {
+        const hexCode = item.hexCode || item.hex_code;
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/) && item.imageUrl) {
+          if (!colorImagesMap[hexCode]) {
+            colorImagesMap[hexCode] = {
+              hexCode: hexCode,
+              name: item.name || getColorNameFromHex(hexCode),
+              price: item.price !== undefined ? parseFloat(item.price) : null,
+              images: []
+            };
           }
-        } else if (Array.isArray(req.body.color_images)) {
-          colorImagesData = req.body.color_images;
+          colorImagesMap[hexCode].images.push(item.imageUrl);
+        }
+      });
+    } catch (e) {
+      console.error("Error parsing images_with_colors:", e);
+    }
+  }
+
+  // Handle images with color codes from file uploads
+  // Pattern: image_#000000, image_#FFD700 (each can have multiple files)
+  if (req.files) {
+    const colorImageUploadPromises = [];
+    
+    Object.keys(req.files).forEach(key => {
+      if (key.startsWith('image_#')) {
+        const hexCode = key.replace('image_', '');
+        // Validate hex code format
+        if (hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+          const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
+          
+          // Upload files in parallel for this color
+          const uploadPromise = Promise.all(
+            files.map(file => uploadToS3(file, `products/colors/${hexCode.replace('#', '')}`))
+          ).then(imageUrls => {
+            if (!colorImagesMap[hexCode]) {
+              colorImagesMap[hexCode] = {
+                hexCode: hexCode,
+                name: getColorNameFromHex(hexCode),
+                price: null,
+                images: []
+              };
+            }
+            colorImagesMap[hexCode].images.push(...imageUrls);
+          }).catch(err => {
+            console.error(`Error uploading images for ${hexCode}:`, err);
+          });
+          
+          colorImageUploadPromises.push(uploadPromise);
         }
       }
+    });
+    
+    // Wait for all color image uploads to complete
+    if (colorImageUploadPromises.length > 0) {
+      await Promise.all(colorImageUploadPromises);
+    }
+  }
 
-      // Handle file uploads for color images
+  // Handle parallel arrays: images array + image_colors array
+  if (req.body.image_colors && req.files && req.files.images) {
+    try {
+      let imageColors = [];
+      if (typeof req.body.image_colors === 'string') {
+        imageColors = JSON.parse(req.body.image_colors);
+      } else if (Array.isArray(req.body.image_colors)) {
+        imageColors = req.body.image_colors;
+      }
+      
+      // Upload images first
+      const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
+      const uploadedUrls = await Promise.all(uploadPromises);
+      
+      // Map each uploaded image to its color
+      uploadedUrls.forEach((url, index) => {
+        const hexCode = imageColors[index];
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+          if (!colorImagesMap[hexCode]) {
+            colorImagesMap[hexCode] = {
+              hexCode: hexCode,
+              name: getColorNameFromHex(hexCode),
+              price: null,
+              images: []
+            };
+          }
+          colorImagesMap[hexCode].images.push(url);
+        } else {
+          // No color specified, add to general images
+          generalImages.push(url);
+        }
+      });
+      
+      // Update general images if any were added
+      if (generalImages.length > 0) {
+        productData.images = generalImages;
+      }
+    } catch (e) {
+      console.error("Error processing image_colors:", e);
+    }
+  }
+
+  // Handle old format for backward compatibility (color_images_#HEXCODE)
+  if (req.files && Object.keys(req.files).some(key => key.startsWith('color_images_'))) {
+    try {
       const colorImageFiles = {};
       Object.keys(req.files || {}).forEach(key => {
         if (key.startsWith('color_images_')) {
-          const colorName = key.replace('color_images_', '');
-          if (!colorImageFiles[colorName]) {
-            colorImageFiles[colorName] = [];
+          const hexCode = key.replace('color_images_', '');
+          // Validate hex code format
+          if (hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+            if (!colorImageFiles[hexCode]) {
+              colorImageFiles[hexCode] = [];
+            }
+            const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
+            files.forEach(file => colorImageFiles[hexCode].push(file));
           }
-          const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
-          files.forEach(file => colorImageFiles[colorName].push(file));
         }
       });
 
-      // Upload color-specific images
-      const colorImagesMap = {};
-      
-      // Start with existing color_images data (preserve name, display_name, price)
-      if (Array.isArray(colorImagesData) && colorImagesData.length > 0) {
-        colorImagesData.forEach(item => {
-          if (item.color) {
-            colorImagesMap[item.color] = {
-              color: item.color,
-              name: item.name || item.color,
-              display_name: item.display_name || item.name || item.color,
-              price: item.price !== undefined ? parseFloat(item.price) : null,
-              images: item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : []
-            };
-          }
-        });
-      }
-
       // Upload new color images and merge - upload in parallel for better performance
-      const colorUploadPromises = Object.entries(colorImageFiles).map(async ([colorName, files]) => {
-        const uploadPromises = files.map(file => uploadToS3(file, `products/colors/${colorName}`));
+      const colorUploadPromises = Object.entries(colorImageFiles).map(async ([hexCode, files]) => {
+        // Use hex code without # for folder name
+        const folderName = hexCode.replace('#', '');
+        const uploadPromises = files.map(file => uploadToS3(file, `products/colors/${folderName}`));
         const imageUrls = await Promise.all(uploadPromises);
-        return { colorName, imageUrls };
+        return { hexCode, imageUrls };
       });
       const colorUploadResults = await Promise.all(colorUploadPromises);
-      colorUploadResults.forEach(({ colorName, imageUrls }) => {
+      colorUploadResults.forEach(({ hexCode, imageUrls }) => {
         // Merge with existing or create new
-        if (colorImagesMap[colorName]) {
+        if (colorImagesMap[hexCode]) {
           // Merge images, preserve existing metadata
-          colorImagesMap[colorName].images = [...colorImagesMap[colorName].images, ...imageUrls];
+          colorImagesMap[hexCode].images = [...colorImagesMap[hexCode].images, ...imageUrls];
         } else {
           // Create new entry
-          colorImagesMap[colorName] = {
-            color: colorName,
-            name: colorName,
-            display_name: colorName,
+          colorImagesMap[hexCode] = {
+            hexCode: hexCode,
+            name: getColorNameFromHex(hexCode),
             price: null,
             images: imageUrls
           };
         }
       });
-
-      // Convert to array format with support for name, display_name, and price
-      const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
-        color: colorData.color,
-        name: colorData.name || colorData.color,
-        display_name: colorData.display_name || colorData.name || colorData.color,
-        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-        images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
-      }));
-
-      productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;
     } catch (uploadError) {
       console.error("Color image upload error:", uploadError);
       return error(res, `Color image upload failed: ${uploadError.message}`, 500);
     }
+  }
+
+  // Handle old JSON format for backward compatibility
+  if (req.body.color_images && !req.body.images_with_colors) {
+    try {
+      let colorImagesData = [];
+      if (typeof req.body.color_images === 'string') {
+        colorImagesData = JSON.parse(req.body.color_images);
+      } else if (Array.isArray(req.body.color_images)) {
+        colorImagesData = req.body.color_images;
+      }
+      
+      // Merge with existing
+      colorImagesData.forEach(item => {
+        const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+          if (!colorImagesMap[hexCode]) {
+            colorImagesMap[hexCode] = {
+              hexCode: hexCode,
+              name: item.name || getColorNameFromHex(hexCode),
+              price: item.price !== undefined ? parseFloat(item.price) : null,
+              images: []
+            };
+          }
+          const existingUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
+          colorImagesMap[hexCode].images = [...colorImagesMap[hexCode].images, ...existingUrls];
+        }
+      });
+    } catch (e) {
+      console.error("Error parsing color_images:", e);
+    }
+  }
+
+  // Convert colorImagesMap to array format
+  if (Object.keys(colorImagesMap).length > 0) {
+    const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
+      hexCode: colorData.hexCode,
+      name: colorData.name || getColorNameFromHex(colorData.hexCode),
+      price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+      images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
+    }));
+    
+    productData.color_images = JSON.stringify(colorImagesArray);
+  } else if (req.body.color_images === null || req.body.color_images === '') {
+    // Allow clearing color images
+    productData.color_images = null;
   }
 
   // Handle 3D model upload

@@ -224,13 +224,27 @@ exports.addToCart = asyncHandler(async (req, res) => {
       colorImages = colorImages ? [colorImages] : [];
     }
 
-    // Find matching color variant (case-insensitive)
-    const normalizedSelectedColor = selected_color.toLowerCase().trim();
+    // Find matching color variant by hex code or color name (backward compatibility)
+    // selected_color can be a hex code (e.g., "#000000") or color name (e.g., "black")
+    const normalizedSelectedColor = selected_color.trim();
+    const isHexCode = normalizedSelectedColor.match(/^#[0-9A-Fa-f]{6}$/);
+    
     selectedColorVariant = colorImages.find(colorData => {
-      const colorValue = colorData.color?.toLowerCase() || colorData.name?.toLowerCase() || '';
-      return colorValue === normalizedSelectedColor || 
-             colorValue.includes(normalizedSelectedColor) ||
-             normalizedSelectedColor.includes(colorValue);
+      // Support both new format (hexCode) and old format (color) for backward compatibility
+      const hexCode = colorData.hexCode || colorData.hex_code || null;
+      const colorName = colorData.color || colorData.name || '';
+      
+      if (isHexCode) {
+        // Match by hex code (case-insensitive)
+        return hexCode && hexCode.toLowerCase() === normalizedSelectedColor.toLowerCase();
+      } else {
+        // Match by color name (case-insensitive)
+        const normalizedColorName = colorName.toLowerCase().trim();
+        const normalizedSelected = normalizedSelectedColor.toLowerCase().trim();
+        return normalizedColorName === normalizedSelected || 
+               normalizedColorName.includes(normalizedSelected) ||
+               normalizedSelected.includes(normalizedColorName);
+      }
     });
 
     if (selectedColorVariant) {
@@ -239,11 +253,16 @@ exports.addToCart = asyncHandler(async (req, res) => {
         ? parseFloat(selectedColorVariant.price)
         : parseFloat(product.price);
 
+      // Get hex code and color name
+      const hexCode = selectedColorVariant.hexCode || selectedColorVariant.hex_code || null;
+      const colorName = selectedColorVariant.name || selectedColorVariant.color || 'Unknown';
+
       // Store color selection in customization
       customizationData = {
-        selected_color: selectedColorVariant.color || selectedColorVariant.name,
-        color_name: selectedColorVariant.name || selectedColorVariant.color,
-        color_display_name: selectedColorVariant.display_name || selectedColorVariant.name || selectedColorVariant.color,
+        selected_color: hexCode || selectedColorVariant.color || selectedColorVariant.name,
+        hex_code: hexCode,
+        color_name: colorName,
+        color_display_name: selectedColorVariant.display_name || colorName,
         variant_price: variantPrice,
         variant_images: Array.isArray(selectedColorVariant.images) 
           ? selectedColorVariant.images 
