@@ -3474,19 +3474,13 @@
                       "key": "images",
                       "type": "file",
                       "src": [],
-                      "description": "Multiple product images (max 5)"
+                      "description": "Optional: General product images (without color codes). These will be used as default product images. Max 5 images. If you provide 'image_colors' array, these images will be mapped to colors."
                     },
                     {
                       "key": "model_3d",
                       "type": "file",
                       "src": [],
                       "description": "Optional: 3D model file for the product (e.g., .glb, .gltf)"
-                    },
-                    {
-                      "key": "images",
-                      "type": "file",
-                      "src": [],
-                      "description": "Optional: General product images (without color codes). These will be used as default product images."
                     },
                     {
                       "key": "image_colors",
@@ -3608,19 +3602,13 @@
                       "key": "images",
                       "type": "file",
                       "src": [],
-                      "description": "Optional: New images to add (will be merged with existing)"
+                      "description": "Optional: General product images (without color codes). These will be merged with existing general images. If you provide 'image_colors' array, these images will be mapped to colors."
                     },
                     {
                       "key": "model_3d",
                       "type": "file",
                       "src": [],
                       "description": "Optional: Update 3D model file"
-                    },
-                    {
-                      "key": "images",
-                      "type": "file",
-                      "src": [],
-                      "description": "Optional: General product images (without color codes). These will be merged with existing general images."
                     },
                     {
                       "key": "image_colors",

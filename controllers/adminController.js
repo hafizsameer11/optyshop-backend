@@ -1879,7 +1879,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
     }
 
     // Validate sub_category_id if provided
-    if (productData.sub_category_id) {
+    if (productData.sub_category_id !== undefined && productData.sub_category_id !== null && productData.sub_category_id !== '') {
       productData.sub_category_id = parseInt(productData.sub_category_id, 10);
       if (isNaN(productData.sub_category_id)) {
         return error(res, "Invalid sub_category_id", 400);
@@ -2122,26 +2122,104 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // Create the product first
-    const product = await prisma.product.create({
-      data: productData,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            slug: true
-          }
-        },
-        subCategory: {
-          select: {
-            id: true,
-            name: true,
-            slug: true
-          }
+    // Clean productData - only include valid Prisma fields
+    // List of valid Product model fields (excluding relations and auto-generated fields)
+    const validProductFields = [
+      'name', 'slug', 'sku', 'description', 'short_description',
+      'category_id', 'sub_category_id', 'price', 'compare_at_price', 'cost_price',
+      'stock_quantity', 'stock_status', 'images', 'color_images',
+      'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',
+      'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
+      'is_featured', 'is_active', 'meta_title', 'meta_description', 'meta_keywords',
+      'product_type', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+      'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
+      'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter'
+    ];
+
+    // Optional fields that should be null if empty string
+    const optionalStringFields = [
+      'description', 'short_description', 'frame_material', 'frame_color',
+      'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
+      'meta_title', 'meta_description', 'meta_keywords',
+      'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+      'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
+      'base_curve_options', 'diameter_options', 'images', 'color_images'
+    ];
+
+    // Filter productData to only include valid fields and handle empty strings
+    const cleanedProductData = {};
+    for (const key of validProductFields) {
+      if (productData[key] !== undefined) {
+        // Convert empty strings to null for optional fields
+        if (optionalStringFields.includes(key) && productData[key] === '') {
+          cleanedProductData[key] = null;
+        } 
+        // Handle sub_category_id - convert empty string to null
+        else if (key === 'sub_category_id' && (productData[key] === '' || productData[key] === 'null' || productData[key] === null)) {
+          cleanedProductData[key] = null;
+        }
+        // Handle boolean fields - ensure they're proper booleans
+        else if ((key === 'is_featured' || key === 'is_active' || key === 'can_sleep_with' || key === 'is_medical_device' || key === 'has_uv_filter') && typeof productData[key] === 'string') {
+          cleanedProductData[key] = productData[key] === 'true' || productData[key] === '1';
+        }
+        else {
+          cleanedProductData[key] = productData[key];
         }
       }
+    }
+
+    // Log cleaned data for debugging (remove sensitive data)
+    console.log('📝 Cleaned product data keys:', Object.keys(cleanedProductData));
+    console.log('📝 Required fields check:', {
+      name: !!cleanedProductData.name,
+      slug: !!cleanedProductData.slug,
+      sku: !!cleanedProductData.sku,
+      category_id: !!cleanedProductData.category_id,
+      price: cleanedProductData.price !== undefined
     });
+
+    // Create the product first
+    let product;
+    try {
+      product = await prisma.product.create({
+        data: cleanedProductData,
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          },
+          subCategory: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          }
+        }
+      });
+    } catch (prismaError) {
+      console.error('❌ Prisma validation error:', {
+        name: prismaError.name,
+        message: prismaError.message,
+        code: prismaError.code,
+        meta: prismaError.meta,
+        cleanedDataKeys: Object.keys(cleanedProductData),
+        cleanedDataSample: {
+          name: cleanedProductData.name,
+          slug: cleanedProductData.slug,
+          sku: cleanedProductData.sku,
+          category_id: cleanedProductData.category_id,
+          price: cleanedProductData.price,
+          priceType: typeof cleanedProductData.price,
+          stock_quantity: cleanedProductData.stock_quantity,
+          stock_quantityType: typeof cleanedProductData.stock_quantity
+        }
+      });
+      throw prismaError; // Re-throw to be caught by asyncHandler
+    }
 
     // Format images - parse JSON string to array for response
     let images = product.images;
@@ -2808,8 +2886,30 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     delete productData[field];
   });
 
+  // Clean productData - only include valid Prisma fields
+  // List of valid Product model fields (excluding relations and auto-generated fields)
+  const validProductFields = [
+    'name', 'slug', 'sku', 'description', 'short_description',
+    'category_id', 'sub_category_id', 'price', 'compare_at_price', 'cost_price',
+    'stock_quantity', 'stock_status', 'images', 'color_images',
+    'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',
+    'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
+    'is_featured', 'is_active', 'meta_title', 'meta_description', 'meta_keywords',
+    'product_type', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+    'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
+    'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter'
+  ];
+
+  // Filter productData to only include valid fields
+  const cleanedProductData = {};
+  for (const key of validProductFields) {
+    if (productData[key] !== undefined) {
+      cleanedProductData[key] = productData[key];
+    }
+  }
+
   // Convert category_id and sub_category_id to Prisma relation syntax if they exist
-  const updateData = { ...productData };
+  const updateData = { ...cleanedProductData };
   
   // Handle category relation
   if (updateData.category_id !== undefined) {
