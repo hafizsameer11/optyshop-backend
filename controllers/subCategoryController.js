@@ -404,26 +404,11 @@ exports.getSubCategoryProducts = asyncHandler(async (req, res) => {
         })
     ]);
 
-    // Format images for each product
-    const formattedProducts = products.map(product => {
-        let images = product.images;
-        if (typeof images === 'string') {
-            try {
-                images = JSON.parse(images);
-            } catch (e) {
-                images = [];
-            }
-        }
-        if (!Array.isArray(images)) {
-            images = images ? [images] : [];
-        }
-
-        return {
-            ...product,
-            images,
-            image: images && images.length > 0 ? images[0] : null
-        };
-    });
+    // Import formatProductMedia from productController to format images and color_images
+    const { formatProductMedia } = require('./productController');
+    
+    // Format products with images and color_images (includes color swatches)
+    const formattedProducts = products.map(formatProductMedia);
 
     return success(res, 'Products retrieved successfully', {
         subcategory: {

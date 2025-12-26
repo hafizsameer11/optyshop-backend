@@ -168,6 +168,11 @@ const formatProductMedia = (product) => {
   };
 };
 
+// Export formatProductMedia and helper functions for use in other controllers
+exports.formatProductMedia = formatProductMedia;
+exports.getColorHexCode = getColorHexCode;
+exports.getColorNameFromHex = getColorNameFromHex;
+
 // Helper function to get hex code from color name
 const getColorHexCode = (colorName) => {
   if (!colorName) return null;
