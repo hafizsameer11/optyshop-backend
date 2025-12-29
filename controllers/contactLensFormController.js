@@ -442,7 +442,9 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     left_diameter,
     left_power,
     price,
-    display_name
+    display_name,
+    copy_right_to_left, // New flag: if true, copy right eye values to left eye
+    same_for_both_eyes // Alternative flag name for same functionality
   } = req.body;
 
   // Validate required fields
@@ -463,6 +465,23 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     return error(res, 'This is not a sub-sub-category', 400);
   }
 
+  // Determine if we should copy right to left
+  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+
+  // Prepare left eye values - copy from right if flag is set, otherwise use provided values
+  let finalLeftQty = left_qty;
+  let finalLeftBaseCurve = left_base_curve;
+  let finalLeftDiameter = left_diameter;
+  let finalLeftPower = left_power;
+
+  if (shouldCopyRightToLeft) {
+    // Copy right eye values to left eye
+    finalLeftQty = right_qty;
+    finalLeftBaseCurve = right_base_curve;
+    finalLeftDiameter = right_diameter;
+    finalLeftPower = right_power;
+  }
+
   // Create configuration
   const config = await prisma.contactLensConfiguration.create({
     data: {
@@ -470,14 +489,14 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       sub_category_id: parseInt(sub_category_id),
       category_id: category_id ? parseInt(category_id) : subCategory.category_id,
       configuration_type: 'spherical',
-      right_qty: Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1]),
-      right_base_curve: Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]),
-      right_diameter: Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]),
-      right_power: Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]),
-      left_qty: Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty || 1]),
-      left_base_curve: Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]),
-      left_diameter: Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]),
-      left_power: Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]),
+      right_qty: right_qty !== undefined ? (Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1])) : JSON.stringify([1]),
+      right_base_curve: right_base_curve !== undefined ? (Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve])) : null,
+      right_diameter: right_diameter !== undefined ? (Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter])) : null,
+      right_power: right_power !== undefined ? (Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power])) : null,
+      left_qty: finalLeftQty !== undefined ? (Array.isArray(finalLeftQty) ? JSON.stringify(finalLeftQty) : JSON.stringify([finalLeftQty || 1])) : null,
+      left_base_curve: finalLeftBaseCurve !== undefined ? (Array.isArray(finalLeftBaseCurve) ? JSON.stringify(finalLeftBaseCurve) : JSON.stringify([finalLeftBaseCurve])) : null,
+      left_diameter: finalLeftDiameter !== undefined ? (Array.isArray(finalLeftDiameter) ? JSON.stringify(finalLeftDiameter) : JSON.stringify([finalLeftDiameter])) : null,
+      left_power: finalLeftPower !== undefined ? (Array.isArray(finalLeftPower) ? JSON.stringify(finalLeftPower) : JSON.stringify([finalLeftPower])) : null,
       price: price ? parseFloat(price) : null,
       display_name: display_name || name
     },
@@ -524,7 +543,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     left_power,
     price,
     display_name,
-    is_active
+    is_active,
+    copy_right_to_left, // New flag: if true, copy right eye values to left eye
+    same_for_both_eyes // Alternative flag name for same functionality
   } = req.body;
 
   // Check if config exists
@@ -539,6 +560,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (existingConfig.configuration_type !== 'spherical') {
     return error(res, 'This is not a Spherical configuration', 400);
   }
+
+  // Determine if we should copy right to left
+  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
 
   // Prepare update data
   const updateData = {};
@@ -558,17 +582,33 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (right_power !== undefined) {
     updateData.right_power = Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]);
   }
-  if (left_qty !== undefined) {
-    updateData.left_qty = Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty]);
-  }
-  if (left_base_curve !== undefined) {
-    updateData.left_base_curve = Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]);
-  }
-  if (left_diameter !== undefined) {
-    updateData.left_diameter = Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]);
-  }
-  if (left_power !== undefined) {
-    updateData.left_power = Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]);
+
+  // Handle left eye values - copy from right if flag is set
+  if (shouldCopyRightToLeft) {
+    // Use right eye values for left eye (use updated right values if provided, otherwise use existing)
+    const rightQtyToUse = right_qty !== undefined ? right_qty : parseJsonField(existingConfig.right_qty);
+    const rightBaseCurveToUse = right_base_curve !== undefined ? right_base_curve : parseJsonField(existingConfig.right_base_curve);
+    const rightDiameterToUse = right_diameter !== undefined ? right_diameter : parseJsonField(existingConfig.right_diameter);
+    const rightPowerToUse = right_power !== undefined ? right_power : parseJsonField(existingConfig.right_power);
+
+    updateData.left_qty = Array.isArray(rightQtyToUse) ? JSON.stringify(rightQtyToUse) : JSON.stringify([rightQtyToUse || 1]);
+    updateData.left_base_curve = Array.isArray(rightBaseCurveToUse) ? JSON.stringify(rightBaseCurveToUse) : JSON.stringify([rightBaseCurveToUse]);
+    updateData.left_diameter = Array.isArray(rightDiameterToUse) ? JSON.stringify(rightDiameterToUse) : JSON.stringify([rightDiameterToUse]);
+    updateData.left_power = Array.isArray(rightPowerToUse) ? JSON.stringify(rightPowerToUse) : JSON.stringify([rightPowerToUse]);
+  } else {
+    // Use provided left eye values
+    if (left_qty !== undefined) {
+      updateData.left_qty = Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty]);
+    }
+    if (left_base_curve !== undefined) {
+      updateData.left_base_curve = Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]);
+    }
+    if (left_diameter !== undefined) {
+      updateData.left_diameter = Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]);
+    }
+    if (left_power !== undefined) {
+      updateData.left_power = Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]);
+    }
   }
 
   const config = await prisma.contactLensConfiguration.update({
@@ -718,7 +758,9 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     left_cylinder,
     left_axis,
     price,
-    display_name
+    display_name,
+    copy_right_to_left, // New flag: if true, copy right eye values to left eye
+    same_for_both_eyes // Alternative flag name for same functionality
   } = req.body;
 
   // Validate required fields
@@ -735,6 +777,27 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     return error(res, 'Sub-sub-category not found', 404);
   }
 
+  // Determine if we should copy right to left
+  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+
+  // Prepare left eye values - copy from right if flag is set, otherwise use provided values
+  let finalLeftQty = left_qty;
+  let finalLeftBaseCurve = left_base_curve;
+  let finalLeftDiameter = left_diameter;
+  let finalLeftPower = left_power;
+  let finalLeftCylinder = left_cylinder;
+  let finalLeftAxis = left_axis;
+
+  if (shouldCopyRightToLeft) {
+    // Copy right eye values to left eye
+    finalLeftQty = right_qty;
+    finalLeftBaseCurve = right_base_curve;
+    finalLeftDiameter = right_diameter;
+    finalLeftPower = right_power;
+    finalLeftCylinder = right_cylinder;
+    finalLeftAxis = right_axis;
+  }
+
   // Create configuration
   const config = await prisma.contactLensConfiguration.create({
     data: {
@@ -746,14 +809,14 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       right_base_curve: Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]),
       right_diameter: Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]),
       right_power: Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]),
-      right_cylinder: Array.isArray(right_cylinder) ? JSON.stringify(right_cylinder) : JSON.stringify([right_cylinder]),
-      right_axis: Array.isArray(right_axis) ? JSON.stringify(right_axis) : JSON.stringify([right_axis]),
-      left_qty: Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty || 1]),
-      left_base_curve: Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]),
-      left_diameter: Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]),
-      left_power: Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]),
-      left_cylinder: Array.isArray(left_cylinder) ? JSON.stringify(left_cylinder) : JSON.stringify([left_cylinder]),
-      left_axis: Array.isArray(left_axis) ? JSON.stringify(left_axis) : JSON.stringify([left_axis]),
+      right_cylinder: right_cylinder !== undefined ? (Array.isArray(right_cylinder) ? JSON.stringify(right_cylinder) : JSON.stringify([right_cylinder])) : null,
+      right_axis: right_axis !== undefined ? (Array.isArray(right_axis) ? JSON.stringify(right_axis) : JSON.stringify([right_axis])) : null,
+      left_qty: finalLeftQty !== undefined ? (Array.isArray(finalLeftQty) ? JSON.stringify(finalLeftQty) : JSON.stringify([finalLeftQty || 1])) : null,
+      left_base_curve: finalLeftBaseCurve !== undefined ? (Array.isArray(finalLeftBaseCurve) ? JSON.stringify(finalLeftBaseCurve) : JSON.stringify([finalLeftBaseCurve])) : null,
+      left_diameter: finalLeftDiameter !== undefined ? (Array.isArray(finalLeftDiameter) ? JSON.stringify(finalLeftDiameter) : JSON.stringify([finalLeftDiameter])) : null,
+      left_power: finalLeftPower !== undefined ? (Array.isArray(finalLeftPower) ? JSON.stringify(finalLeftPower) : JSON.stringify([finalLeftPower])) : null,
+      left_cylinder: finalLeftCylinder !== undefined ? (Array.isArray(finalLeftCylinder) ? JSON.stringify(finalLeftCylinder) : JSON.stringify([finalLeftCylinder])) : null,
+      left_axis: finalLeftAxis !== undefined ? (Array.isArray(finalLeftAxis) ? JSON.stringify(finalLeftAxis) : JSON.stringify([finalLeftAxis])) : null,
       price: price ? parseFloat(price) : null,
       display_name: display_name || name
     },
@@ -808,7 +871,9 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     left_axis,
     price,
     display_name,
-    is_active
+    is_active,
+    copy_right_to_left, // New flag: if true, copy right eye values to left eye
+    same_for_both_eyes // Alternative flag name for same functionality
   } = req.body;
 
   // Check if config exists
@@ -824,6 +889,9 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     return error(res, 'This is not an Astigmatism configuration', 400);
   }
 
+  // Determine if we should copy right to left
+  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+
   // Prepare update data
   const updateData = {};
   if (name) updateData.name = name;
@@ -831,16 +899,39 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
   if (is_active !== undefined) updateData.is_active = is_active;
 
-  const fields = [
-    'right_qty', 'right_base_curve', 'right_diameter', 'right_power', 'right_cylinder', 'right_axis',
-    'left_qty', 'left_base_curve', 'left_diameter', 'left_power', 'left_cylinder', 'left_axis'
-  ];
-
-  fields.forEach(field => {
+  // Handle right eye fields
+  const rightFields = ['right_qty', 'right_base_curve', 'right_diameter', 'right_power', 'right_cylinder', 'right_axis'];
+  rightFields.forEach(field => {
     if (req.body[field] !== undefined) {
       updateData[field] = Array.isArray(req.body[field]) ? JSON.stringify(req.body[field]) : JSON.stringify([req.body[field]]);
     }
   });
+
+  // Handle left eye fields - copy from right if flag is set
+  if (shouldCopyRightToLeft) {
+    // Use right eye values for left eye (use updated right values if provided, otherwise use existing)
+    const rightQtyToUse = right_qty !== undefined ? right_qty : parseJsonField(existingConfig.right_qty);
+    const rightBaseCurveToUse = right_base_curve !== undefined ? right_base_curve : parseJsonField(existingConfig.right_base_curve);
+    const rightDiameterToUse = right_diameter !== undefined ? right_diameter : parseJsonField(existingConfig.right_diameter);
+    const rightPowerToUse = right_power !== undefined ? right_power : parseJsonField(existingConfig.right_power);
+    const rightCylinderToUse = right_cylinder !== undefined ? right_cylinder : parseJsonField(existingConfig.right_cylinder);
+    const rightAxisToUse = right_axis !== undefined ? right_axis : parseJsonField(existingConfig.right_axis);
+
+    updateData.left_qty = Array.isArray(rightQtyToUse) ? JSON.stringify(rightQtyToUse) : JSON.stringify([rightQtyToUse || 1]);
+    updateData.left_base_curve = Array.isArray(rightBaseCurveToUse) ? JSON.stringify(rightBaseCurveToUse) : JSON.stringify([rightBaseCurveToUse]);
+    updateData.left_diameter = Array.isArray(rightDiameterToUse) ? JSON.stringify(rightDiameterToUse) : JSON.stringify([rightDiameterToUse]);
+    updateData.left_power = Array.isArray(rightPowerToUse) ? JSON.stringify(rightPowerToUse) : JSON.stringify([rightPowerToUse]);
+    updateData.left_cylinder = Array.isArray(rightCylinderToUse) ? JSON.stringify(rightCylinderToUse) : JSON.stringify([rightCylinderToUse]);
+    updateData.left_axis = Array.isArray(rightAxisToUse) ? JSON.stringify(rightAxisToUse) : JSON.stringify([rightAxisToUse]);
+  } else {
+    // Use provided left eye values
+    const leftFields = ['left_qty', 'left_base_curve', 'left_diameter', 'left_power', 'left_cylinder', 'left_axis'];
+    leftFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = Array.isArray(req.body[field]) ? JSON.stringify(req.body[field]) : JSON.stringify([req.body[field]]);
+      }
+    });
+  }
 
   const config = await prisma.contactLensConfiguration.update({
     where: { id: parseInt(id) },

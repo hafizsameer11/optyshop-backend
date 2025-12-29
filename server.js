@@ -44,6 +44,7 @@ const prescriptionSunLensRoutes = require('./routes/prescriptionSunLenses');
 const photochromicLensRoutes = require('./routes/photochromicLenses');
 const prescriptionLensTypesRoutes = require('./routes/prescriptionLensTypes');
 const contactLensFormRoutes = require('./routes/contactLensForms');
+const prescriptionFormRoutes = require('./routes/prescriptionForms');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -212,6 +213,7 @@ app.use('/api/pages', pageRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/contact-lens-forms', contactLensFormRoutes); // Standard route
+app.use('/api/prescription-forms', prescriptionFormRoutes); // Prescription forms route
 app.use('/api/shipping-methods', shippingRoutes); // Standard route
 app.use('/api/customization', customizationRoutes); // Standard route
 app.use('/api/photochromic-lenses', photochromicLensRoutes); // Standard route

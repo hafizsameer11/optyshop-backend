@@ -2118,7 +2118,8 @@ exports.createProduct = asyncHandler(async (req, res) => {
       'is_featured', 'is_active', 'meta_title', 'meta_description', 'meta_keywords',
       'product_type', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
       'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
-      'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter'
+      'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter',
+      'size_volume', 'pack_type', 'expiry_date' // Eye Hygiene fields
     ];
 
     // Optional fields that should be null if empty string
@@ -2128,8 +2129,28 @@ exports.createProduct = asyncHandler(async (req, res) => {
       'meta_title', 'meta_description', 'meta_keywords',
       'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
       'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
-      'base_curve_options', 'diameter_options', 'images', 'color_images'
+      'base_curve_options', 'diameter_options', 'images', 'color_images',
+      'size_volume', 'pack_type' // Eye Hygiene string fields
     ];
+
+    // Handle expiry_date - convert string to DateTime or null
+    if (productData.expiry_date !== undefined) {
+      if (productData.expiry_date === '' || productData.expiry_date === null || productData.expiry_date === 'null') {
+        productData.expiry_date = null;
+      } else if (typeof productData.expiry_date === 'string') {
+        try {
+          // Try to parse the date string
+          const date = new Date(productData.expiry_date);
+          if (isNaN(date.getTime())) {
+            productData.expiry_date = null;
+          } else {
+            productData.expiry_date = date;
+          }
+        } catch (e) {
+          productData.expiry_date = null;
+        }
+      }
+    }
 
     // Filter productData to only include valid fields and handle empty strings
     const cleanedProductData = {};
@@ -2867,14 +2888,59 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     'is_featured', 'is_active', 'meta_title', 'meta_description', 'meta_keywords',
     'product_type', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
     'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
-    'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter'
+    'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter',
+    'size_volume', 'pack_type', 'expiry_date' // Eye Hygiene fields
+  ];
+
+  // Handle expiry_date - convert string to DateTime or null
+  if (productData.expiry_date !== undefined) {
+    if (productData.expiry_date === '' || productData.expiry_date === null || productData.expiry_date === 'null') {
+      productData.expiry_date = null;
+    } else if (typeof productData.expiry_date === 'string') {
+      try {
+        // Try to parse the date string
+        const date = new Date(productData.expiry_date);
+        if (isNaN(date.getTime())) {
+          productData.expiry_date = null;
+        } else {
+          productData.expiry_date = date;
+        }
+      } catch (e) {
+        productData.expiry_date = null;
+      }
+    }
+  }
+
+  // Optional fields that should be null if empty string
+  const optionalStringFields = [
+    'description', 'short_description', 'frame_material', 'frame_color',
+    'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
+    'meta_title', 'meta_description', 'meta_keywords',
+    'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+    'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
+    'base_curve_options', 'diameter_options', 'images', 'color_images',
+    'size_volume', 'pack_type' // Eye Hygiene string fields
   ];
 
   // Filter productData to only include valid fields
   const cleanedProductData = {};
   for (const key of validProductFields) {
     if (productData[key] !== undefined) {
-      cleanedProductData[key] = productData[key];
+      // Convert empty strings to null for optional fields
+      if (optionalStringFields.includes(key) && productData[key] === '') {
+        cleanedProductData[key] = null;
+      } 
+      // Handle sub_category_id - convert empty string to null
+      else if (key === 'sub_category_id' && (productData[key] === '' || productData[key] === 'null' || productData[key] === null)) {
+        cleanedProductData[key] = null;
+      }
+      // Handle boolean fields - ensure they're proper booleans
+      else if ((key === 'is_featured' || key === 'is_active' || key === 'can_sleep_with' || key === 'is_medical_device' || key === 'has_uv_filter') && typeof productData[key] === 'string') {
+        cleanedProductData[key] = productData[key] === 'true' || productData[key] === '1';
+      }
+      else {
+        cleanedProductData[key] = productData[key];
+      }
     }
   }
 

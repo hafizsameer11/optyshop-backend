@@ -493,7 +493,28 @@ exports.getProducts = asyncHandler(async (req, res) => {
   ]);
 
   // Format products with images and color_images
-  const formattedProducts = products.map(formatProductMedia);
+  const formattedProducts = products.map(product => {
+    const formatted = formatProductMedia(product);
+    
+    // Check if product is in Eye Hygiene category or related subcategory
+    const isEyeHygiene = product.category && (
+      product.category.name.toLowerCase().includes('eye hygiene') ||
+      product.category.slug.toLowerCase().includes('eye-hygiene') ||
+      (product.subCategory && (
+        product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+        product.subCategory.slug.toLowerCase().includes('eye-hygiene')
+      ))
+    );
+
+    // Add Eye Hygiene fields if applicable
+    if (isEyeHygiene) {
+      formatted.size_volume = product.size_volume || null;
+      formatted.pack_type = product.pack_type || null;
+      formatted.expiry_date = product.expiry_date || null;
+    }
+
+    return formatted;
+  });
 
   return success(res, 'Products retrieved successfully', {
     products: formattedProducts,
@@ -619,6 +640,16 @@ exports.getProduct = asyncHandler(async (req, res) => {
   // Format product media (images, color_images, model_3d_url)
   const formattedProduct = formatProductMedia(product);
 
+  // Check if product is in Eye Hygiene category or related subcategory
+  const isEyeHygiene = product.category && (
+    product.category.name.toLowerCase().includes('eye hygiene') ||
+    product.category.slug.toLowerCase().includes('eye-hygiene') ||
+    (product.subCategory && (
+      product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+      product.subCategory.slug.toLowerCase().includes('eye-hygiene')
+    ))
+  );
+
   // Transform lensTypes and lensCoatings to match expected format
   const transformedProduct = {
     ...formattedProduct,
@@ -629,6 +660,13 @@ exports.getProduct = asyncHandler(async (req, res) => {
     diameter_options: diameterOptions,
     powers_range: powersRange
   };
+
+  // Add Eye Hygiene fields if applicable
+  if (isEyeHygiene) {
+    transformedProduct.size_volume = product.size_volume || null;
+    transformedProduct.pack_type = product.pack_type || null;
+    transformedProduct.expiry_date = product.expiry_date || null;
+  }
 
   return success(res, 'Product retrieved successfully', { product: transformedProduct });
 });
@@ -776,6 +814,16 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
   // Format product media (images, color_images, model_3d_url)
   const formattedProduct = formatProductMedia(product);
 
+  // Check if product is in Eye Hygiene category or related subcategory
+  const isEyeHygiene = product.category && (
+    product.category.name.toLowerCase().includes('eye hygiene') ||
+    product.category.slug.toLowerCase().includes('eye-hygiene') ||
+    (product.subCategory && (
+      product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+      product.subCategory.slug.toLowerCase().includes('eye-hygiene')
+    ))
+  );
+
   // Transform lensTypes and lensCoatings
   const transformedProduct = {
     ...formattedProduct,
@@ -788,6 +836,13 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     // Contact lens configurations (for dropdowns in frontend)
     contact_lens_configs: product.contactLensConfigs || []
   };
+
+  // Add Eye Hygiene fields if applicable
+  if (isEyeHygiene) {
+    transformedProduct.size_volume = product.size_volume || null;
+    transformedProduct.pack_type = product.pack_type || null;
+    transformedProduct.expiry_date = product.expiry_date || null;
+  }
 
   return success(res, 'Product retrieved successfully', { product: transformedProduct });
 });
@@ -824,7 +879,28 @@ exports.getFeaturedProducts = asyncHandler(async (req, res) => {
   });
 
   // Format products with images and color_images
-  const formattedProducts = products.map(formatProductMedia);
+  const formattedProducts = products.map(product => {
+    const formatted = formatProductMedia(product);
+    
+    // Check if product is in Eye Hygiene category or related subcategory
+    const isEyeHygiene = product.category && (
+      product.category.name.toLowerCase().includes('eye hygiene') ||
+      product.category.slug.toLowerCase().includes('eye-hygiene') ||
+      (product.subCategory && (
+        product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+        product.subCategory.slug.toLowerCase().includes('eye-hygiene')
+      ))
+    );
+
+    // Add Eye Hygiene fields if applicable
+    if (isEyeHygiene) {
+      formatted.size_volume = product.size_volume || null;
+      formatted.pack_type = product.pack_type || null;
+      formatted.expiry_date = product.expiry_date || null;
+    }
+
+    return formatted;
+  });
 
   return success(res, 'Featured products retrieved successfully', { products: formattedProducts });
 });
@@ -871,7 +947,28 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
   });
 
   // Format products with images and color_images
-  const formattedProducts = relatedProducts.map(formatProductMedia);
+  const formattedProducts = relatedProducts.map(product => {
+    const formatted = formatProductMedia(product);
+    
+    // Check if product is in Eye Hygiene category or related subcategory
+    const isEyeHygiene = product.category && (
+      product.category.name.toLowerCase().includes('eye hygiene') ||
+      product.category.slug.toLowerCase().includes('eye-hygiene') ||
+      (product.subCategory && (
+        product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+        product.subCategory.slug.toLowerCase().includes('eye-hygiene')
+      ))
+    );
+
+    // Add Eye Hygiene fields if applicable
+    if (isEyeHygiene) {
+      formatted.size_volume = product.size_volume || null;
+      formatted.pack_type = product.pack_type || null;
+      formatted.expiry_date = product.expiry_date || null;
+    }
+
+    return formatted;
+  });
 
   return success(res, 'Related products retrieved successfully', { products: formattedProducts });
 });

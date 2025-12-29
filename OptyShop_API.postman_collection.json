@@ -762,6 +762,57 @@
           "name": "Coupons (Public Apply)",
           "item": [
             {
+              "name": "Get Active Coupons",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/coupons",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "coupons"
+                  ]
+                },
+                "description": "Get all active coupons. Returns coupons that are currently active and within their valid date range. Use this endpoint to display available coupons in a dropdown or list."
+              }
+            },
+            {
+              "name": "Get Available Coupons",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cartItems\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 1,\n      \"unit_price\": 100.00\n    },\n    {\n      \"product_id\": 2,\n      \"quantity\": 2,\n      \"unit_price\": 50.00\n    }\n  ],\n  \"subtotal\": 200.00\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/coupons/available",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "coupons",
+                    "available"
+                  ]
+                },
+                "description": "Get available coupons for cart items. Returns coupons that are:\n- Active\n- Within valid date range\n- Applicable to products in cart (if coupon has product/category restrictions)\n- Meet minimum order amount requirements\n\n**Request Body:**\n- `cartItems` (optional): Array of cart items with `product_id`, `quantity`, `unit_price`\n- `productIds` (optional): Array of product IDs\n- `subtotal` (optional): Cart subtotal for minimum order validation\n\n**Response:** Returns array of available coupons with discount amounts calculated."
+              }
+            },
+            {
               "name": "Apply Coupon",
               "request": {
                 "method": "POST",
@@ -5571,7 +5622,12 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"SAVE20\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 20,\n  \"valid_from\": \"2024-01-01\",\n  \"valid_until\": \"2024-12-31\"\n}"
+                  "raw": "{\n  \"code\": \"SAVE20\",\n  \"description\": \"20% off on all orders\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 20,\n  \"max_discount\": 50.00,\n  \"min_order_amount\": 100.00,\n  \"usage_limit\": 100,\n  \"usage_per_user\": 1,\n  \"valid_from\": \"2024-01-01T00:00:00Z\",\n  \"valid_until\": \"2024-12-31T23:59:59Z\",\n  \"is_active\": true,\n  \"conditions\": {\n    \"product_ids\": [1, 2, 3]\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/coupons",
@@ -5602,7 +5658,12 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"discount_value\": 25\n}"
+                  "raw": "{\n  \"code\": \"SAVE25\",\n  \"description\": \"25% off on selected products\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 25,\n  \"max_discount\": 75.00,\n  \"min_order_amount\": 150.00,\n  \"usage_limit\": 50,\n  \"usage_per_user\": 2,\n  \"valid_from\": \"2024-01-01T00:00:00Z\",\n  \"valid_until\": \"2024-12-31T23:59:59Z\",\n  \"is_active\": true,\n  \"conditions\": {\n    \"category_ids\": [1, 2]\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/coupons/1",
@@ -9235,7 +9296,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"left_qty\": [1, 2, 3],\n  \"left_base_curve\": [8.6, 8.7, 8.8],\n  \"left_diameter\": [14.0, 14.2, 14.5],\n  \"left_power\": [-2.00, -2.25, -2.50],\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}"
+                  "raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/spherical",
@@ -9249,7 +9310,7 @@
                     "spherical"
                   ]
                 },
-                "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter."
+                "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power) as they will be automatically set from right eye values.\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}\n```"
               }
             },
             {
@@ -9268,7 +9329,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"left_power\": [-2.00, -2.25],\n  \"price\": 34.99,\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/spherical/:id",
@@ -9289,7 +9350,7 @@
                     }
                   ]
                 },
-                "description": "Update a Spherical configuration. Only include fields to update."
+                "description": "Update a Spherical configuration. Only include fields to update.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}\n```"
               }
             },
             {
@@ -9383,7 +9444,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"left_qty\": [1, 2, 3],\n  \"left_base_curve\": [8.6, 8.7, 8.8],\n  \"left_diameter\": [14.0, 14.2, 14.5],\n  \"left_power\": [-2.00, -2.25, -2.50],\n  \"left_cylinder\": [-0.75, -1.00, -1.25],\n  \"left_axis\": [10, 20, 90, 180],\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}"
+                  "raw": "{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism",
@@ -9397,7 +9458,7 @@
                     "astigmatism"
                   ]
                 },
-                "description": "Create a new Astigmatism configuration. Arrays allow multiple values for each parameter including cylinder and axis."
+                "description": "Create a new Astigmatism configuration. Arrays allow multiple values for each parameter including cylinder and axis.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power, left_cylinder, left_axis) as they will be automatically set from right eye values.\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}\n```"
               }
             },
             {
@@ -9416,7 +9477,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Astigmatism Config\",\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"left_cylinder\": [-0.75, -1.00],\n  \"price\": 44.99,\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"name\": \"Updated Astigmatism Config\",\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"right_axis\": [10, 20, 90],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/:id",
@@ -9437,7 +9498,7 @@
                     }
                   ]
                 },
-                "description": "Update an Astigmatism configuration. Only include fields to update."
+                "description": "Update an Astigmatism configuration. Only include fields to update.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}\n```"
               }
             },
             {
@@ -9618,6 +9679,290 @@
                   ]
                 },
                 "description": "Delete an Astigmatism dropdown value. Admin only."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prescription Forms (Admin)",
+          "item": [
+            {
+              "name": "Get All Prescription Form Dropdown Values (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/admin/dropdown-values?field_type=sph&eye_type=both&form_type=progressive",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "admin",
+                    "dropdown-values"
+                  ],
+                  "query": [
+                    {
+                      "key": "field_type",
+                      "value": "sph",
+                      "description": "Filter by field type: pd, sph, cyl, axis, h, year_of_birth, select_option",
+                      "disabled": true
+                    },
+                    {
+                      "key": "eye_type",
+                      "value": "both",
+                      "description": "Filter by eye type: left, right, both",
+                      "disabled": true
+                    },
+                    {
+                      "key": "form_type",
+                      "value": "progressive",
+                      "description": "Filter by form type: progressive, near_vision, distance_vision",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all prescription form dropdown values (including inactive). Admin only. Can filter by field_type, eye_type, and form_type."
+              }
+            },
+            {
+              "name": "Create Prescription Form Dropdown Value (Admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"field_type\": \"sph\",\n  \"value\": \"-2.00\",\n  \"label\": \"-2.00 D\",\n  \"eye_type\": \"both\",\n  \"form_type\": \"progressive\",\n  \"sort_order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/admin/dropdown-values",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "admin",
+                    "dropdown-values"
+                  ]
+                },
+                "description": "Create a new dropdown value for prescription forms. field_type: pd, sph, cyl, axis, h, year_of_birth, select_option. eye_type: left, right, both (null for both). form_type: progressive, near_vision, distance_vision (null for all forms)."
+              }
+            },
+            {
+              "name": "Update Prescription Form Dropdown Value (Admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"value\": \"-2.25\",\n  \"label\": \"-2.25 D\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/admin/dropdown-values/:id",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "admin",
+                    "dropdown-values",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "Update a prescription form dropdown value. Admin only."
+              }
+            },
+            {
+              "name": "Delete Prescription Form Dropdown Value (Admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/admin/dropdown-values/:id",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "admin",
+                    "dropdown-values",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "Delete a prescription form dropdown value. Admin only."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prescription Forms (Public)",
+          "item": [
+            {
+              "name": "Get Prescription Form Dropdown Values (Public)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/dropdown-values?field_type=sph&eye_type=both&form_type=progressive",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "dropdown-values"
+                  ],
+                  "query": [
+                    {
+                      "key": "field_type",
+                      "value": "sph",
+                      "description": "Filter by field type: pd, sph, cyl, axis, h, year_of_birth, select_option",
+                      "disabled": true
+                    },
+                    {
+                      "key": "eye_type",
+                      "value": "both",
+                      "description": "Filter by eye type: left, right, both",
+                      "disabled": true
+                    },
+                    {
+                      "key": "form_type",
+                      "value": "progressive",
+                      "description": "Filter by form type: progressive, near_vision, distance_vision",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all active prescription form dropdown values. Public endpoint. Can filter by field_type, eye_type, and form_type."
+              }
+            },
+            {
+              "name": "Get Prescription Form Structure - Progressive",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/progressive",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "progressive"
+                  ]
+                },
+                "description": "Get prescription form structure for Progressive Vision. Returns all dropdown values organized by field type (PD, H, SPH, CYL, AXIS, Year of Birth, Select Option) with separate right and left eye fields."
+              }
+            },
+            {
+              "name": "Get Prescription Form Structure - Near Vision",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/near_vision",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "near_vision"
+                  ]
+                },
+                "description": "Get prescription form structure for Near Vision. Returns all dropdown values organized by field type (PD, SPH, CYL, AXIS) with separate right and left eye fields."
+              }
+            },
+            {
+              "name": "Get Prescription Form Structure - Distance Vision",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/distance_vision",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "distance_vision"
+                  ]
+                },
+                "description": "Get prescription form structure for Distance Vision. Returns all dropdown values organized by field type (PD, SPH, CYL, AXIS) with separate right and left eye fields."
+              }
+            },
+            {
+              "name": "Submit Prescription Form with Copy Left to Right",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"form_type\": \"progressive\",\n  \"pd\": \"64\",\n  \"pd_right\": \"32\",\n  \"h\": \"18\",\n  \"left_eye_sph\": \"-2.00\",\n  \"left_eye_cyl\": \"-0.50\",\n  \"left_eye_axis\": \"90\",\n  \"select_option\": \"premium\",\n  \"year_of_birth\": \"1980\",\n  \"copy_left_to_right\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/prescription-forms/submit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "prescription-forms",
+                    "submit"
+                  ]
+                },
+                "description": "Submit prescription form data. **New Feature - Copy Left to Right**:\n- Add `\"copy_left_to_right\": true` or `\"same_for_both_eyes\": true` to automatically copy all left eye values (SPH, CYL, AXIS) to right eye fields.\n- When using this feature, you can omit right eye parameters (right_eye_sph, right_eye_cyl, right_eye_axis) as they will be automatically set from left eye values.\n\n**Example with copy_left_to_right**:\n```json\n{\n  \"form_type\": \"progressive\",\n  \"pd\": \"64\",\n  \"pd_right\": \"32\",\n  \"h\": \"18\",\n  \"left_eye_sph\": \"-2.00\",\n  \"left_eye_cyl\": \"-0.50\",\n  \"left_eye_axis\": \"90\",\n  \"copy_left_to_right\": true,\n  \"select_option\": \"premium\",\n  \"year_of_birth\": \"1980\"\n}\n```"
               }
             }
           ]

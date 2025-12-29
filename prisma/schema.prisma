@@ -127,6 +127,10 @@ model Product {
   can_sleep_with        Boolean?                   @default(false) // Can sleep with lenses
   is_medical_device     Boolean?                   @default(true) // Is medical device
   has_uv_filter         Boolean?                   @default(false) // Has UV filter
+  // Eye Hygiene specific fields
+  size_volume           String?                    @db.VarChar(50) // Size/Volume (e.g., 5ml, 10ml, 30ml)
+  pack_type             String?                    @db.VarChar(50) // Pack Type (e.g., Single, Pack of 2)
+  expiry_date           DateTime? // Expiry Date
   cartItems             CartItem[]
   frameSizes            FrameSize[]
   orderItems            OrderItem[]
@@ -1375,4 +1379,45 @@ enum AstigmatismEyeType {
   left
   right
   both
+}
+
+model PrescriptionFormDropdownValue {
+  id         Int                       @id @default(autoincrement())
+  field_type PrescriptionFormFieldType // 'pd', 'sph', 'cyl', 'axis', 'h', 'year_of_birth', 'select_option'
+  value      String                    @db.VarChar(50) // The actual value (e.g., "-2.00", "0.25", "180", "64")
+  label      String?                   @db.VarChar(100) // Display label (optional)
+  eye_type   PrescriptionFormEyeType? // 'left', 'right', or null for both
+  form_type  PrescriptionFormType? // 'progressive', 'near_vision', 'distance_vision', or null for all
+  is_active  Boolean                   @default(true)
+  sort_order Int                       @default(0)
+  created_at DateTime                  @default(now())
+  updated_at DateTime                  @updatedAt
+
+  @@index([field_type])
+  @@index([eye_type])
+  @@index([form_type])
+  @@index([is_active])
+  @@map("prescription_form_dropdown_values")
+}
+
+enum PrescriptionFormFieldType {
+  pd
+  sph
+  cyl
+  axis
+  h
+  year_of_birth
+  select_option
+}
+
+enum PrescriptionFormEyeType {
+  left
+  right
+  both
+}
+
+enum PrescriptionFormType {
+  progressive
+  near_vision
+  distance_vision
 }

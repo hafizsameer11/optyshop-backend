@@ -129,6 +129,190 @@ exports.deleteCoupon = asyncHandler(async (req, res) => {
     return success(res, 'Coupon deleted successfully');
 });
 
+// @desc    Get active coupons (Public)
+// @route   GET /api/coupons
+// @access  Public
+exports.getCouponsPublic = asyncHandler(async (req, res) => {
+    const { activeOnly = 'true' } = req.query;
+    
+    const now = new Date();
+    const where = {
+        is_active: true,
+        AND: [
+            {
+                OR: [
+                    { starts_at: null },
+                    { starts_at: { lte: now } }
+                ]
+            },
+            {
+                OR: [
+                    { ends_at: null },
+                    { ends_at: { gte: now } }
+                ]
+            }
+        ]
+    };
+    
+    const coupons = await prisma.coupon.findMany({
+        where,
+        select: {
+            id: true,
+            code: true,
+            description: true,
+            discount_type: true,
+            discount_value: true,
+            max_discount: true,
+            min_order_amount: true,
+            starts_at: true,
+            ends_at: true,
+            is_active: true
+        },
+        orderBy: { created_at: 'desc' }
+    });
+    
+    return success(res, 'Coupons retrieved successfully', {
+        coupons: coupons.map(coupon => ({
+            ...coupon,
+            discount_value: parseFloat(coupon.discount_value),
+            max_discount: coupon.max_discount ? parseFloat(coupon.max_discount) : null,
+            min_order_amount: coupon.min_order_amount ? parseFloat(coupon.min_order_amount) : null
+        })),
+        count: coupons.length
+    });
+});
+
+// @desc    Get available coupons for cart items (Public)
+// @route   POST /api/coupons/available
+// @access  Public
+exports.getAvailableCoupons = asyncHandler(async (req, res) => {
+    const { cartItems, productIds, subtotal } = req.body;
+
+    // Extract product IDs from cartItems or use provided productIds
+    let productIdList = [];
+    let calculatedSubtotal = subtotal || 0;
+
+    if (cartItems && cartItems.length > 0) {
+        productIdList = cartItems.map(item => item.product_id || item.productId).filter(Boolean);
+        // Calculate subtotal if not provided
+        if (!calculatedSubtotal) {
+            calculatedSubtotal = cartItems.reduce((sum, item) => {
+                return sum + (parseFloat(item.unit_price || item.price || 0) * (item.quantity || 1));
+            }, 0);
+        }
+    } else if (productIds && productIds.length > 0) {
+        productIdList = Array.isArray(productIds) ? productIds : [productIds];
+    }
+
+    // Get all active coupons
+    const now = new Date();
+    const allCoupons = await prisma.coupon.findMany({
+        where: {
+            is_active: true,
+            AND: [
+                {
+                    OR: [
+                        { starts_at: null },
+                        { starts_at: { lte: now } }
+                    ]
+                },
+                {
+                    OR: [
+                        { ends_at: null },
+                        { ends_at: { gte: now } }
+                    ]
+                }
+            ]
+        },
+        orderBy: { created_at: 'desc' }
+    });
+
+    // Filter coupons based on product applicability and minimum order amount
+    const availableCoupons = [];
+
+    for (const coupon of allCoupons) {
+        // Check minimum order amount
+        if (coupon.min_order_amount && calculatedSubtotal < parseFloat(coupon.min_order_amount)) {
+            continue;
+        }
+
+        // Check if coupon is applicable to products
+        let isApplicable = true;
+
+        if (coupon.conditions) {
+            try {
+                const conditions = typeof coupon.conditions === 'string' 
+                    ? JSON.parse(coupon.conditions) 
+                    : coupon.conditions;
+
+                // If conditions specify product_ids, check if any cart product matches
+                if (conditions.product_ids && Array.isArray(conditions.product_ids)) {
+                    if (productIdList.length === 0) {
+                        // No products in cart, but coupon requires specific products
+                        isApplicable = false;
+                    } else {
+                        // Check if any cart product ID is in the coupon's product_ids
+                        isApplicable = productIdList.some(id => conditions.product_ids.includes(parseInt(id)));
+                    }
+                }
+                // If conditions specify category_ids, check if any cart product's category matches
+                else if (conditions.category_ids && Array.isArray(conditions.category_ids)) {
+                    if (productIdList.length === 0) {
+                        isApplicable = false;
+                    } else {
+                        // Fetch products to get their category_ids
+                        const products = await prisma.product.findMany({
+                            where: { id: { in: productIdList } },
+                            select: { category_id: true }
+                        });
+                        const productCategoryIds = products.map(p => p.category_id);
+                        isApplicable = productCategoryIds.some(catId => conditions.category_ids.includes(catId));
+                    }
+                }
+                // If conditions is null or empty, coupon applies to all products
+            } catch (e) {
+                // If conditions is invalid JSON, treat as applicable to all
+                console.error('Error parsing coupon conditions:', e);
+            }
+        }
+        // If conditions is null, coupon applies to all products
+
+        if (isApplicable) {
+            // Calculate discount amount for preview
+            let discountAmount = 0;
+            if (coupon.discount_type === 'percentage') {
+                discountAmount = (calculatedSubtotal * parseFloat(coupon.discount_value)) / 100;
+                if (coupon.max_discount && discountAmount > parseFloat(coupon.max_discount)) {
+                    discountAmount = parseFloat(coupon.max_discount);
+                }
+            } else if (coupon.discount_type === 'fixed_amount') {
+                discountAmount = parseFloat(coupon.discount_value);
+                if (discountAmount > calculatedSubtotal) {
+                    discountAmount = calculatedSubtotal;
+                }
+            }
+
+            availableCoupons.push({
+                id: coupon.id,
+                code: coupon.code,
+                description: coupon.description,
+                discount_type: coupon.discount_type,
+                discount_value: parseFloat(coupon.discount_value),
+                discount_amount: discountAmount,
+                max_discount: coupon.max_discount ? parseFloat(coupon.max_discount) : null,
+                min_order_amount: coupon.min_order_amount ? parseFloat(coupon.min_order_amount) : null,
+                free_shipping: coupon.discount_type === 'free_shipping',
+                ends_at: coupon.ends_at
+            });
+        }
+    }
+
+    return success(res, 'Available coupons retrieved successfully', {
+        coupons: availableCoupons,
+        count: availableCoupons.length
+    });
+});
+
 // @desc    Apply coupon code (Public - but may require auth for user-specific limits)
 // @route   POST /api/coupons/apply
 // @access  Public
@@ -177,6 +361,49 @@ exports.applyCoupon = asyncHandler(async (req, res) => {
     // Check minimum order amount
     if (coupon.min_order_amount && calculatedSubtotal < parseFloat(coupon.min_order_amount)) {
         return error(res, `Minimum order amount of $${coupon.min_order_amount} required`, 400);
+    }
+
+    // Check if coupon is applicable to products in cart
+    if (coupon.conditions) {
+        try {
+            const conditions = typeof coupon.conditions === 'string' 
+                ? JSON.parse(coupon.conditions) 
+                : coupon.conditions;
+
+            // Extract product IDs from cartItems
+            const productIdList = cartItems 
+                ? cartItems.map(item => item.product_id || item.productId).filter(Boolean)
+                : [];
+
+            // If conditions specify product_ids, check if any cart product matches
+            if (conditions.product_ids && Array.isArray(conditions.product_ids)) {
+                if (productIdList.length === 0) {
+                    return error(res, 'This coupon is not applicable to your cart items', 400);
+                }
+                const isApplicable = productIdList.some(id => conditions.product_ids.includes(parseInt(id)));
+                if (!isApplicable) {
+                    return error(res, 'This coupon is not applicable to products in your cart', 400);
+                }
+            }
+            // If conditions specify category_ids, check if any cart product's category matches
+            else if (conditions.category_ids && Array.isArray(conditions.category_ids)) {
+                if (productIdList.length === 0) {
+                    return error(res, 'This coupon is not applicable to your cart items', 400);
+                }
+                const products = await prisma.product.findMany({
+                    where: { id: { in: productIdList } },
+                    select: { category_id: true }
+                });
+                const productCategoryIds = products.map(p => p.category_id);
+                const isApplicable = productCategoryIds.some(catId => conditions.category_ids.includes(catId));
+                if (!isApplicable) {
+                    return error(res, 'This coupon is not applicable to products in your cart', 400);
+                }
+            }
+        } catch (e) {
+            // If conditions is invalid JSON, treat as applicable to all
+            console.error('Error parsing coupon conditions:', e);
+        }
     }
 
     // Calculate discount
