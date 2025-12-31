@@ -3,12 +3,12 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 
 // Helper function to parse JSON fields
-const parseJsonField = (field) => {
-  if (!field) return null;
+const parseJsonField = (value) => {
+  if (!value) return null;
   try {
-    return JSON.parse(field);
+    return typeof value === 'string' ? JSON.parse(value) : value;
   } catch (e) {
-    return field;
+    return value;
   }
 };
 
@@ -1723,14 +1723,4 @@ exports.getContactLensProducts = asyncHandler(async (req, res) => {
     total: formattedProducts.length
   });
 });
-
-// Helper function to parse JSON fields
-const parseJsonField = (value) => {
-  if (!value) return null;
-  try {
-    return typeof value === 'string' ? JSON.parse(value) : value;
-  } catch (e) {
-    return value;
-  }
-};
 
