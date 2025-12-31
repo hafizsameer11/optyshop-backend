@@ -3185,6 +3185,12 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
               frame_shape: true,
             },
           },
+          prescription: true,
+          progressiveVariant: true,
+          lensThicknessMaterial: true,
+          lensThicknessOption: true,
+          photochromicColor: true,
+          prescriptionSunColor: true,
         },
       },
       prescription: true,
@@ -3195,7 +3201,54 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
     return error(res, "Order not found", 404);
   }
 
-  return success(res, "Order retrieved successfully", { order });
+  // Parse JSON strings in order items
+  const parsedOrder = {
+    ...order,
+    items: order.items.map(item => {
+      const parsedItem = {
+        ...item,
+        lens_coatings: item.lens_coatings ? (typeof item.lens_coatings === 'string' ? JSON.parse(item.lens_coatings) : item.lens_coatings) : null,
+        customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null,
+        prescription_data: item.prescription_data ? (typeof item.prescription_data === 'string' ? JSON.parse(item.prescription_data) : item.prescription_data) : null,
+        treatment_ids: item.treatment_ids ? (typeof item.treatment_ids === 'string' ? JSON.parse(item.treatment_ids) : item.treatment_ids) : null
+      };
+      
+      // Add formatted contact lens details
+      const hasContactLensData = item.contact_lens_right_qty !== null || 
+                                  item.contact_lens_left_qty !== null ||
+                                  item.contact_lens_right_power !== null ||
+                                  item.contact_lens_left_power !== null;
+      
+      if (hasContactLensData) {
+        parsedItem.contact_lens_details = {
+          right_eye: {
+            quantity: item.contact_lens_right_qty,
+            base_curve: item.contact_lens_right_base_curve,
+            diameter: item.contact_lens_right_diameter,
+            power: item.contact_lens_right_power
+          },
+          left_eye: {
+            quantity: item.contact_lens_left_qty,
+            base_curve: item.contact_lens_left_base_curve,
+            diameter: item.contact_lens_left_diameter,
+            power: item.contact_lens_left_power
+          },
+          astigmatism: parsedItem.customization && (parsedItem.customization.left_cylinder || parsedItem.customization.right_cylinder) ? {
+            left_cylinder: parsedItem.customization.left_cylinder,
+            right_cylinder: parsedItem.customization.right_cylinder,
+            left_axis: parsedItem.customization.left_axis,
+            right_axis: parsedItem.customization.right_axis
+          } : null
+        };
+      } else {
+        parsedItem.contact_lens_details = null;
+      }
+      
+      return parsedItem;
+    })
+  };
+
+  return success(res, "Order retrieved successfully", { order: parsedOrder });
 });
 
 // ==================== USERS ====================

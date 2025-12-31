@@ -63,8 +63,10 @@ const parseOrderItems = (items) => {
   return items.map(item => {
     const parsedItem = {
       ...item,
-      lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
-      customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null
+      lens_coatings: item.lens_coatings ? (typeof item.lens_coatings === 'string' ? JSON.parse(item.lens_coatings) : item.lens_coatings) : null,
+      customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null,
+      prescription_data: item.prescription_data ? (typeof item.prescription_data === 'string' ? JSON.parse(item.prescription_data) : item.prescription_data) : null,
+      treatment_ids: item.treatment_ids ? (typeof item.treatment_ids === 'string' ? JSON.parse(item.treatment_ids) : item.treatment_ids) : null
     };
     
     // Add formatted contact lens details
@@ -109,9 +111,6 @@ exports.createOrder = asyncHandler(async (req, res) => {
       return error(res, `Insufficient stock for product ${product.name}`, 400);
     }
 
-    const itemTotal = parseFloat(product.price) * item.quantity;
-    subtotal += itemTotal;
-
     // Convert lens_coatings and customization arrays to JSON strings if needed
     let lensCoatingsValue = null;
     if (item.lens_coatings) {
@@ -127,17 +126,57 @@ exports.createOrder = asyncHandler(async (req, res) => {
         : JSON.stringify(item.customization);
     }
 
+    // Handle prescription_data
+    let prescriptionDataValue = null;
+    if (item.prescription_data) {
+      prescriptionDataValue = typeof item.prescription_data === 'string' 
+        ? item.prescription_data 
+        : JSON.stringify(item.prescription_data);
+    }
+
+    // Handle treatment_ids
+    let treatmentIdsValue = null;
+    if (item.treatment_ids) {
+      treatmentIdsValue = Array.isArray(item.treatment_ids) 
+        ? JSON.stringify(item.treatment_ids) 
+        : (typeof item.treatment_ids === 'string' ? item.treatment_ids : JSON.stringify([item.treatment_ids]));
+    }
+
+    // Use unit_price from item if available (from cart), otherwise use product price
+    const unitPrice = item.unit_price ? parseFloat(item.unit_price) : parseFloat(product.price);
+    const itemTotal = unitPrice * item.quantity;
+    subtotal += itemTotal;
+
     orderItems.push({
       product_id: item.product_id,
       product_name: product.name,
       product_sku: product.sku,
       quantity: item.quantity,
-      unit_price: product.price,
+      unit_price: unitPrice.toFixed(2),
       total_price: itemTotal.toFixed(2),
       lens_index: item.lens_index || null,
       lens_coatings: lensCoatingsValue,
       frame_size_id: item.frame_size_id || null,
-      customization: customizationValue
+      customization: customizationValue,
+      prescription_id: item.prescription_id || null,
+      // Lens configuration fields
+      lens_type: item.lens_type || null,
+      prescription_data: prescriptionDataValue,
+      progressive_variant_id: item.progressive_variant_id ? parseInt(item.progressive_variant_id) : null,
+      lens_thickness_material_id: item.lens_thickness_material_id ? parseInt(item.lens_thickness_material_id) : null,
+      lens_thickness_option_id: item.lens_thickness_option_id ? parseInt(item.lens_thickness_option_id) : null,
+      treatment_ids: treatmentIdsValue,
+      photochromic_color_id: item.photochromic_color_id ? parseInt(item.photochromic_color_id) : null,
+      prescription_sun_color_id: item.prescription_sun_color_id ? parseInt(item.prescription_sun_color_id) : null,
+      // Contact Lens specific fields
+      contact_lens_right_qty: item.contact_lens_right_qty || null,
+      contact_lens_right_base_curve: item.contact_lens_right_base_curve || null,
+      contact_lens_right_diameter: item.contact_lens_right_diameter || null,
+      contact_lens_right_power: item.contact_lens_right_power || null,
+      contact_lens_left_qty: item.contact_lens_left_qty || null,
+      contact_lens_left_base_curve: item.contact_lens_left_base_curve || null,
+      contact_lens_left_diameter: item.contact_lens_left_diameter || null,
+      contact_lens_left_power: item.contact_lens_left_power || null
     });
   }
 
@@ -587,7 +626,13 @@ exports.getAdminOrderDetail = asyncHandler(async (req, res) => {
       },
       items: {
         include: {
-          product: true
+          product: true,
+          prescription: true,
+          progressiveVariant: true,
+          lensThicknessMaterial: true,
+          lensThicknessOption: true,
+          photochromicColor: true,
+          prescriptionSunColor: true
         }
       },
       prescription: true

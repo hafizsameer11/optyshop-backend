@@ -81,6 +81,13 @@ Admin Can View & Manage
 - Order status and payment status
 - Order totals and payment method
 - Order items with product details
+- **All cart item data preserved in order items:**
+  - `prescription_id`, `lens_type`, `prescription_data` (JSON)
+  - `progressive_variant_id` (with related variant object)
+  - `lens_thickness_material_id` and `lens_thickness_option_id` (with related objects)
+  - `treatment_ids` (JSON array)
+  - `photochromic_color_id` and `prescription_sun_color_id` (with related color objects)
+  - `unit_price` from cart items
 - Contact lens details (if applicable)
 - Order creation date
 
@@ -126,6 +133,39 @@ Admin Can View & Manage
           "quantity": 2,
           "unit_price": "99.00",
           "total_price": "198.00",
+          "prescription_id": 5,
+          "lens_type": "progressive",
+          "prescription_data": {
+            "pd": 64,
+            "pd_right": 32,
+            "h": 18,
+            "od": { "sph": -2.0, "cyl": -0.5, "axis": 90 },
+            "os": { "sph": -2.0, "cyl": -0.5, "axis": 90 },
+            "year_of_birth": 1980
+          },
+          "progressive_variant_id": 1,
+          "progressiveVariant": {
+            "id": 1,
+            "name": "Premium",
+            "price": 52.95
+          },
+          "lens_thickness_material_id": 2,
+          "lensThicknessMaterial": {
+            "id": 2,
+            "name": "Polycarbonate"
+          },
+          "lens_thickness_option_id": 3,
+          "lensThicknessOption": {
+            "id": 3,
+            "name": "Thin"
+          },
+          "treatment_ids": [1, 2],
+          "photochromic_color_id": 1,
+          "photochromicColor": {
+            "id": 1,
+            "name": "Brown"
+          },
+          "prescription_sun_color_id": null,
           "contact_lens_details": {
             "right_eye": {
               "quantity": 1,
@@ -153,11 +193,30 @@ Admin Can View & Manage
 **What Admin Sees:**
 - Complete order information
 - Customer details (name, email, phone)
-- All order items with full specifications
+- All order items with full specifications including:
+  - **All cart item data preserved:**
+    - `prescription_id` (with related prescription object)
+    - `lens_type` (e.g., "progressive", "single_vision")
+    - `prescription_data` (JSON object with PD, sphere, cylinder, axis, etc.) - parsed
+    - `progressive_variant_id` (with related `progressiveVariant` object including name, price)
+    - `lens_thickness_material_id` (with related `lensThicknessMaterial` object)
+    - `lens_thickness_option_id` (with related `lensThicknessOption` object)
+    - `treatment_ids` (JSON array, parsed)
+    - `photochromic_color_id` (with related `photochromicColor` object)
+    - `prescription_sun_color_id` (with related `prescriptionSunColor` object)
+    - `unit_price` from cart item
+  - Product selections
+  - Lens configuration (lens_type, prescription_data, progressive variant)
+  - Lens thickness options (material and option)
+  - Treatment IDs
+  - Photochromic and prescription sun colors
+  - Related model information (variant names, material names, color names, etc.)
 - Contact lens details (formatted)
 - Prescription information (if applicable)
 - Shipping and billing addresses
 - Payment gateway transaction ID
+
+**All customer selections from cart items are now preserved in order details for admin review.**
 
 ---
 
