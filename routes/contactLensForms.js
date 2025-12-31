@@ -17,7 +17,8 @@ const {
   createAstigmatismConfig,
   updateAstigmatismConfig,
   deleteAstigmatismConfig,
-  addContactLensToCart
+  addContactLensToCart,
+  getContactLensProducts
 } = require('../controllers/contactLensFormController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -29,6 +30,9 @@ router.get('/spherical', getSphericalConfigsPublic);
 
 // Checkout route (requires authentication)
 router.post('/checkout', protect, addContactLensToCart);
+
+// Admin routes - Get contact lens products (for product assignment)
+router.get('/admin/products', protect, authorize('admin', 'staff'), getContactLensProducts);
 
 // Admin routes - Astigmatism dropdown values (more specific routes first)
 router.get('/admin/astigmatism/dropdown-values', protect, authorize('admin', 'staff'), getAstigmatismDropdownValues);

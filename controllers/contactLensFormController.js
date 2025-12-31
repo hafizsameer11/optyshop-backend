@@ -2,6 +2,16 @@ const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 
+// Helper function to parse JSON fields
+const parseJsonField = (field) => {
+  if (!field) return null;
+  try {
+    return JSON.parse(field);
+  } catch (e) {
+    return field;
+  }
+};
+
 // @desc    Get form configuration based on sub-sub-category
 // @route   GET /api/contact-lens-forms/config/:sub_category_id
 // @access  Public
@@ -392,6 +402,15 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
             name: true,
             slug: true
           }
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            sku: true,
+            price: true
+          }
         }
       },
       orderBy: { created_at: 'desc' },
@@ -433,6 +452,7 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     name,
     sub_category_id,
     category_id,
+    product_id,
     right_qty,
     right_base_curve,
     right_diameter,
@@ -465,6 +485,32 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     return error(res, 'This is not a sub-sub-category', 400);
   }
 
+  // Validate product_id if provided (must be a contact lens product)
+  let productId = null;
+  if (product_id) {
+    productId = parseInt(product_id);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        category: true,
+        subCategory: true
+      }
+    });
+
+    if (!product) {
+      return error(res, 'Product not found', 404);
+    }
+
+    if (product.product_type !== 'contact_lens') {
+      return error(res, 'Only contact lens products can be assigned to configurations', 400);
+    }
+
+    // Verify product belongs to the same category/subcategory hierarchy
+    if (product.category_id !== subCategory.category_id) {
+      return error(res, 'Product category does not match the configuration category', 400);
+    }
+  }
+
   // Determine if we should copy right to left
   const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
 
@@ -488,6 +534,7 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       name,
       sub_category_id: parseInt(sub_category_id),
       category_id: category_id ? parseInt(category_id) : subCategory.category_id,
+      product_id: productId,
       configuration_type: 'spherical',
       right_qty: right_qty !== undefined ? (Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1])) : JSON.stringify([1]),
       right_base_curve: right_base_curve !== undefined ? (Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve])) : null,
@@ -506,6 +553,15 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
           id: true,
           name: true,
           slug: true
+        }
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          price: true
         }
       }
     }
@@ -533,6 +589,7 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
     name,
+    product_id,
     right_qty,
     right_base_curve,
     right_diameter,
@@ -566,6 +623,37 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
 
   // Prepare update data
   const updateData = {};
+
+  // Validate product_id if provided (must be a contact lens product)
+  if (product_id !== undefined) {
+    if (product_id === null || product_id === '') {
+      updateData.product_id = null;
+    } else {
+      const productId = parseInt(product_id);
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          category: true,
+          subCategory: true
+        }
+      });
+
+      if (!product) {
+        return error(res, 'Product not found', 404);
+      }
+
+      if (product.product_type !== 'contact_lens') {
+        return error(res, 'Only contact lens products can be assigned to configurations', 400);
+      }
+
+      // Verify product belongs to the same category/subcategory hierarchy
+      if (product.category_id !== existingConfig.category_id) {
+        return error(res, 'Product category does not match the configuration category', 400);
+      }
+
+      updateData.product_id = productId;
+    }
+  }
   if (name) updateData.name = name;
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
@@ -620,6 +708,15 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
           id: true,
           name: true,
           slug: true
+        }
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          price: true
         }
       }
     }
@@ -700,6 +797,15 @@ exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
             name: true,
             slug: true
           }
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            sku: true,
+            price: true
+          }
         }
       },
       orderBy: { created_at: 'desc' },
@@ -745,6 +851,7 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     name,
     sub_category_id,
     category_id,
+    product_id,
     right_qty,
     right_base_curve,
     right_diameter,
@@ -777,6 +884,32 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     return error(res, 'Sub-sub-category not found', 404);
   }
 
+  // Validate product_id if provided (must be a contact lens product)
+  let productId = null;
+  if (product_id) {
+    productId = parseInt(product_id);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        category: true,
+        subCategory: true
+      }
+    });
+
+    if (!product) {
+      return error(res, 'Product not found', 404);
+    }
+
+    if (product.product_type !== 'contact_lens') {
+      return error(res, 'Only contact lens products can be assigned to configurations', 400);
+    }
+
+    // Verify product belongs to the same category/subcategory hierarchy
+    if (product.category_id !== subCategory.category_id) {
+      return error(res, 'Product category does not match the configuration category', 400);
+    }
+  }
+
   // Determine if we should copy right to left
   const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
 
@@ -804,6 +937,7 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       name,
       sub_category_id: parseInt(sub_category_id),
       category_id: category_id ? parseInt(category_id) : subCategory.category_id,
+      product_id: productId,
       configuration_type: 'astigmatism',
       right_qty: Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1]),
       right_base_curve: Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]),
@@ -826,6 +960,15 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
           id: true,
           name: true,
           slug: true
+        }
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          price: true
         }
       }
     }
@@ -857,6 +1000,7 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
     name,
+    product_id,
     right_qty,
     right_base_curve,
     right_diameter,
@@ -894,6 +1038,37 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
 
   // Prepare update data
   const updateData = {};
+
+  // Validate product_id if provided (must be a contact lens product)
+  if (product_id !== undefined) {
+    if (product_id === null || product_id === '') {
+      updateData.product_id = null;
+    } else {
+      const productId = parseInt(product_id);
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          category: true,
+          subCategory: true
+        }
+      });
+
+      if (!product) {
+        return error(res, 'Product not found', 404);
+      }
+
+      if (product.product_type !== 'contact_lens') {
+        return error(res, 'Only contact lens products can be assigned to configurations', 400);
+      }
+
+      // Verify product belongs to the same category/subcategory hierarchy
+      if (product.category_id !== existingConfig.category_id) {
+        return error(res, 'Product category does not match the configuration category', 400);
+      }
+
+      updateData.product_id = productId;
+    }
+  }
   if (name) updateData.name = name;
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
@@ -942,6 +1117,15 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
           id: true,
           name: true,
           slug: true
+        }
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          price: true
         }
       }
     }
@@ -1423,6 +1607,121 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
   return success(res, 'Contact lens added to cart successfully', {
     item: parsedItem
   }, 200);
+});
+
+// @desc    Get contact lens products for admin (filtered by category/subcategory hierarchy)
+// @route   GET /api/admin/contact-lens-forms/products
+// @access  Admin
+exports.getContactLensProducts = asyncHandler(async (req, res) => {
+  const { category_id, sub_category_id, sub_sub_category_id } = req.query;
+
+  // Build where clause - only contact lens products
+  const where = {
+    product_type: 'contact_lens',
+    is_active: true
+  };
+
+  // Filter by category if provided
+  if (category_id) {
+    where.category_id = parseInt(category_id);
+  }
+
+  // Filter by subcategory (can be parent or child)
+  if (sub_category_id) {
+    const subCategory = await prisma.subCategory.findUnique({
+      where: { id: parseInt(sub_category_id) },
+      include: {
+        children: {
+          select: { id: true }
+        }
+      }
+    });
+
+    if (subCategory) {
+      // If it has children, include products from both parent and children
+      if (subCategory.children && subCategory.children.length > 0) {
+        const subcategoryIds = [subCategory.id, ...subCategory.children.map(c => c.id)];
+        where.sub_category_id = { in: subcategoryIds };
+      } else {
+        where.sub_category_id = subCategory.id;
+      }
+    }
+  }
+
+  // Filter by sub-sub-category (must be a child subcategory)
+  if (sub_sub_category_id) {
+    const subSubCategory = await prisma.subCategory.findUnique({
+      where: { id: parseInt(sub_sub_category_id) }
+    });
+
+    if (subSubCategory && subSubCategory.parent_id) {
+      where.sub_category_id = subSubCategory.id;
+    } else if (subSubCategory) {
+      return error(res, 'The provided sub_sub_category_id is not a sub-sub-category (it does not have a parent)', 400);
+    }
+  }
+
+  // Get products with category and subcategory info
+  const products = await prisma.product.findMany({
+    where,
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          parent_id: true,
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      name: 'asc'
+    }
+  });
+
+  // Format products
+  const formattedProducts = products.map(product => ({
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    sku: product.sku,
+    price: product.price.toString(),
+    category: product.category ? {
+      id: product.category.id,
+      name: product.category.name,
+      slug: product.category.slug
+    } : null,
+    subcategory: product.subCategory ? {
+      id: product.subCategory.id,
+      name: product.subCategory.name,
+      slug: product.subCategory.slug,
+      parent_id: product.subCategory.parent_id,
+      parent: product.subCategory.parent ? {
+        id: product.subCategory.parent.id,
+        name: product.subCategory.parent.name,
+        slug: product.subCategory.parent.slug
+      } : null
+    } : null
+  }));
+
+  return success(res, 'Contact lens products retrieved successfully', {
+    products: formattedProducts,
+    total: formattedProducts.length
+  });
 });
 
 // Helper function to parse JSON fields

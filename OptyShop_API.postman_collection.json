@@ -9238,6 +9238,51 @@
           "name": "Contact Lens Forms (Admin)",
           "item": [
             {
+              "name": "Get Contact Lens Products (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/contact-lens-forms/admin/products?category_id=1&sub_category_id=2&sub_sub_category_id=3",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "contact-lens-forms",
+                    "admin",
+                    "products"
+                  ],
+                  "query": [
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "description": "Filter by category ID (optional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "2",
+                      "description": "Filter by sub-category ID (optional, can be parent or child)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sub_sub_category_id",
+                      "value": "3",
+                      "description": "Filter by sub-sub-category ID (optional, must be a child subcategory)",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get contact lens products filtered by category/subcategory hierarchy. Only returns products with product_type='contact_lens'.\n\n**Query Parameters:**\n- `category_id` (optional): Filter by category ID\n- `sub_category_id` (optional): Filter by sub-category ID (if it has children, includes products from both parent and children)\n- `sub_sub_category_id` (optional): Filter by sub-sub-category ID (must be a child subcategory)\n\n**Use Cases:**\n- Populate product dropdown in admin panel when creating/editing configurations\n- Filter products for assignment to Spherical/Astigmatism configurations\n\n**Response:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Contact lens products retrieved successfully\",\n  \"data\": {\n    \"products\": [\n      {\n        \"id\": 1,\n        \"name\": \"1-DAY ACUVUE MOIST\",\n        \"slug\": \"1-day-acuvue-moist\",\n        \"sku\": \"CL001\",\n        \"price\": \"99.98\",\n        \"category\": { \"id\": 1, \"name\": \"Contact Lenses\", \"slug\": \"contact-lenses\" },\n        \"subcategory\": {\n          \"id\": 3,\n          \"name\": \"Sferiche\",\n          \"slug\": \"sferiche\",\n          \"parent_id\": 2,\n          \"parent\": { \"id\": 2, \"name\": \"Giornaliere\", \"slug\": \"giornaliere\" }\n        }\n      }\n    ],\n    \"total\": 1\n  }\n}\n```"
+              }
+            },
+            {
               "name": "Get All Spherical Configs (Admin)",
               "request": {
                 "method": "GET",
@@ -9296,7 +9341,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}"
+                  "raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/spherical",
@@ -9310,7 +9355,7 @@
                     "spherical"
                   ]
                 },
-                "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power) as they will be automatically set from right eye values.\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}\n```"
+                "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign a contact lens product to this configuration.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n- Use the GET /api/contact-lens-forms/admin/products endpoint to get available contact lens products.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power) as they will be automatically set from right eye values.\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}\n```"
               }
             },
             {
@@ -9329,7 +9374,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"product_id\": 1,\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/spherical/:id",
@@ -9350,7 +9395,7 @@
                     }
                   ]
                 },
-                "description": "Update a Spherical configuration. Only include fields to update.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}\n```"
+                "description": "Update a Spherical configuration. Only include fields to update.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign/update a contact lens product to this configuration.\n- Set `\"product_id\": null` to remove product assignment.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"product_id\": 1,\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}\n```"
               }
             },
             {
@@ -9444,7 +9489,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}"
+                  "raw": "{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism",
@@ -9458,7 +9503,7 @@
                     "astigmatism"
                   ]
                 },
-                "description": "Create a new Astigmatism configuration. Arrays allow multiple values for each parameter including cylinder and axis.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power, left_cylinder, left_axis) as they will be automatically set from right eye values.\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}\n```"
+                "description": "Create a new Astigmatism configuration. Arrays allow multiple values for each parameter including cylinder and axis.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign a contact lens product to this configuration.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n- Use the GET /api/contact-lens-forms/admin/products endpoint to get available contact lens products.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power, left_cylinder, left_axis) as they will be automatically set from right eye values.\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}\n```"
               }
             },
             {
@@ -9477,7 +9522,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Astigmatism Config\",\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"right_axis\": [10, 20, 90],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"name\": \"Updated Astigmatism Config\",\n  \"product_id\": 1,\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"right_axis\": [10, 20, 90],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/:id",
@@ -9498,7 +9543,7 @@
                     }
                   ]
                 },
-                "description": "Update an Astigmatism configuration. Only include fields to update.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with copy_right_to_left**:\n```json\n{\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}\n```"
+                "description": "Update an Astigmatism configuration. Only include fields to update.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign/update a contact lens product to this configuration.\n- Set `\"product_id\": null` to remove product assignment.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"product_id\": 1,\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}\n```"
               }
             },
             {
