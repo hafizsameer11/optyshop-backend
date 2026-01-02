@@ -422,9 +422,13 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
 
   // Parse JSON fields
   const formattedConfigs = configs.map(config => {
+    let parsedAvailableUnits = null;
     let parsedUnitPrices = null;
     let parsedUnitImages = null;
     try {
+      if (config.available_units) {
+        parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+      }
       if (config.unit_prices) {
         parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
       }
@@ -432,7 +436,7 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
         parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
       }
     } catch (e) {
-      console.error('Error parsing unit_prices or unit_images:', e);
+      console.error('Error parsing available_units, unit_prices or unit_images:', e);
     }
     return {
       ...config,
@@ -444,6 +448,7 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
       left_base_curve: parseJsonField(config.left_base_curve),
       left_diameter: parseJsonField(config.left_diameter),
       left_power: parseJsonField(config.left_power),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     };
@@ -481,8 +486,9 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     display_name,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
     same_for_both_eyes, // Alternative flag name for same functionality
-    unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
-    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
+    available_units, // JSON array of available units (independent from qty), e.g., [10, 20, 30]
+    unit_prices, // JSON object mapping unit to price, e.g., {"10": 32.00, "20": 60.00, "30": 90.00}
+    unit_images // JSON object mapping unit to image URLs, e.g., {"10": ["url1"], "20": ["url2"], "30": ["url3"]}
   } = req.body;
 
   // Validate required fields
@@ -564,6 +570,8 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       left_power: finalLeftPower !== undefined ? (Array.isArray(finalLeftPower) ? JSON.stringify(finalLeftPower) : JSON.stringify([finalLeftPower])) : null,
       price: price ? parseFloat(price) : null,
       display_name: display_name || name,
+      // Handle available_units - convert array to JSON string (independent from qty)
+      available_units: available_units !== undefined ? (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units]))) : null,
       // Handle unit_prices - convert object to JSON string
       unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
       // Handle unit_images - convert object to JSON string
@@ -589,10 +597,14 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     }
   });
 
-  // Parse unit_prices and unit_images for response
+  // Parse available_units, unit_prices and unit_images for response
+  let parsedAvailableUnits = null;
   let parsedUnitPrices = null;
   let parsedUnitImages = null;
   try {
+    if (config.available_units) {
+      parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+    }
     if (config.unit_prices) {
       parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
     }
@@ -600,7 +612,7 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
     }
   } catch (e) {
-    console.error('Error parsing unit_prices or unit_images:', e);
+    console.error('Error parsing available_units, unit_prices or unit_images:', e);
   }
 
   return success(res, 'Spherical configuration created successfully', {
@@ -614,6 +626,7 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       left_diameter: parseJsonField(config.left_diameter),
       right_power: parseJsonField(config.right_power),
       left_power: parseJsonField(config.left_power),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     }
@@ -698,6 +711,10 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
   if (is_active !== undefined) updateData.is_active = is_active;
+  // Handle available_units - convert array to JSON string (independent from qty)
+  if (available_units !== undefined) {
+    updateData.available_units = available_units === null || available_units === '' ? null : (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units])));
+  }
   // Handle unit_prices - convert object to JSON string
   if (unit_prices !== undefined) {
     updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
@@ -770,10 +787,14 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     }
   });
 
-  // Parse unit_prices and unit_images for response
+  // Parse available_units, unit_prices and unit_images for response
+  let parsedAvailableUnits = null;
   let parsedUnitPrices = null;
   let parsedUnitImages = null;
   try {
+    if (config.available_units) {
+      parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+    }
     if (config.unit_prices) {
       parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
     }
@@ -781,7 +802,7 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
       parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
     }
   } catch (e) {
-    console.error('Error parsing unit_prices or unit_images:', e);
+    console.error('Error parsing available_units, unit_prices or unit_images:', e);
   }
 
   return success(res, 'Spherical configuration updated successfully', {
@@ -795,6 +816,7 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
       left_diameter: parseJsonField(config.left_diameter),
       right_power: parseJsonField(config.right_power),
       left_power: parseJsonField(config.left_power),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     }
@@ -881,9 +903,13 @@ exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
 
   // Parse JSON fields
   const formattedConfigs = configs.map(config => {
+    let parsedAvailableUnits = null;
     let parsedUnitPrices = null;
     let parsedUnitImages = null;
     try {
+      if (config.available_units) {
+        parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+      }
       if (config.unit_prices) {
         parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
       }
@@ -891,7 +917,7 @@ exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
         parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
       }
     } catch (e) {
-      console.error('Error parsing unit_prices or unit_images:', e);
+      console.error('Error parsing available_units, unit_prices or unit_images:', e);
     }
     return {
       ...config,
@@ -907,6 +933,7 @@ exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
       left_power: parseJsonField(config.left_power),
       left_cylinder: parseJsonField(config.left_cylinder),
       left_axis: parseJsonField(config.left_axis),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     };
@@ -948,8 +975,9 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     display_name,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
     same_for_both_eyes, // Alternative flag name for same functionality
-    unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
-    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
+    available_units, // JSON array of available units (independent from qty), e.g., [10, 20, 30]
+    unit_prices, // JSON object mapping unit to price, e.g., {"10": 32.00, "20": 60.00, "30": 90.00}
+    unit_images // JSON object mapping unit to image URLs, e.g., {"10": ["url1"], "20": ["url2"], "30": ["url3"]}
   } = req.body;
 
   // Validate required fields
@@ -1035,6 +1063,8 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       left_axis: finalLeftAxis !== undefined ? (Array.isArray(finalLeftAxis) ? JSON.stringify(finalLeftAxis) : JSON.stringify([finalLeftAxis])) : null,
       price: price ? parseFloat(price) : null,
       display_name: display_name || name,
+      // Handle available_units - convert array to JSON string (independent from qty)
+      available_units: available_units !== undefined ? (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units]))) : null,
       // Handle unit_prices - convert object to JSON string
       unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
       // Handle unit_images - convert object to JSON string
@@ -1060,10 +1090,14 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     }
   });
 
-  // Parse unit_prices and unit_images for response
+  // Parse available_units, unit_prices and unit_images for response
+  let parsedAvailableUnits = null;
   let parsedUnitPrices = null;
   let parsedUnitImages = null;
   try {
+    if (config.available_units) {
+      parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+    }
     if (config.unit_prices) {
       parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
     }
@@ -1071,7 +1105,7 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
     }
   } catch (e) {
-    console.error('Error parsing unit_prices or unit_images:', e);
+    console.error('Error parsing available_units, unit_prices or unit_images:', e);
   }
 
   return success(res, 'Astigmatism configuration created successfully', {
@@ -1089,6 +1123,7 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       left_power: parseJsonField(config.left_power),
       left_cylinder: parseJsonField(config.left_cylinder),
       left_axis: parseJsonField(config.left_axis),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     }
@@ -1177,6 +1212,10 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
   if (is_active !== undefined) updateData.is_active = is_active;
+  // Handle available_units - convert array to JSON string (independent from qty)
+  if (available_units !== undefined) {
+    updateData.available_units = available_units === null || available_units === '' ? null : (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units])));
+  }
   // Handle unit_prices - convert object to JSON string
   if (unit_prices !== undefined) {
     updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
@@ -1243,10 +1282,14 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     }
   });
 
-  // Parse unit_prices and unit_images for response
+  // Parse available_units, unit_prices and unit_images for response
+  let parsedAvailableUnits = null;
   let parsedUnitPrices = null;
   let parsedUnitImages = null;
   try {
+    if (config.available_units) {
+      parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+    }
     if (config.unit_prices) {
       parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
     }
@@ -1254,7 +1297,7 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
       parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
     }
   } catch (e) {
-    console.error('Error parsing unit_prices or unit_images:', e);
+    console.error('Error parsing available_units, unit_prices or unit_images:', e);
   }
 
   return success(res, 'Astigmatism configuration updated successfully', {
@@ -1272,6 +1315,7 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
       left_power: parseJsonField(config.left_power),
       left_cylinder: parseJsonField(config.left_cylinder),
       left_axis: parseJsonField(config.left_axis),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     }
@@ -1506,9 +1550,13 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
 
   // Parse JSON fields
   const formattedConfigs = configs.map(config => {
+    let parsedAvailableUnits = null;
     let parsedUnitPrices = null;
     let parsedUnitImages = null;
     try {
+      if (config.available_units) {
+        parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+      }
       if (config.unit_prices) {
         parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
       }
@@ -1516,7 +1564,7 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
         parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
       }
     } catch (e) {
-      console.error('Error parsing unit_prices or unit_images:', e);
+      console.error('Error parsing available_units, unit_prices or unit_images:', e);
     }
     return {
       id: config.id,
@@ -1532,6 +1580,7 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
       left_base_curve: parseJsonField(config.left_base_curve),
       left_diameter: parseJsonField(config.left_diameter),
       left_power: parseJsonField(config.left_power),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     };
@@ -1591,9 +1640,13 @@ exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
 
   // Parse JSON fields
   const formattedConfigs = configs.map(config => {
+    let parsedAvailableUnits = null;
     let parsedUnitPrices = null;
     let parsedUnitImages = null;
     try {
+      if (config.available_units) {
+        parsedAvailableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+      }
       if (config.unit_prices) {
         parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
       }
@@ -1601,7 +1654,7 @@ exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
         parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
       }
     } catch (e) {
-      console.error('Error parsing unit_prices or unit_images:', e);
+      console.error('Error parsing available_units, unit_prices or unit_images:', e);
     }
     return {
       id: config.id,
@@ -1621,6 +1674,7 @@ exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
       left_power: parseJsonField(config.left_power),
       left_cylinder: parseJsonField(config.left_cylinder),
       left_axis: parseJsonField(config.left_axis),
+      available_units: parsedAvailableUnits,
       unit_prices: parsedUnitPrices,
       unit_images: parsedUnitImages
     };
@@ -1886,16 +1940,16 @@ exports.getContactLensProducts = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get price and images for selected unit (qty)
+// @desc    Get price and images for selected unit (independent from qty)
 // @route   GET /api/contact-lens-forms/config/:config_id/unit/:unit
 // @access  Public
 exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
   const { config_id, unit } = req.params;
 
-  // Validate unit parameter
+  // Validate unit parameter - unit is independent from qty (e.g., 10, 20, 30)
   const unitValue = parseInt(unit);
   if (isNaN(unitValue)) {
-    return error(res, 'Invalid unit value. Unit must be a number (qty)', 400);
+    return error(res, 'Invalid unit value. Unit must be a number (e.g., 10, 20, 30)', 400);
   }
 
   // Get configuration
@@ -1919,10 +1973,14 @@ exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
     return error(res, 'Configuration not found', 404);
   }
 
-  // Parse unit_prices and unit_images
+  // Parse available_units, unit_prices and unit_images
+  let availableUnits = null;
   let unitPrices = null;
   let unitImages = null;
   try {
+    if (config.available_units) {
+      availableUnits = typeof config.available_units === 'string' ? JSON.parse(config.available_units) : config.available_units;
+    }
     if (config.unit_prices) {
       unitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
     }
@@ -1930,14 +1988,17 @@ exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
       unitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
     }
   } catch (e) {
-    console.error('Error parsing unit_prices or unit_images:', e);
+    console.error('Error parsing available_units, unit_prices or unit_images:', e);
   }
 
+  // Convert unit to string for lookup (keys in unit_prices/unit_images are strings)
+  const unitKey = String(unit);
+
   // Get price for the selected unit
-  const unitPrice = unitPrices && unitPrices[unit] ? parseFloat(unitPrices[unit]) : (config.price ? parseFloat(config.price) : null);
+  const unitPrice = unitPrices && unitPrices[unitKey] !== undefined ? parseFloat(unitPrices[unitKey]) : (config.price ? parseFloat(config.price) : null);
   
   // Get images for the selected unit
-  const unitImageUrls = unitImages && unitImages[unit] ? (Array.isArray(unitImages[unit]) ? unitImages[unit] : [unitImages[unit]]) : null;
+  const unitImageUrls = unitImages && unitImages[unitKey] ? (Array.isArray(unitImages[unitKey]) ? unitImages[unitKey] : [unitImages[unitKey]]) : null;
 
   // If no unit-specific images, fall back to general images
   let images = unitImageUrls;
@@ -1962,17 +2023,29 @@ exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
     }
   }
 
+  // Prepare available units list with prices
+  let availableUnitsList = [];
+  if (availableUnits && Array.isArray(availableUnits)) {
+    availableUnitsList = availableUnits.map(u => ({
+      unit: parseInt(u),
+      price: unitPrices && unitPrices[String(u)] !== undefined ? parseFloat(unitPrices[String(u)]) : (config.price ? parseFloat(config.price) : null)
+    }));
+  } else if (unitPrices) {
+    // Fallback: derive from unit_prices if available_units not set
+    availableUnitsList = Object.keys(unitPrices).map(u => ({
+      unit: parseInt(u),
+      price: parseFloat(unitPrices[u])
+    }));
+  }
+
   return success(res, 'Unit price and images retrieved successfully', {
     config_id: config.id,
     config_name: config.name,
     unit: unitValue,
     price: unitPrice,
     images: images || [],
-    // Also return all available units with their prices for reference
-    available_units: unitPrices ? Object.keys(unitPrices).map(u => ({
-      unit: parseInt(u),
-      price: parseFloat(unitPrices[u])
-    })) : null
+    // Return all available units with their prices for reference
+    available_units: availableUnitsList.length > 0 ? availableUnitsList : null
   });
 });
 
