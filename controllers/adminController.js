@@ -2676,29 +2676,49 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   }
 
   // Handle old JSON format for backward compatibility
-  if (req.body.color_images && !req.body.images_with_colors) {
+  // When color_images is sent, it REPLACES existing color images (not merges)
+  if (req.body.color_images !== undefined && !req.body.images_with_colors) {
     try {
       let colorImagesData = [];
       if (typeof req.body.color_images === 'string') {
-        colorImagesData = JSON.parse(req.body.color_images);
+        if (req.body.color_images.trim() === '' || req.body.color_images === '[]' || req.body.color_images === 'null') {
+          // Clear all color images - handled by shouldClearAllColorImages flag
+          colorImagesData = [];
+        } else {
+          colorImagesData = JSON.parse(req.body.color_images);
+        }
       } else if (Array.isArray(req.body.color_images)) {
         colorImagesData = req.body.color_images;
       }
       
-      // Merge with existing
+      // REPLACE existing color images (don't merge)
+      // Clear the map first if color_images is explicitly provided
+      if (req.body.color_images !== null && req.body.color_images !== '' && req.body.color_images !== '[]') {
+        // Only clear if it's not an empty array/null
+        Object.keys(colorImagesMap).forEach(key => {
+          // Keep only colors that are in the new data
+          const existsInNew = colorImagesData.some(item => {
+            const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
+            return hexCode === key;
+          });
+          if (!existsInNew) {
+            delete colorImagesMap[key];
+          }
+        });
+      }
+      
+      // Add/update color images from the provided data
       colorImagesData.forEach(item => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-          if (!colorImagesMap[hexCode]) {
-            colorImagesMap[hexCode] = {
-              hexCode: hexCode,
-              name: item.name || getColorNameFromHex(hexCode),
-              price: item.price !== undefined ? parseFloat(item.price) : null,
-              images: []
-            };
-          }
           const existingUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
-          colorImagesMap[hexCode].images = [...colorImagesMap[hexCode].images, ...existingUrls];
+          // REPLACE images for this color, don't merge
+          colorImagesMap[hexCode] = {
+            hexCode: hexCode,
+            name: item.name || getColorNameFromHex(hexCode),
+            price: item.price !== undefined ? parseFloat(item.price) : null,
+            images: existingUrls
+          };
         }
       });
     } catch (e) {
@@ -2721,7 +2741,27 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Check if color_images is explicitly set to clear all
+  let shouldClearAllColorImages = false;
+  if (req.body.color_images !== undefined) {
+    if (req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
+      shouldClearAllColorImages = true;
+    } else if (typeof req.body.color_images === 'string') {
+      try {
+        const parsed = JSON.parse(req.body.color_images);
+        if (Array.isArray(parsed) && parsed.length === 0) {
+          shouldClearAllColorImages = true;
+        }
+      } catch (e) {
+        // Not a valid JSON, ignore
+      }
+    } else if (Array.isArray(req.body.color_images) && req.body.color_images.length === 0) {
+      shouldClearAllColorImages = true;
+    }
+  }
+
   // Compare existing and new color images to find deleted ones
+  // Always check for deletions if there are existing color images
   if (existingColorImages.length > 0) {
     const newColorImagesMap = {};
     Object.values(colorImagesMap).forEach(colorData => {
@@ -2732,42 +2772,32 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     // Collect all images to delete
     const colorImagesToDelete = [];
 
-    // Find images that were removed
-    existingColorImages.forEach(existingColor => {
-      const hexCode = existingColor.hexCode || existingColor.hex_code || (existingColor.color ? getColorHexCode(existingColor.color) : null);
-      if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-        const existingImageUrls = existingColor.images ? (Array.isArray(existingColor.images) ? existingColor.images : [existingColor.images]) : [];
-        const newImageSet = newColorImagesMap[hexCode] || new Set();
-        
-        existingImageUrls.forEach(imageUrl => {
-          if (!newImageSet.has(imageUrl)) {
-            // This image was removed, mark it for deletion
-            let key = imageUrl;
-            if (imageUrl.includes('/uploads/')) {
-              key = imageUrl.split('/uploads/')[1];
-            } else if (imageUrl.includes('.com/')) {
-              key = imageUrl.split('.com/')[1];
-            }
-            colorImagesToDelete.push({ key, imageUrl });
-          }
-        });
-      }
-    });
-
     // If all color images are being cleared, delete all existing color images
-    if (Object.keys(colorImagesMap).length === 0 && (req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]')) {
+    if (shouldClearAllColorImages || Object.keys(colorImagesMap).length === 0) {
       console.log(`🗑️  Clearing all color images, deleting ${existingColorImages.length} color image group(s)...`);
       existingColorImages.forEach(existingColor => {
         const existingImageUrls = existingColor.images ? (Array.isArray(existingColor.images) ? existingColor.images : [existingColor.images]) : [];
         existingImageUrls.forEach(imageUrl => {
-          let key = imageUrl;
-          if (imageUrl.includes('/uploads/')) {
-            key = imageUrl.split('/uploads/')[1];
-          } else if (imageUrl.includes('.com/')) {
-            key = imageUrl.split('.com/')[1];
-          }
-          colorImagesToDelete.push({ key, imageUrl });
+          // Extract key from URL - deleteFromS3 handles both full URLs and relative paths
+          colorImagesToDelete.push({ key: imageUrl, imageUrl });
         });
+      });
+    } else {
+      // Find individual images that were removed
+      existingColorImages.forEach(existingColor => {
+        const hexCode = existingColor.hexCode || existingColor.hex_code || (existingColor.color ? getColorHexCode(existingColor.color) : null);
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+          const existingImageUrls = existingColor.images ? (Array.isArray(existingColor.images) ? existingColor.images : [existingColor.images]) : [];
+          const newImageSet = newColorImagesMap[hexCode] || new Set();
+          
+          existingImageUrls.forEach(imageUrl => {
+            if (!newImageSet.has(imageUrl)) {
+              // This image was removed, mark it for deletion
+              // deleteFromS3 handles both full URLs and relative paths
+              colorImagesToDelete.push({ key: imageUrl, imageUrl });
+            }
+          });
+        }
       });
     }
 
@@ -2797,9 +2827,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }));
     
     productData.color_images = JSON.stringify(colorImagesArray);
-  } else if (req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
-    // Allow clearing color images
+  } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
+    // Allow clearing color images - explicitly set to null when cleared
     productData.color_images = null;
+    console.log('💾 Clearing color_images - setting to null in database');
   }
 
   // Handle 3D model upload
