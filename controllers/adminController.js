@@ -2464,7 +2464,29 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (shouldUpdateImages && baseImages !== null) {
     const imagesToDelete = existingImages.filter(oldImage => !baseImages.includes(oldImage));
     
-    if (imagesToDelete.length > 0) {
+    // If baseImages is empty array, all existing images should be deleted
+    if (baseImages.length === 0 && existingImages.length > 0) {
+      console.log(`🗑️  Clearing all images, deleting ${existingImages.length} image(s) from storage...`);
+      for (const imageUrl of existingImages) {
+        try {
+          // Extract the key/path from the URL
+          let key = imageUrl;
+          if (imageUrl.includes('/uploads/')) {
+            // Extract path after /uploads/
+            key = imageUrl.split('/uploads/')[1];
+          } else if (imageUrl.includes('.com/')) {
+            // For S3 URLs, extract key after domain
+            key = imageUrl.split('.com/')[1];
+          }
+          
+          await deleteFromS3(key);
+          console.log(`✅ Deleted image: ${key}`);
+        } catch (err) {
+          console.error(`❌ Error deleting image ${imageUrl}:`, err);
+          // Continue with other deletions even if one fails
+        }
+      }
+    } else if (imagesToDelete.length > 0) {
       console.log(`🗑️  Deleting ${imagesToDelete.length} removed image(s) from storage...`);
       for (const imageUrl of imagesToDelete) {
         try {
@@ -2489,7 +2511,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
     // Set the final images array
     generalImages = baseImages;
-    productData.images = baseImages; // Will be converted to JSON string later
+    // Explicitly set to empty array if cleared, will be converted to null later
+    productData.images = baseImages.length === 0 ? [] : baseImages;
   }
 
   // Handle images with color codes from JSON body
@@ -3004,7 +3027,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       // Already an array (from file uploads or direct array input)
       imagesArray = productData.images;
     } else if (typeof productData.images === "string") {
-      if (productData.images.trim() === "") {
+      if (productData.images.trim() === "" || productData.images.trim() === "null") {
         imagesArray = [];
       } else {
         try {
@@ -3014,11 +3037,16 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           imagesArray = [];
         }
       }
+    } else if (productData.images === null) {
+      // Already null, keep it null
+      imagesArray = [];
     }
 
     // Convert images array to JSON string for database storage
     // Set to null if empty array (Prisma expects String or Null)
+    // This ensures that when images are cleared, they are properly set to null
     productData.images = imagesArray.length > 0 ? JSON.stringify(imagesArray) : null;
+    console.log('💾 Final images value:', productData.images === null ? 'null (cleared)' : `${imagesArray.length} image(s)`);
   }
 
   // Normalize color_images - convert array to JSON string for database storage
@@ -3103,6 +3131,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       if (optionalStringFields.includes(key) && productData[key] === '') {
         cleanedProductData[key] = null;
       } 
+      // Handle images and color_images - ensure null is explicitly set when cleared
+      else if ((key === 'images' || key === 'color_images') && (productData[key] === null || (Array.isArray(productData[key]) && productData[key].length === 0))) {
+        cleanedProductData[key] = null;
+      }
       // Handle sub_category_id - convert empty string to null
       else if (key === 'sub_category_id' && (productData[key] === '' || productData[key] === 'null' || productData[key] === null)) {
         cleanedProductData[key] = null;

@@ -81,9 +81,11 @@ const deleteFromLocal = async (url) => {
   }
 };
 
-// Upload file - multer already saves to disk, optionally move to correct folder
+// Upload file using multer (local disk storage)
+// NOTE: Function name is misleading - this uses multer's local disk storage, NOT S3
+// Multer already saves the file to disk, this function just returns the URL
 const uploadToS3 = async (file, folder = 'general') => {
-  // With multer disk storage, file is already saved
+  // With multer disk storage, file is already saved to local disk
   if (file.path) {
     const fileName = path.basename(file.path);
     
@@ -120,7 +122,7 @@ const uploadToS3 = async (file, folder = 'general') => {
     // File is already in the correct folder - ensure URL doesn't include "images"
     const cleanPath = currentRelativePath.replace(/^images\//, folder + '/');
     const url = `${PUBLIC_URL}/uploads/${cleanPath}`;
-    console.log(`✅ File uploaded via multer: ${url}`);
+    console.log(`✅ File uploaded via multer (local storage): ${url}`);
     return url;
   }
   
@@ -128,8 +130,10 @@ const uploadToS3 = async (file, folder = 'general') => {
   return uploadToLocal(file, folder);
 };
 
+// Delete file from local storage (using multer's disk storage)
+// NOTE: Function name is misleading - this deletes from local disk, NOT S3
 const deleteFromS3 = async (urlOrKey) => {
-  // Always use local storage deletion
+  // Always use local storage deletion (multer saves files locally)
   return deleteFromLocal(urlOrKey);
 };
 
