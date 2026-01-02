@@ -18,12 +18,14 @@ const {
   updateAstigmatismConfig,
   deleteAstigmatismConfig,
   addContactLensToCart,
-  getContactLensProducts
+  getContactLensProducts,
+  getUnitPriceAndImages
 } = require('../controllers/contactLensFormController');
 const { protect, authorize } = require('../middleware/auth');
 
 // Public routes (Website)
 router.get('/config/:sub_category_id', getFormConfig);
+router.get('/config/:config_id/unit/:unit', getUnitPriceAndImages); // Get price and images for selected unit
 router.get('/astigmatism/dropdown-values', getAstigmatismDropdownValuesPublic);
 router.get('/astigmatism', getAstigmatismConfigsPublic);
 router.get('/spherical', getSphericalConfigsPublic);

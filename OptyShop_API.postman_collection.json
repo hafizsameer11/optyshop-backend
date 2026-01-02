@@ -2187,7 +2187,7 @@
                     }
                   ]
                 },
-                "description": "Get form configuration based on sub-sub-category. Returns 'spherical' or 'astigmatism' form structure with fields and dropdown values."
+                "description": "Get form configuration based on sub-sub-category. Returns 'spherical' or 'astigmatism' form structure with fields and dropdown values.\n\n**Note:** Configurations returned by this endpoint include `unit_prices` and `unit_images` fields if set by admin. Use the `GET /api/contact-lens-forms/config/:config_id/unit/:unit` endpoint to get price and images for a selected unit."
               }
             },
             {
@@ -2248,8 +2248,43 @@
                     }
                   ]
                 },
-                "description": "Get all active Spherical configurations. Can filter by sub_category_id."
+                "description": "Get all active Spherical configurations. Can filter by sub_category_id.\n\n**Response includes:**\n- `unit_prices`: JSON object mapping unit (qty) to price, e.g., `{\"30\": 990.00, \"60\": 1500.00}`\n- `unit_images`: JSON object mapping unit (qty) to image URLs, e.g., `{\"30\": [\"url1\"], \"60\": [\"url2\"]}`\n- All configuration parameters (qty, base_curve, diameter, power, etc.)"
               }
+            },
+            {
+              "name": "Get Unit Price and Images",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/contact-lens-forms/config/:config_id/unit/:unit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "contact-lens-forms",
+                    "config",
+                    ":config_id",
+                    "unit",
+                    ":unit"
+                  ],
+                  "variable": [
+                    {
+                      "key": "config_id",
+                      "value": "1",
+                      "description": "Configuration ID (Spherical or Astigmatism)"
+                    },
+                    {
+                      "key": "unit",
+                      "value": "30",
+                      "description": "Unit value (qty), e.g., 30, 60"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "description": "Get price and images for a selected unit (qty). This endpoint is called when a user selects a unit on the website.\n\n**How it works:**\n1. Frontend gets configuration with `unit_prices` and `unit_images`\n2. User selects a unit (e.g., \"unit 30\")\n3. Frontend calls this endpoint with `config_id` and `unit` (30)\n4. Backend returns the price and images for that specific unit\n5. Frontend updates the displayed price and images\n\n**Response includes:**\n- `config_id`: Configuration ID\n- `config_name`: Configuration name\n- `unit`: Selected unit value\n- `price`: Price for the selected unit (or base price if unit-specific price not set)\n- `images`: Array of image URLs for the selected unit (or product/config images if unit-specific images not set)\n- `available_units`: Array of all available units with their prices for reference\n\n**Example Response:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Unit price and images retrieved successfully\",\n  \"data\": {\n    \"config_id\": 1,\n    \"config_name\": \"Hydra One-daily-Toric\",\n    \"unit\": 30,\n    \"price\": 990.00,\n    \"images\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"available_units\": [\n      {\"unit\": 30, \"price\": 990.00},\n      {\"unit\": 60, \"price\": 1500.00}\n    ]\n  }\n}\n```\n\n**Fallback behavior:**\n- If unit-specific price not found, returns base `price` from configuration\n- If unit-specific images not found, falls back to product images, then config images"
             },
             {
               "name": "Add Contact Lens to Cart (Checkout)",
@@ -9353,7 +9388,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}"
+                  "raw": "{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [30, 60],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\",\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\", \"http://localhost:5000/uploads/products/unit30-img2.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\", \"http://localhost:5000/uploads/products/unit60-img2.jpg\"]\n  }\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/spherical",
@@ -9367,7 +9402,7 @@
                     "spherical"
                   ]
                 },
-                "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign a contact lens product to this configuration.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n- Use the GET /api/contact-lens-forms/admin/products endpoint to get available contact lens products.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power) as they will be automatically set from right eye values.\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Spherical Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 29.99,\n  \"display_name\": \"Daily Spherical\"\n}\n```"
+                "description": "Create a new Spherical configuration. Arrays allow multiple values for each parameter.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign a contact lens product to this configuration.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n- Use the GET /api/contact-lens-forms/admin/products endpoint to get available contact lens products.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power) as they will be automatically set from right eye values.\n\n**🎯 NEW FEATURE - Unit-Based Pricing and Images**:\n- **`unit_prices`** (optional): JSON object mapping unit (qty) to price. Format: `{\"30\": 990.00, \"60\": 1500.00}`\n  - Keys are unit values (qty) as strings, values are prices as numbers\n  - When a unit is selected on the website, the price adjusts automatically\n  - Example: `\"unit_prices\": {\"30\": 990.00, \"60\": 1500.00}`\n\n- **`unit_images`** (optional): JSON object mapping unit (qty) to image URLs. Format: `{\"30\": [\"url1\", \"url2\"], \"60\": [\"url3\", \"url4\"]}`\n  - Keys are unit values (qty) as strings, values are arrays of image URLs\n  - When a unit is selected on the website, the images change automatically\n  - Example: `\"unit_images\": {\"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"], \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]}`\n\n**How Unit-Based Pricing Works:**\n1. Admin sets `unit_prices` when creating/updating configuration\n2. Website displays available units (e.g., \"unit 30\", \"unit 60\") from `right_qty` or `left_qty`\n3. When user selects a unit, frontend calls `GET /api/contact-lens-forms/config/:config_id/unit/:unit`\n4. Backend returns the price and images for that specific unit\n5. Website displays the adjusted price and corresponding images\n\n**Example with all features**:\n```json\n{\n  \"name\": \"Hydra One-daily-Toric\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [30, 60],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"copy_right_to_left\": true,\n  \"price\": 990.00,\n  \"display_name\": \"Hydra One-daily-Toric\",\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}\n```"
               }
             },
             {
@@ -9386,7 +9421,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"product_id\": 1,\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"name\": \"Updated Spherical Config\",\n  \"product_id\": 1,\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true,\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/spherical/:id",
@@ -9407,7 +9442,7 @@
                     }
                   ]
                 },
-                "description": "Update a Spherical configuration. Only include fields to update.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign/update a contact lens product to this configuration.\n- Set `\"product_id\": null` to remove product assignment.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"product_id\": 1,\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true\n}\n```"
+                "description": "Update a Spherical configuration. Only include fields to update.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign/update a contact lens product to this configuration.\n- Set `\"product_id\": null` to remove product assignment.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**🎯 Unit-Based Pricing and Images**:\n- **`unit_prices`** (optional): JSON object mapping unit (qty) to price. Updates unit pricing.\n  - Format: `{\"30\": 990.00, \"60\": 1500.00}`\n  - Set to `null` to clear unit prices\n\n- **`unit_images`** (optional): JSON object mapping unit (qty) to image URLs. Updates unit images.\n  - Format: `{\"30\": [\"url1\", \"url2\"], \"60\": [\"url3\", \"url4\"]}`\n  - Set to `null` to clear unit images\n\n**Example with unit pricing**:\n```json\n{\n  \"product_id\": 1,\n  \"right_base_curve\": [8.5, 8.6, 8.7],\n  \"right_power\": [-2.00, -2.25],\n  \"copy_right_to_left\": true,\n  \"price\": 34.99,\n  \"is_active\": true,\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}\n```"
               }
             },
             {
@@ -9501,7 +9536,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}"
+                  "raw": "{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [30, 60],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\",\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism",
@@ -9515,7 +9550,7 @@
                     "astigmatism"
                   ]
                 },
-                "description": "Create a new Astigmatism configuration. Arrays allow multiple values for each parameter including cylinder and axis.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign a contact lens product to this configuration.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n- Use the GET /api/contact-lens-forms/admin/products endpoint to get available contact lens products.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power, left_cylinder, left_axis) as they will be automatically set from right eye values.\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [1, 2, 3],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\"\n}\n```"
+                "description": "Create a new Astigmatism configuration. Arrays allow multiple values for each parameter including cylinder and axis.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign a contact lens product to this configuration.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n- Use the GET /api/contact-lens-forms/admin/products endpoint to get available contact lens products.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy all right eye values to left eye fields.\n- When using this feature, you can omit left eye parameters (left_qty, left_base_curve, left_diameter, left_power, left_cylinder, left_axis) as they will be automatically set from right eye values.\n\n**🎯 NEW FEATURE - Unit-Based Pricing and Images**:\n- **`unit_prices`** (optional): JSON object mapping unit (qty) to price. Format: `{\"30\": 990.00, \"60\": 1500.00}`\n  - Keys are unit values (qty) as strings, values are prices as numbers\n  - When a unit is selected on the website, the price adjusts automatically\n\n- **`unit_images`** (optional): JSON object mapping unit (qty) to image URLs. Format: `{\"30\": [\"url1\", \"url2\"], \"60\": [\"url3\", \"url4\"]}`\n  - Keys are unit values (qty) as strings, values are arrays of image URLs\n  - When a unit is selected on the website, the images change automatically\n\n**Example with all features**:\n```json\n{\n  \"name\": \"Daily Astigmatism Config\",\n  \"sub_category_id\": 1,\n  \"product_id\": 1,\n  \"right_qty\": [30, 60],\n  \"right_base_curve\": [8.6, 8.7, 8.8],\n  \"right_diameter\": [14.0, 14.2, 14.5],\n  \"right_power\": [-2.00, -2.25, -2.50],\n  \"right_cylinder\": [-0.75, -1.00, -1.25],\n  \"right_axis\": [10, 20, 90, 180],\n  \"copy_right_to_left\": true,\n  \"price\": 39.99,\n  \"display_name\": \"Daily Astigmatism\",\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}\n```"
               }
             },
             {
@@ -9534,7 +9569,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Astigmatism Config\",\n  \"product_id\": 1,\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"right_axis\": [10, 20, 90],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"name\": \"Updated Astigmatism Config\",\n  \"product_id\": 1,\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"right_axis\": [10, 20, 90],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true,\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/contact-lens-forms/admin/astigmatism/:id",
@@ -9555,7 +9590,7 @@
                     }
                   ]
                 },
-                "description": "Update an Astigmatism configuration. Only include fields to update.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign/update a contact lens product to this configuration.\n- Set `\"product_id\": null` to remove product assignment.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**Example with product_id and copy_right_to_left**:\n```json\n{\n  \"product_id\": 1,\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true\n}\n```"
+                "description": "Update an Astigmatism configuration. Only include fields to update.\n\n**New Feature - Product Assignment**:\n- Add `\"product_id\": 1` to assign/update a contact lens product to this configuration.\n- Set `\"product_id\": null` to remove product assignment.\n- The product must be of type 'contact_lens' and belong to the same category as the configuration.\n\n**New Feature - Copy Right to Left**:\n- Add `\"copy_right_to_left\": true` or `\"same_for_both_eyes\": true` to automatically copy right eye values to left eye fields.\n- When using this feature, left eye parameters will be updated from the right eye values (using updated right values if provided, otherwise existing right values).\n\n**🎯 Unit-Based Pricing and Images**:\n- **`unit_prices`** (optional): JSON object mapping unit (qty) to price. Updates unit pricing.\n  - Format: `{\"30\": 990.00, \"60\": 1500.00}`\n  - Set to `null` to clear unit prices\n\n- **`unit_images`** (optional): JSON object mapping unit (qty) to image URLs. Updates unit images.\n  - Format: `{\"30\": [\"url1\", \"url2\"], \"60\": [\"url3\", \"url4\"]}`\n  - Set to `null` to clear unit images\n\n**Example with unit pricing**:\n```json\n{\n  \"product_id\": 1,\n  \"right_power\": [-2.00, -2.25],\n  \"right_cylinder\": [-0.75, -1.00],\n  \"copy_right_to_left\": true,\n  \"price\": 44.99,\n  \"is_active\": true,\n  \"unit_prices\": {\n    \"30\": 990.00,\n    \"60\": 1500.00\n  },\n  \"unit_images\": {\n    \"30\": [\"http://localhost:5000/uploads/products/unit30-img1.jpg\"],\n    \"60\": [\"http://localhost:5000/uploads/products/unit60-img1.jpg\"]\n  }\n}\n```"
               }
             },
             {

@@ -1331,6 +1331,8 @@ model ContactLensConfiguration {
   stock_status        StockStatus           @default(in_stock)
   images              String?               @db.LongText // JSON array of image URLs
   color_images        String?               @db.LongText // JSON array of color-specific images
+  unit_prices         String?               @db.LongText // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
+  unit_images         String?               @db.LongText // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
   frame_shape         String?               @db.VarChar(255)
   frame_material      String?               @db.VarChar(255)
   frame_color         String?               @db.VarChar(100)

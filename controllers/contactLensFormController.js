@@ -421,17 +421,33 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
   ]);
 
   // Parse JSON fields
-  const formattedConfigs = configs.map(config => ({
-    ...config,
-    right_qty: parseJsonField(config.right_qty),
-    right_base_curve: parseJsonField(config.right_base_curve),
-    right_diameter: parseJsonField(config.right_diameter),
-    right_power: parseJsonField(config.right_power),
-    left_qty: parseJsonField(config.left_qty),
-    left_base_curve: parseJsonField(config.left_base_curve),
-    left_diameter: parseJsonField(config.left_diameter),
-    left_power: parseJsonField(config.left_power)
-  }));
+  const formattedConfigs = configs.map(config => {
+    let parsedUnitPrices = null;
+    let parsedUnitImages = null;
+    try {
+      if (config.unit_prices) {
+        parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+      }
+      if (config.unit_images) {
+        parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+      }
+    } catch (e) {
+      console.error('Error parsing unit_prices or unit_images:', e);
+    }
+    return {
+      ...config,
+      right_qty: parseJsonField(config.right_qty),
+      right_base_curve: parseJsonField(config.right_base_curve),
+      right_diameter: parseJsonField(config.right_diameter),
+      right_power: parseJsonField(config.right_power),
+      left_qty: parseJsonField(config.left_qty),
+      left_base_curve: parseJsonField(config.left_base_curve),
+      left_diameter: parseJsonField(config.left_diameter),
+      left_power: parseJsonField(config.left_power),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
+    };
+  });
 
   return success(res, 'Spherical configurations retrieved successfully', {
     configs: formattedConfigs,
@@ -464,7 +480,9 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     price,
     display_name,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
-    same_for_both_eyes // Alternative flag name for same functionality
+    same_for_both_eyes, // Alternative flag name for same functionality
+    unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
+    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
   } = req.body;
 
   // Validate required fields
@@ -545,7 +563,11 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       left_diameter: finalLeftDiameter !== undefined ? (Array.isArray(finalLeftDiameter) ? JSON.stringify(finalLeftDiameter) : JSON.stringify([finalLeftDiameter])) : null,
       left_power: finalLeftPower !== undefined ? (Array.isArray(finalLeftPower) ? JSON.stringify(finalLeftPower) : JSON.stringify([finalLeftPower])) : null,
       price: price ? parseFloat(price) : null,
-      display_name: display_name || name
+      display_name: display_name || name,
+      // Handle unit_prices - convert object to JSON string
+      unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
+      // Handle unit_images - convert object to JSON string
+      unit_images: unit_images !== undefined ? (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images)) : null
     },
     include: {
       subCategory: {
@@ -567,6 +589,20 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     }
   });
 
+  // Parse unit_prices and unit_images for response
+  let parsedUnitPrices = null;
+  let parsedUnitImages = null;
+  try {
+    if (config.unit_prices) {
+      parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+    }
+    if (config.unit_images) {
+      parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+    }
+  } catch (e) {
+    console.error('Error parsing unit_prices or unit_images:', e);
+  }
+
   return success(res, 'Spherical configuration created successfully', {
     config: {
       ...config,
@@ -577,7 +613,9 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       left_base_curve: parseJsonField(config.left_base_curve),
       left_diameter: parseJsonField(config.left_diameter),
       right_power: parseJsonField(config.right_power),
-      left_power: parseJsonField(config.left_power)
+      left_power: parseJsonField(config.left_power),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
     }
   }, 201);
 });
@@ -602,7 +640,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     display_name,
     is_active,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
-    same_for_both_eyes // Alternative flag name for same functionality
+    same_for_both_eyes, // Alternative flag name for same functionality
+    unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
+    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
   } = req.body;
 
   // Check if config exists
@@ -658,6 +698,14 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
   if (is_active !== undefined) updateData.is_active = is_active;
+  // Handle unit_prices - convert object to JSON string
+  if (unit_prices !== undefined) {
+    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
+  }
+  // Handle unit_images - convert object to JSON string
+  if (unit_images !== undefined) {
+    updateData.unit_images = unit_images === null || unit_images === '' ? null : (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images));
+  }
   if (right_qty !== undefined) {
     updateData.right_qty = Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty]);
   }
@@ -722,6 +770,20 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     }
   });
 
+  // Parse unit_prices and unit_images for response
+  let parsedUnitPrices = null;
+  let parsedUnitImages = null;
+  try {
+    if (config.unit_prices) {
+      parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+    }
+    if (config.unit_images) {
+      parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+    }
+  } catch (e) {
+    console.error('Error parsing unit_prices or unit_images:', e);
+  }
+
   return success(res, 'Spherical configuration updated successfully', {
     config: {
       ...config,
@@ -732,7 +794,9 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
       left_base_curve: parseJsonField(config.left_base_curve),
       left_diameter: parseJsonField(config.left_diameter),
       right_power: parseJsonField(config.right_power),
-      left_power: parseJsonField(config.left_power)
+      left_power: parseJsonField(config.left_power),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
     }
   });
 });
@@ -816,21 +880,37 @@ exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
   ]);
 
   // Parse JSON fields
-  const formattedConfigs = configs.map(config => ({
-    ...config,
-    right_qty: parseJsonField(config.right_qty),
-    right_base_curve: parseJsonField(config.right_base_curve),
-    right_diameter: parseJsonField(config.right_diameter),
-    right_power: parseJsonField(config.right_power),
-    right_cylinder: parseJsonField(config.right_cylinder),
-    right_axis: parseJsonField(config.right_axis),
-    left_qty: parseJsonField(config.left_qty),
-    left_base_curve: parseJsonField(config.left_base_curve),
-    left_diameter: parseJsonField(config.left_diameter),
-    left_power: parseJsonField(config.left_power),
-    left_cylinder: parseJsonField(config.left_cylinder),
-    left_axis: parseJsonField(config.left_axis)
-  }));
+  const formattedConfigs = configs.map(config => {
+    let parsedUnitPrices = null;
+    let parsedUnitImages = null;
+    try {
+      if (config.unit_prices) {
+        parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+      }
+      if (config.unit_images) {
+        parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+      }
+    } catch (e) {
+      console.error('Error parsing unit_prices or unit_images:', e);
+    }
+    return {
+      ...config,
+      right_qty: parseJsonField(config.right_qty),
+      right_base_curve: parseJsonField(config.right_base_curve),
+      right_diameter: parseJsonField(config.right_diameter),
+      right_power: parseJsonField(config.right_power),
+      right_cylinder: parseJsonField(config.right_cylinder),
+      right_axis: parseJsonField(config.right_axis),
+      left_qty: parseJsonField(config.left_qty),
+      left_base_curve: parseJsonField(config.left_base_curve),
+      left_diameter: parseJsonField(config.left_diameter),
+      left_power: parseJsonField(config.left_power),
+      left_cylinder: parseJsonField(config.left_cylinder),
+      left_axis: parseJsonField(config.left_axis),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
+    };
+  });
 
   return success(res, 'Astigmatism configurations retrieved successfully', {
     configs: formattedConfigs,
@@ -867,7 +947,9 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     price,
     display_name,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
-    same_for_both_eyes // Alternative flag name for same functionality
+    same_for_both_eyes, // Alternative flag name for same functionality
+    unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
+    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
   } = req.body;
 
   // Validate required fields
@@ -952,7 +1034,11 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       left_cylinder: finalLeftCylinder !== undefined ? (Array.isArray(finalLeftCylinder) ? JSON.stringify(finalLeftCylinder) : JSON.stringify([finalLeftCylinder])) : null,
       left_axis: finalLeftAxis !== undefined ? (Array.isArray(finalLeftAxis) ? JSON.stringify(finalLeftAxis) : JSON.stringify([finalLeftAxis])) : null,
       price: price ? parseFloat(price) : null,
-      display_name: display_name || name
+      display_name: display_name || name,
+      // Handle unit_prices - convert object to JSON string
+      unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
+      // Handle unit_images - convert object to JSON string
+      unit_images: unit_images !== undefined ? (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images)) : null
     },
     include: {
       subCategory: {
@@ -974,6 +1060,20 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     }
   });
 
+  // Parse unit_prices and unit_images for response
+  let parsedUnitPrices = null;
+  let parsedUnitImages = null;
+  try {
+    if (config.unit_prices) {
+      parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+    }
+    if (config.unit_images) {
+      parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+    }
+  } catch (e) {
+    console.error('Error parsing unit_prices or unit_images:', e);
+  }
+
   return success(res, 'Astigmatism configuration created successfully', {
     config: {
       ...config,
@@ -988,7 +1088,9 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       left_diameter: parseJsonField(config.left_diameter),
       left_power: parseJsonField(config.left_power),
       left_cylinder: parseJsonField(config.left_cylinder),
-      left_axis: parseJsonField(config.left_axis)
+      left_axis: parseJsonField(config.left_axis),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
     }
   }, 201);
 });
@@ -1017,7 +1119,9 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     display_name,
     is_active,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
-    same_for_both_eyes // Alternative flag name for same functionality
+    same_for_both_eyes, // Alternative flag name for same functionality
+    unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
+    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
   } = req.body;
 
   // Check if config exists
@@ -1073,6 +1177,14 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
   if (is_active !== undefined) updateData.is_active = is_active;
+  // Handle unit_prices - convert object to JSON string
+  if (unit_prices !== undefined) {
+    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
+  }
+  // Handle unit_images - convert object to JSON string
+  if (unit_images !== undefined) {
+    updateData.unit_images = unit_images === null || unit_images === '' ? null : (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images));
+  }
 
   // Handle right eye fields
   const rightFields = ['right_qty', 'right_base_curve', 'right_diameter', 'right_power', 'right_cylinder', 'right_axis'];
@@ -1131,6 +1243,20 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     }
   });
 
+  // Parse unit_prices and unit_images for response
+  let parsedUnitPrices = null;
+  let parsedUnitImages = null;
+  try {
+    if (config.unit_prices) {
+      parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+    }
+    if (config.unit_images) {
+      parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+    }
+  } catch (e) {
+    console.error('Error parsing unit_prices or unit_images:', e);
+  }
+
   return success(res, 'Astigmatism configuration updated successfully', {
     config: {
       ...config,
@@ -1145,7 +1271,9 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
       left_diameter: parseJsonField(config.left_diameter),
       left_power: parseJsonField(config.left_power),
       left_cylinder: parseJsonField(config.left_cylinder),
-      left_axis: parseJsonField(config.left_axis)
+      left_axis: parseJsonField(config.left_axis),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
     }
   });
 });
@@ -1377,21 +1505,37 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
   });
 
   // Parse JSON fields
-  const formattedConfigs = configs.map(config => ({
-    id: config.id,
-    name: config.name,
-    display_name: config.display_name,
-    price: config.price,
-    subCategory: config.subCategory,
-    right_qty: parseJsonField(config.right_qty),
-    right_base_curve: parseJsonField(config.right_base_curve),
-    right_diameter: parseJsonField(config.right_diameter),
-    right_power: parseJsonField(config.right_power),
-    left_qty: parseJsonField(config.left_qty),
-    left_base_curve: parseJsonField(config.left_base_curve),
-    left_diameter: parseJsonField(config.left_diameter),
-    left_power: parseJsonField(config.left_power)
-  }));
+  const formattedConfigs = configs.map(config => {
+    let parsedUnitPrices = null;
+    let parsedUnitImages = null;
+    try {
+      if (config.unit_prices) {
+        parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+      }
+      if (config.unit_images) {
+        parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+      }
+    } catch (e) {
+      console.error('Error parsing unit_prices or unit_images:', e);
+    }
+    return {
+      id: config.id,
+      name: config.name,
+      display_name: config.display_name,
+      price: config.price,
+      subCategory: config.subCategory,
+      right_qty: parseJsonField(config.right_qty),
+      right_base_curve: parseJsonField(config.right_base_curve),
+      right_diameter: parseJsonField(config.right_diameter),
+      right_power: parseJsonField(config.right_power),
+      left_qty: parseJsonField(config.left_qty),
+      left_base_curve: parseJsonField(config.left_base_curve),
+      left_diameter: parseJsonField(config.left_diameter),
+      left_power: parseJsonField(config.left_power),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
+    };
+  });
 
   return success(res, 'Spherical configurations retrieved successfully', {
     configs: formattedConfigs
@@ -1432,6 +1576,8 @@ exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
       left_power: true,
       left_cylinder: true,
       left_axis: true,
+      unit_prices: true,
+      unit_images: true,
       subCategory: {
         select: {
           id: true,
@@ -1444,25 +1590,41 @@ exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
   });
 
   // Parse JSON fields
-  const formattedConfigs = configs.map(config => ({
-    id: config.id,
-    name: config.name,
-    display_name: config.display_name,
-    price: config.price,
-    subCategory: config.subCategory,
-    right_qty: parseJsonField(config.right_qty),
-    right_base_curve: parseJsonField(config.right_base_curve),
-    right_diameter: parseJsonField(config.right_diameter),
-    right_power: parseJsonField(config.right_power),
-    right_cylinder: parseJsonField(config.right_cylinder),
-    right_axis: parseJsonField(config.right_axis),
-    left_qty: parseJsonField(config.left_qty),
-    left_base_curve: parseJsonField(config.left_base_curve),
-    left_diameter: parseJsonField(config.left_diameter),
-    left_power: parseJsonField(config.left_power),
-    left_cylinder: parseJsonField(config.left_cylinder),
-    left_axis: parseJsonField(config.left_axis)
-  }));
+  const formattedConfigs = configs.map(config => {
+    let parsedUnitPrices = null;
+    let parsedUnitImages = null;
+    try {
+      if (config.unit_prices) {
+        parsedUnitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+      }
+      if (config.unit_images) {
+        parsedUnitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+      }
+    } catch (e) {
+      console.error('Error parsing unit_prices or unit_images:', e);
+    }
+    return {
+      id: config.id,
+      name: config.name,
+      display_name: config.display_name,
+      price: config.price,
+      subCategory: config.subCategory,
+      right_qty: parseJsonField(config.right_qty),
+      right_base_curve: parseJsonField(config.right_base_curve),
+      right_diameter: parseJsonField(config.right_diameter),
+      right_power: parseJsonField(config.right_power),
+      right_cylinder: parseJsonField(config.right_cylinder),
+      right_axis: parseJsonField(config.right_axis),
+      left_qty: parseJsonField(config.left_qty),
+      left_base_curve: parseJsonField(config.left_base_curve),
+      left_diameter: parseJsonField(config.left_diameter),
+      left_power: parseJsonField(config.left_power),
+      left_cylinder: parseJsonField(config.left_cylinder),
+      left_axis: parseJsonField(config.left_axis),
+      unit_prices: parsedUnitPrices,
+      unit_images: parsedUnitImages
+    };
+  });
 
   return success(res, 'Astigmatism configurations retrieved successfully', {
     configs: formattedConfigs
@@ -1721,6 +1883,96 @@ exports.getContactLensProducts = asyncHandler(async (req, res) => {
   return success(res, 'Contact lens products retrieved successfully', {
     products: formattedProducts,
     total: formattedProducts.length
+  });
+});
+
+// @desc    Get price and images for selected unit (qty)
+// @route   GET /api/contact-lens-forms/config/:config_id/unit/:unit
+// @access  Public
+exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
+  const { config_id, unit } = req.params;
+
+  // Validate unit parameter
+  const unitValue = parseInt(unit);
+  if (isNaN(unitValue)) {
+    return error(res, 'Invalid unit value. Unit must be a number (qty)', 400);
+  }
+
+  // Get configuration
+  const config = await prisma.contactLensConfiguration.findUnique({
+    where: { id: parseInt(config_id) },
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          price: true,
+          images: true
+        }
+      }
+    }
+  });
+
+  if (!config) {
+    return error(res, 'Configuration not found', 404);
+  }
+
+  // Parse unit_prices and unit_images
+  let unitPrices = null;
+  let unitImages = null;
+  try {
+    if (config.unit_prices) {
+      unitPrices = typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+    }
+    if (config.unit_images) {
+      unitImages = typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+    }
+  } catch (e) {
+    console.error('Error parsing unit_prices or unit_images:', e);
+  }
+
+  // Get price for the selected unit
+  const unitPrice = unitPrices && unitPrices[unit] ? parseFloat(unitPrices[unit]) : (config.price ? parseFloat(config.price) : null);
+  
+  // Get images for the selected unit
+  const unitImageUrls = unitImages && unitImages[unit] ? (Array.isArray(unitImages[unit]) ? unitImages[unit] : [unitImages[unit]]) : null;
+
+  // If no unit-specific images, fall back to general images
+  let images = unitImageUrls;
+  if (!images || images.length === 0) {
+    // Try product images
+    if (config.product && config.product.images) {
+      try {
+        const productImages = typeof config.product.images === 'string' ? JSON.parse(config.product.images) : config.product.images;
+        images = Array.isArray(productImages) ? productImages : [productImages];
+      } catch (e) {
+        console.error('Error parsing product images:', e);
+      }
+    }
+    // Fall back to config images
+    if ((!images || images.length === 0) && config.images) {
+      try {
+        const configImages = typeof config.images === 'string' ? JSON.parse(config.images) : config.images;
+        images = Array.isArray(configImages) ? configImages : [configImages];
+      } catch (e) {
+        console.error('Error parsing config images:', e);
+      }
+    }
+  }
+
+  return success(res, 'Unit price and images retrieved successfully', {
+    config_id: config.id,
+    config_name: config.name,
+    unit: unitValue,
+    price: unitPrice,
+    images: images || [],
+    // Also return all available units with their prices for reference
+    available_units: unitPrices ? Object.keys(unitPrices).map(u => ({
+      unit: parseInt(u),
+      price: parseFloat(unitPrices[u])
+    })) : null
   });
 });
 
