@@ -60,6 +60,39 @@ const getHexFromColorName = (colorName) => {
   return colorMap[name] || '000000';
 };
 
+// Helper function to get hex code from color name (returns with # prefix)
+const getColorHexCode = (colorName) => {
+  if (!colorName) return null;
+  
+  const name = colorName.toLowerCase().trim();
+  const colorMap = {
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'brown': '#8B4513',
+    'tortoiseshell': '#8B4513',
+    'tortoise': '#8B4513',
+    'red': '#FF0000',
+    'burgundy': '#800020',
+    'pink': '#FFC0CB',
+    'rose': '#FF69B4',
+    'green': '#008000',
+    'blue': '#0000FF',
+    'purple': '#800080',
+    'yellow': '#FFFF00',
+    'cream': '#FFFDD0',
+    'grey': '#808080',
+    'gray': '#808080',
+    'silver': '#C0C0C0',
+    'gold': '#FFD700',
+    'navy': '#000080',
+    'beige': '#F5F5DC',
+    'orange': '#FFA500',
+    'indigo': '#4B0082'
+  };
+  
+  return colorMap[name] || null;
+};
+
 // ==================== DASHBOARD ====================
 
 // @desc    Get dashboard statistics
@@ -2377,27 +2410,86 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   }
 
   // Handle general images (without color codes)
+  // First, get existing images for comparison
+  let existingImages = [];
+  if (product.images) {
+    try {
+      existingImages = typeof product.images === 'string'
+        ? JSON.parse(product.images)
+        : (Array.isArray(product.images) ? product.images : []);
+    } catch (e) {
+      console.error("Error parsing existing images:", e);
+      existingImages = [];
+    }
+  }
+
+  // Check if images array is provided in body (for replace/delete operations)
+  let baseImages = null;
+  let shouldUpdateImages = false;
+
+  if (req.body.images !== undefined) {
+    // Frontend sent the complete list of images to keep/replace
+    shouldUpdateImages = true;
+    if (typeof req.body.images === 'string') {
+      if (req.body.images.trim() === "") {
+        baseImages = [];
+      } else {
+        try {
+          baseImages = JSON.parse(req.body.images);
+        } catch (e) {
+          console.error("Error parsing images from body:", e);
+          baseImages = [];
+        }
+      }
+    } else if (Array.isArray(req.body.images)) {
+      baseImages = req.body.images;
+    } else {
+      baseImages = [];
+    }
+  } else if (req.files && req.files.images) {
+    // No images in body, but files uploaded - use existing images as base
+    shouldUpdateImages = true;
+    baseImages = [...existingImages];
+  }
+
+  // If new images are uploaded, add them to the base images
   if (req.files && req.files.images) {
-    // Parse existing images from JSON string to array
-    let existingImages = [];
-    if (product.images) {
-      try {
-        existingImages = typeof product.images === 'string'
-          ? JSON.parse(product.images)
-          : (Array.isArray(product.images) ? product.images : []);
-      } catch (e) {
-        console.error("Error parsing existing images:", e);
-        existingImages = [];
+    const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
+    const newImageUrls = await Promise.all(uploadPromises);
+    baseImages = baseImages !== null ? [...baseImages, ...newImageUrls] : newImageUrls;
+    shouldUpdateImages = true;
+  }
+
+  // Delete images that were removed (exist in old list but not in new list)
+  if (shouldUpdateImages && baseImages !== null) {
+    const imagesToDelete = existingImages.filter(oldImage => !baseImages.includes(oldImage));
+    
+    if (imagesToDelete.length > 0) {
+      console.log(`🗑️  Deleting ${imagesToDelete.length} removed image(s) from storage...`);
+      for (const imageUrl of imagesToDelete) {
+        try {
+          // Extract the key/path from the URL
+          let key = imageUrl;
+          if (imageUrl.includes('/uploads/')) {
+            // Extract path after /uploads/
+            key = imageUrl.split('/uploads/')[1];
+          } else if (imageUrl.includes('.com/')) {
+            // For S3 URLs, extract key after domain
+            key = imageUrl.split('.com/')[1];
+          }
+          
+          await deleteFromS3(key);
+          console.log(`✅ Deleted image: ${key}`);
+        } catch (err) {
+          console.error(`❌ Error deleting image ${imageUrl}:`, err);
+          // Continue with other deletions even if one fails
+        }
       }
     }
 
-    // Upload new images and add to existing - upload in parallel for better performance
-    const imageUrls = [...existingImages];
-    const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
-    const newImageUrls = await Promise.all(uploadPromises);
-    imageUrls.push(...newImageUrls);
-    generalImages = imageUrls;
-    productData.images = imageUrls; // Will be converted to JSON string later
+    // Set the final images array
+    generalImages = baseImages;
+    productData.images = baseImages; // Will be converted to JSON string later
   }
 
   // Handle images with color codes from JSON body
@@ -2591,6 +2683,87 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Delete removed color images from storage
+  // Get existing color images for comparison
+  let existingColorImages = [];
+  if (product.color_images) {
+    try {
+      const parsed = typeof product.color_images === 'string'
+        ? JSON.parse(product.color_images)
+        : (Array.isArray(product.color_images) ? product.color_images : []);
+      existingColorImages = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Error parsing existing color_images for deletion:", e);
+      existingColorImages = [];
+    }
+  }
+
+  // Compare existing and new color images to find deleted ones
+  if (existingColorImages.length > 0) {
+    const newColorImagesMap = {};
+    Object.values(colorImagesMap).forEach(colorData => {
+      const hexCode = colorData.hexCode;
+      newColorImagesMap[hexCode] = new Set(colorData.images || []);
+    });
+
+    // Collect all images to delete
+    const colorImagesToDelete = [];
+
+    // Find images that were removed
+    existingColorImages.forEach(existingColor => {
+      const hexCode = existingColor.hexCode || existingColor.hex_code || (existingColor.color ? getColorHexCode(existingColor.color) : null);
+      if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+        const existingImageUrls = existingColor.images ? (Array.isArray(existingColor.images) ? existingColor.images : [existingColor.images]) : [];
+        const newImageSet = newColorImagesMap[hexCode] || new Set();
+        
+        existingImageUrls.forEach(imageUrl => {
+          if (!newImageSet.has(imageUrl)) {
+            // This image was removed, mark it for deletion
+            let key = imageUrl;
+            if (imageUrl.includes('/uploads/')) {
+              key = imageUrl.split('/uploads/')[1];
+            } else if (imageUrl.includes('.com/')) {
+              key = imageUrl.split('.com/')[1];
+            }
+            colorImagesToDelete.push({ key, imageUrl });
+          }
+        });
+      }
+    });
+
+    // If all color images are being cleared, delete all existing color images
+    if (Object.keys(colorImagesMap).length === 0 && (req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]')) {
+      console.log(`🗑️  Clearing all color images, deleting ${existingColorImages.length} color image group(s)...`);
+      existingColorImages.forEach(existingColor => {
+        const existingImageUrls = existingColor.images ? (Array.isArray(existingColor.images) ? existingColor.images : [existingColor.images]) : [];
+        existingImageUrls.forEach(imageUrl => {
+          let key = imageUrl;
+          if (imageUrl.includes('/uploads/')) {
+            key = imageUrl.split('/uploads/')[1];
+          } else if (imageUrl.includes('.com/')) {
+            key = imageUrl.split('.com/')[1];
+          }
+          colorImagesToDelete.push({ key, imageUrl });
+        });
+      });
+    }
+
+    // Delete all marked color images
+    if (colorImagesToDelete.length > 0) {
+      console.log(`🗑️  Deleting ${colorImagesToDelete.length} removed color image(s) from storage...`);
+      const deletePromises = colorImagesToDelete.map(({ key, imageUrl }) => 
+        deleteFromS3(key)
+          .then(() => {
+            console.log(`✅ Deleted color image: ${key}`);
+          })
+          .catch(err => {
+            console.error(`❌ Error deleting color image ${imageUrl}:`, err);
+          })
+      );
+      await Promise.all(deletePromises);
+    }
+  }
+
   // Convert colorImagesMap to array format
   if (Object.keys(colorImagesMap).length > 0) {
     const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
@@ -2601,7 +2774,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }));
     
     productData.color_images = JSON.stringify(colorImagesArray);
-  } else if (req.body.color_images === null || req.body.color_images === '') {
+  } else if (req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
     // Allow clearing color images
     productData.color_images = null;
   }
