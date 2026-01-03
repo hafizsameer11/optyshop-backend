@@ -71,20 +71,15 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
   };
 
   if (formType === 'spherical') {
-    // For Spherical: Get Qty, Base Curve, Diameter from astigmatism dropdown values
-    // But get Power values from Spherical configurations themselves
-    const [qtyValues, baseCurveValues, diameterValues, sphericalConfigs] = await Promise.all([
+    // Optimized: Get all dropdown values in a single query, then filter in memory
+    // This reduces database round trips from 3 to 1
+    const [allDropdownValues, sphericalConfigs] = await Promise.all([
       prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'qty', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'base_curve', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'diameter', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
+        where: { 
+          field_type: { in: ['qty', 'base_curve', 'diameter'] },
+          is_active: true 
+        },
+        orderBy: [{ field_type: 'asc' }, { sort_order: 'asc' }, { value: 'asc' }]
       }),
       prisma.contactLensConfiguration.findMany({
         where: {
@@ -98,6 +93,11 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
         }
       })
     ]);
+
+    // Filter dropdown values in memory (faster than multiple DB queries)
+    const qtyValues = allDropdownValues.filter(v => v.field_type === 'qty');
+    const baseCurveValues = allDropdownValues.filter(v => v.field_type === 'base_curve');
+    const diameterValues = allDropdownValues.filter(v => v.field_type === 'diameter');
 
     // Extract unique power values from spherical configurations
     const powerValueSet = new Set();
@@ -223,33 +223,23 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
       power: powerValues.map(v => ({ value: v.value, label: v.label || v.value, eye_type: v.eye_type }))
     };
   } else if (formType === 'astigmatism') {
-    // For Astigmatism: Get ALL dropdown values from database (Qty, Base Curve, Diameter, Power, Cylinder, Axis)
-    const [qtyValues, baseCurveValues, diameterValues, powerValues, cylinderValues, axisValues] = await Promise.all([
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'qty', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'base_curve', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'diameter', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'power', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'cylinder', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      }),
-      prisma.astigmatismDropdownValue.findMany({
-        where: { field_type: 'axis', is_active: true },
-        orderBy: [{ sort_order: 'asc' }, { value: 'asc' }]
-      })
-    ]);
+    // Optimized: Get ALL dropdown values in a single query, then filter in memory
+    // This reduces database round trips from 6 to 1
+    const allDropdownValues = await prisma.astigmatismDropdownValue.findMany({
+      where: { 
+        field_type: { in: ['qty', 'base_curve', 'diameter', 'power', 'cylinder', 'axis'] },
+        is_active: true 
+      },
+      orderBy: [{ field_type: 'asc' }, { sort_order: 'asc' }, { value: 'asc' }]
+    });
+
+    // Filter dropdown values in memory (faster than multiple DB queries)
+    const qtyValues = allDropdownValues.filter(v => v.field_type === 'qty');
+    const baseCurveValues = allDropdownValues.filter(v => v.field_type === 'base_curve');
+    const diameterValues = allDropdownValues.filter(v => v.field_type === 'diameter');
+    const powerValues = allDropdownValues.filter(v => v.field_type === 'power');
+    const cylinderValues = allDropdownValues.filter(v => v.field_type === 'cylinder');
+    const axisValues = allDropdownValues.filter(v => v.field_type === 'axis');
 
     formConfig.formFields = {
       rightEye: {
@@ -364,7 +354,8 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
     };
   }
 
-  return success(res, 'Form configuration retrieved successfully', formConfig);
+  // Add caching for form config (5 minutes) - form configs don't change frequently
+  return success(res, 'Form configuration retrieved successfully', formConfig, 200, { maxAge: 300 });
 });
 
 // ==================== ADMIN ROUTES FOR SPHERICAL CONFIGURATIONS ====================
@@ -1586,9 +1577,10 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
     };
   });
 
+  // Add caching for public configs (2 minutes) - configs may change but not frequently
   return success(res, 'Spherical configurations retrieved successfully', {
     configs: formattedConfigs
-  });
+  }, 200, { maxAge: 120 });
 });
 
 // @desc    Get Astigmatism configurations (public)
@@ -1680,9 +1672,10 @@ exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
     };
   });
 
+  // Add caching for public configs (2 minutes) - configs may change but not frequently
   return success(res, 'Astigmatism configurations retrieved successfully', {
     configs: formattedConfigs
-  });
+  }, 200, { maxAge: 120 });
 });
 
 // ==================== CHECKOUT ROUTES ====================
@@ -2038,6 +2031,7 @@ exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
     }));
   }
 
+  // Add caching for unit price/images (1 minute) - prices may change but images are stable
   return success(res, 'Unit price and images retrieved successfully', {
     config_id: config.id,
     config_name: config.name,
@@ -2046,6 +2040,6 @@ exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
     images: images || [],
     // Return all available units with their prices for reference
     available_units: availableUnitsList.length > 0 ? availableUnitsList : null
-  });
+  }, 200, { maxAge: 60 });
 });
 

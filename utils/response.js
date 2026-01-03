@@ -1,5 +1,12 @@
 // Standardized response helper
-const sendResponse = (res, statusCode, success, message, data = null) => {
+const sendResponse = (res, statusCode, success, message, data = null, cacheOptions = null) => {
+  // Set caching headers for public GET requests (if cacheOptions provided)
+  if (cacheOptions && res.req.method === 'GET') {
+    const { maxAge = 300, staleWhileRevalidate = 60 } = cacheOptions; // Default: 5 min cache, 1 min stale
+    res.set('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`);
+    res.set('Vary', 'Accept-Encoding');
+  }
+
   const response = {
     success,
     message
@@ -12,9 +19,9 @@ const sendResponse = (res, statusCode, success, message, data = null) => {
   return res.status(statusCode).json(response);
 };
 
-// Success responses
-exports.success = (res, message, data = null, statusCode = 200) => {
-  return sendResponse(res, statusCode, true, message, data);
+// Success responses with optional caching
+exports.success = (res, message, data = null, statusCode = 200, cacheOptions = null) => {
+  return sendResponse(res, statusCode, true, message, data, cacheOptions);
 };
 
 // Error responses

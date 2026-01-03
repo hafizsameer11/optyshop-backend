@@ -516,6 +516,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
     return formatted;
   });
 
+  // Add caching for product listings (1 minute) - products may change but listings are relatively stable
   return success(res, 'Products retrieved successfully', {
     products: formattedProducts,
     pagination: {
@@ -524,7 +525,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
       limit: parseInt(limit),
       pages: Math.ceil(total / limit)
     }
-  });
+  }, 200, { maxAge: 60 });
 });
 
 // @desc    Get single product
@@ -668,7 +669,8 @@ exports.getProduct = asyncHandler(async (req, res) => {
     transformedProduct.expiry_date = product.expiry_date || null;
   }
 
-  return success(res, 'Product retrieved successfully', { product: transformedProduct });
+  // Add caching for single product (2 minutes) - product details change less frequently
+  return success(res, 'Product retrieved successfully', { product: transformedProduct }, 200, { maxAge: 120 });
 });
 
 // @desc    Get product by slug
@@ -844,7 +846,8 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     transformedProduct.expiry_date = product.expiry_date || null;
   }
 
-  return success(res, 'Product retrieved successfully', { product: transformedProduct });
+  // Add caching for single product by slug (2 minutes) - product details change less frequently
+  return success(res, 'Product retrieved successfully', { product: transformedProduct }, 200, { maxAge: 120 });
 });
 
 // @desc    Get featured products
@@ -902,7 +905,8 @@ exports.getFeaturedProducts = asyncHandler(async (req, res) => {
     return formatted;
   });
 
-  return success(res, 'Featured products retrieved successfully', { products: formattedProducts });
+  // Add caching for featured products (2 minutes) - featured products change less frequently
+  return success(res, 'Featured products retrieved successfully', { products: formattedProducts }, 200, { maxAge: 120 });
 });
 
 // @desc    Get related products
@@ -970,5 +974,6 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
     return formatted;
   });
 
-  return success(res, 'Related products retrieved successfully', { products: formattedProducts });
+  // Add caching for related products (1 minute) - related products may change
+  return success(res, 'Related products retrieved successfully', { products: formattedProducts }, 200, { maxAge: 60 });
 });

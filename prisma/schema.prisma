@@ -152,6 +152,8 @@ model Product {
   @@index([frame_shape])
   @@index([frame_material])
   @@index([is_active, is_featured])
+  @@index([category_id, is_active])
+  @@index([sub_category_id, is_active])
   @@map("products")
 }
 
@@ -1377,6 +1379,9 @@ model ContactLensConfiguration {
   @@index([is_active])
   @@index([slug])
   @@index([sku])
+  @@index([configuration_type, is_active])
+  @@index([sub_category_id, configuration_type, is_active])
+  @@index([category_id, is_active])
   @@map("contact_lens_configurations")
 }
 
@@ -1394,6 +1399,7 @@ model AstigmatismDropdownValue {
   @@index([field_type])
   @@index([eye_type])
   @@index([is_active])
+  @@index([field_type, is_active])
   @@map("astigmatism_dropdown_values")
 }
 
