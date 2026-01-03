@@ -1056,6 +1056,7 @@ enum ProductType {
   frame
   sunglasses
   contact_lens
+  eye_hygiene
   accessory
 }
 

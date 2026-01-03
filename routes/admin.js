@@ -3,6 +3,10 @@ const router = express.Router();
 const {
   getDashboardStats,
   getAllProducts,
+  getSunglassesProducts,
+  getEyeglassesProducts,
+  getContactLensesProducts,
+  getEyeHygieneProducts,
   getProduct,
   createProduct,
   updateProduct,
@@ -197,6 +201,11 @@ router.get('/dashboard', getDashboardStats);
 
 // Products
 router.get('/products', getAllProducts);
+// Section-specific product endpoints
+router.get('/products/section/sunglasses', getSunglassesProducts);
+router.get('/products/section/eyeglasses', getEyeglassesProducts);
+router.get('/products/section/contact-lenses', getContactLensesProducts);
+router.get('/products/section/eye-hygiene', getEyeHygieneProducts);
 router.get('/products/:id', getProduct);
 router.post('/products',
   uploadProductFiles(),

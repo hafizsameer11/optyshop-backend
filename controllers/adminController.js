@@ -1399,6 +1399,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     category_id,
     sub_category_id,
     is_active,
+    product_type,
     sortBy = 'created_at',
     sortOrder = 'desc'
   } = req.query;
@@ -1426,6 +1427,14 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     where.sub_category_id = parseInt(sub_category_id);
   }
 
+  if (product_type) {
+    // Validate product_type against enum values
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
+    const normalizedType = product_type.toLowerCase().trim();
+    if (validProductTypes.includes(normalizedType)) {
+      where.product_type = normalizedType;
+    }
+  }
 
   if (is_active !== undefined) {
     where.is_active = is_active === 'true' || is_active === true;
@@ -1591,6 +1600,36 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     }
   });
 });
+
+// ==================== SECTION-SPECIFIC PRODUCT ENDPOINTS ====================
+
+// Helper function to get products by section
+const getAllProductsBySection = (productType) => {
+  return asyncHandler(async (req, res) => {
+    req.query.product_type = productType;
+    return exports.getAllProducts(req, res);
+  });
+};
+
+// @desc    Get all sunglasses products (Admin)
+// @route   GET /api/admin/products/section/sunglasses
+// @access  Private/Admin
+exports.getSunglassesProducts = getAllProductsBySection('sunglasses');
+
+// @desc    Get all eyeglasses products (Admin)
+// @route   GET /api/admin/products/section/eyeglasses
+// @access  Private/Admin
+exports.getEyeglassesProducts = getAllProductsBySection('frame');
+
+// @desc    Get all contact lenses products (Admin)
+// @route   GET /api/admin/products/section/contact-lenses
+// @access  Private/Admin
+exports.getContactLensesProducts = getAllProductsBySection('contact_lens');
+
+// @desc    Get all eye hygiene products (Admin)
+// @route   GET /api/admin/products/section/eye-hygiene
+// @access  Private/Admin
+exports.getEyeHygieneProducts = getAllProductsBySection('eye_hygiene');
 
 // @desc    Get single product (Admin)
 // @route   GET /api/admin/products/:id

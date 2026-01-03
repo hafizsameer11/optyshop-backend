@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const {
   getProducts,
+  getSunglassesProducts,
+  getEyeglassesProducts,
+  getContactLensesProducts,
+  getEyeHygieneProducts,
   getProduct,
   getProductBySlug,
   getFeaturedProducts,
@@ -19,6 +23,11 @@ const {
 
 // Public routes
 router.get('/', validateProductQuery, getProducts);
+// Section-specific product endpoints (must come before /:id route)
+router.get('/section/sunglasses', validateProductQuery, getSunglassesProducts);
+router.get('/section/eyeglasses', validateProductQuery, getEyeglassesProducts);
+router.get('/section/contact-lenses', validateProductQuery, getContactLensesProducts);
+router.get('/section/eye-hygiene', validateProductQuery, getEyeHygieneProducts);
 router.get('/featured', getFeaturedProducts);
 router.get('/options', getProductFormOptions);
 router.get('/configuration/lens-types', getLensTypes);

@@ -268,6 +268,126 @@
               }
             },
             {
+              "name": "Get Products by Section - Sunglasses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/products/section/sunglasses?page=1&limit=12",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "section",
+                    "sunglasses"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "12"
+                    }
+                  ]
+                },
+                "description": "Get all sunglasses products. This endpoint filters products by product_type='sunglasses'. All standard product filters (category, subCategory, frameShape, frameMaterial, minPrice, maxPrice, search, sortBy, sortOrder, isFeatured) can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products\" endpoint with products filtered to sunglasses only."
+              }
+            },
+            {
+              "name": "Get Products by Section - Eyeglasses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/products/section/eyeglasses?page=1&limit=12",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "section",
+                    "eyeglasses"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "12"
+                    }
+                  ]
+                },
+                "description": "Get all eyeglasses (frames) products. This endpoint filters products by product_type='frame'. All standard product filters (category, subCategory, frameShape, frameMaterial, minPrice, maxPrice, search, sortBy, sortOrder, isFeatured) can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products\" endpoint with products filtered to eyeglasses only."
+              }
+            },
+            {
+              "name": "Get Products by Section - Contact Lenses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/products/section/contact-lenses?page=1&limit=12",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "section",
+                    "contact-lenses"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "12"
+                    }
+                  ]
+                },
+                "description": "Get all contact lenses products. This endpoint filters products by product_type='contact_lens'. All standard product filters (category, subCategory, minPrice, maxPrice, search, sortBy, sortOrder, isFeatured) can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products\" endpoint with products filtered to contact lenses only.\n\n**Contact Lens Specific Fields:**\n- `contact_lens_brand`: Brand/Producer name\n- `contact_lens_material`: Material\n- `contact_lens_color`: Lens color\n- `contact_lens_type`: Product type (Sferica, Toric, etc.)\n- `replacement_frequency`: Replacement frequency\n- `water_content`: Water content percentage\n- `base_curve_options`: Available base curve options\n- `diameter_options`: Available diameter options\n- `powers_range`: Available power range"
+              }
+            },
+            {
+              "name": "Get Products by Section - Eye Hygiene",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/products/section/eye-hygiene?page=1&limit=12",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "section",
+                    "eye-hygiene"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "12"
+                    }
+                  ]
+                },
+                "description": "Get all eye hygiene products. This endpoint filters products by product_type='eye_hygiene'. All standard product filters (category, subCategory, minPrice, maxPrice, search, sortBy, sortOrder, isFeatured) can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products\" endpoint with products filtered to eye hygiene only.\n\n**Eye Hygiene Specific Fields:**\n- `size_volume`: Size/Volume (e.g., 5ml, 10ml, 30ml)\n- `pack_type`: Pack Type (e.g., Single, Pack of 2)\n- `expiry_date`: Expiry Date"
+              }
+            },
+            {
               "name": "Get Featured Products",
               "request": {
                 "method": "GET",
@@ -3799,6 +3919,299 @@
                     "bulk-upload"
                   ]
                 }
+              }
+            },
+            {
+              "name": "Get All Products (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products?page=1&limit=50&product_type=frame",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "product_type",
+                      "value": "frame",
+                      "description": "Optional: Filter by product type. Valid values: frame, sunglasses, contact_lens, eye_hygiene, accessory"
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Optional: Search in name, description, SKU"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "",
+                      "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "",
+                      "description": "Optional: Filter by subcategory ID"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "",
+                      "description": "Optional: Filter by active status (true/false)"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "created_at",
+                      "description": "Optional: Sort field (default: created_at)"
+                    },
+                    {
+                      "key": "sortOrder",
+                      "value": "desc",
+                      "description": "Optional: Sort direction (asc/desc, default: desc)"
+                    }
+                  ]
+                },
+                "description": "Get all products with pagination and filters. Admin only.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `product_type`: Filter by product type - frame, sunglasses, contact_lens, eye_hygiene, accessory\n- `search`: Search in name, description, SKU\n- `category_id`: Filter by category ID\n- `sub_category_id`: Filter by subcategory ID\n- `is_active`: Filter by active status (true/false)\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)\n\n**Response includes:**\n- Products with formatted images and color_images\n- Category and subcategory information\n- Pagination metadata"
+              }
+            },
+            {
+              "name": "Get Products by Section - Sunglasses (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/section/sunglasses?page=1&limit=50",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "section",
+                    "sunglasses"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Optional: Search in name, description, SKU"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "",
+                      "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "",
+                      "description": "Optional: Filter by subcategory ID"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "",
+                      "description": "Optional: Filter by active status (true/false)"
+                    }
+                  ]
+                },
+                "description": "Get all sunglasses products. This endpoint automatically filters products by product_type='sunglasses'. All standard admin product filters can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products (Admin)\" endpoint with products filtered to sunglasses only."
+              }
+            },
+            {
+              "name": "Get Products by Section - Eyeglasses (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/section/eyeglasses?page=1&limit=50",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "section",
+                    "eyeglasses"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Optional: Search in name, description, SKU"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "",
+                      "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "",
+                      "description": "Optional: Filter by subcategory ID"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "",
+                      "description": "Optional: Filter by active status (true/false)"
+                    }
+                  ]
+                },
+                "description": "Get all eyeglasses (frames) products. This endpoint automatically filters products by product_type='frame'. All standard admin product filters can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products (Admin)\" endpoint with products filtered to eyeglasses only."
+              }
+            },
+            {
+              "name": "Get Products by Section - Contact Lenses (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/section/contact-lenses?page=1&limit=50",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "section",
+                    "contact-lenses"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Optional: Search in name, description, SKU"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "",
+                      "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "",
+                      "description": "Optional: Filter by subcategory ID"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "",
+                      "description": "Optional: Filter by active status (true/false)"
+                    }
+                  ]
+                },
+                "description": "Get all contact lenses products. This endpoint automatically filters products by product_type='contact_lens'. All standard admin product filters can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products (Admin)\" endpoint with products filtered to contact lenses only."
+              }
+            },
+            {
+              "name": "Get Products by Section - Eye Hygiene (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/section/eye-hygiene?page=1&limit=50",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "section",
+                    "eye-hygiene"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Optional: Search in name, description, SKU"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "",
+                      "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "",
+                      "description": "Optional: Filter by subcategory ID"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "",
+                      "description": "Optional: Filter by active status (true/false)"
+                    }
+                  ]
+                },
+                "description": "Get all eye hygiene products. This endpoint automatically filters products by product_type='eye_hygiene'. All standard admin product filters can be combined with this endpoint.\n\n**Response format:** Same as \"Get All Products (Admin)\" endpoint with products filtered to eye hygiene only."
               }
             },
             {

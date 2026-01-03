@@ -397,6 +397,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
     minPrice,
     maxPrice,
     search,
+    product_type,
     sortBy = 'created_at',
     sortOrder = 'desc',
     isFeatured
@@ -432,6 +433,15 @@ exports.getProducts = asyncHandler(async (req, res) => {
         subcategoryIds.push(...subCategoryRecord.children.map(child => child.id));
       }
       where.sub_category_id = { in: subcategoryIds };
+    }
+  }
+
+  if (product_type) {
+    // Validate product_type against enum values
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
+    const normalizedType = product_type.toLowerCase().trim();
+    if (validProductTypes.includes(normalizedType)) {
+      where.product_type = normalizedType;
     }
   }
 
@@ -527,6 +537,36 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }, 200, { maxAge: 60 });
 });
+
+// ==================== SECTION-SPECIFIC PRODUCT ENDPOINTS ====================
+
+// Helper function to get products by section
+const getProductsBySection = (productType) => {
+  return asyncHandler(async (req, res) => {
+    req.query.product_type = productType;
+    return exports.getProducts(req, res);
+  });
+};
+
+// @desc    Get all sunglasses products (Website)
+// @route   GET /api/products/section/sunglasses
+// @access  Public
+exports.getSunglassesProducts = getProductsBySection('sunglasses');
+
+// @desc    Get all eyeglasses products (Website)
+// @route   GET /api/products/section/eyeglasses
+// @access  Public
+exports.getEyeglassesProducts = getProductsBySection('frame');
+
+// @desc    Get all contact lenses products (Website)
+// @route   GET /api/products/section/contact-lenses
+// @access  Public
+exports.getContactLensesProducts = getProductsBySection('contact_lens');
+
+// @desc    Get all eye hygiene products (Website)
+// @route   GET /api/products/section/eye-hygiene
+// @access  Public
+exports.getEyeHygieneProducts = getProductsBySection('eye_hygiene');
 
 // @desc    Get single product
 // @route   GET /api/products/:id
