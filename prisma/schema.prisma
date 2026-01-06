@@ -44,11 +44,11 @@ model Category {
   sort_order         Int                        @default(0)
   created_at         DateTime                   @default(now())
   updated_at         DateTime                   @updatedAt
-  products           Product[]
-  subcategories      SubCategory[]
-  contactLensConfigs ContactLensConfiguration[]
-  sphericalConfigs   SphericalConfiguration[]
   astigmatismConfigs AstigmatismConfiguration[]
+  contactLensConfigs ContactLensConfiguration[]
+  products           Product[]
+  sphericalConfigs   SphericalConfiguration[]
+  subcategories      SubCategory[]
 
   @@map("categories")
 }
@@ -56,7 +56,6 @@ model Category {
 model SubCategory {
   id                        Int                        @id @default(autoincrement())
   category_id               Int
-  parent_id                 Int?
   name                      String                     @db.VarChar(100)
   slug                      String                     @db.VarChar(100)
   description               String?                    @db.Text
@@ -65,13 +64,14 @@ model SubCategory {
   sort_order                Int                        @default(0)
   created_at                DateTime                   @default(now())
   updated_at                DateTime                   @updatedAt
-  category                  Category                   @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  parent                    SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id], onDelete: SetNull)
-  children                  SubCategory[]              @relation("SubCategoryHierarchy")
-  products                  Product[]
-  contactLensConfigs        ContactLensConfiguration[]
-  sphericalConfigurations   SphericalConfiguration[]
+  parent_id                 Int?
   astigmatismConfigurations AstigmatismConfiguration[]
+  contactLensConfigs        ContactLensConfiguration[]
+  products                  Product[]
+  sphericalConfigurations   SphericalConfiguration[]
+  category                  Category                   @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  parent                    SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id])
+  children                  SubCategory[]              @relation("SubCategoryHierarchy")
 
   @@unique([name, parent_id])
   @@index([category_id])
@@ -93,7 +93,6 @@ model Product {
   stock_quantity        Int                        @default(0)
   stock_status          StockStatus                @default(in_stock)
   images                String?                    @db.LongText
-  color_images          String?                    @db.LongText
   frame_shape           String?                    @db.VarChar(255)
   frame_material        String?                    @db.VarChar(255)
   frame_color           String?                    @db.VarChar(100)
@@ -114,36 +113,35 @@ model Product {
   updated_at            DateTime                   @updatedAt
   meta_keywords         String?                    @db.VarChar(255)
   product_type          ProductType                @default(frame)
-  // Contact Lens specific fields
-  contact_lens_brand    String?                    @db.VarChar(100) // Producer/Brand (e.g., Alcon)
-  contact_lens_material String?                    @db.VarChar(100) // Material (e.g., Nelfilcon A)
-  contact_lens_color    String?                    @db.VarChar(100) // Lens Color
-  contact_lens_type     String?                    @db.VarChar(50) // Product Type (e.g., Sferica, Toric)
-  replacement_frequency String?                    @db.VarChar(50) // Replacement Frequency (e.g., Giornaliera, Settimanale, Mensile)
-  water_content         String?                    @db.VarChar(50) // Water Content (e.g., 69%)
-  powers_range          String?                    @db.Text // Available powers range (JSON or text)
-  base_curve_options    String?                    @db.LongText // Available base curve options (JSON array)
-  diameter_options      String?                    @db.LongText // Available diameter options (JSON array)
-  can_sleep_with        Boolean?                   @default(false) // Can sleep with lenses
-  is_medical_device     Boolean?                   @default(true) // Is medical device
-  has_uv_filter         Boolean?                   @default(false) // Has UV filter
-  // Eye Hygiene specific fields
-  size_volume           String?                    @db.VarChar(50) // Size/Volume (e.g., 5ml, 10ml, 30ml)
-  pack_type             String?                    @db.VarChar(50) // Pack Type (e.g., Single, Pack of 2)
-  expiry_date           DateTime? // Expiry Date
+  sub_category_id       Int?
+  base_curve_options    String?                    @db.LongText
+  can_sleep_with        Boolean?                   @default(false)
+  contact_lens_brand    String?                    @db.VarChar(100)
+  contact_lens_color    String?                    @db.VarChar(100)
+  contact_lens_material String?                    @db.VarChar(100)
+  contact_lens_type     String?                    @db.VarChar(50)
+  diameter_options      String?                    @db.LongText
+  has_uv_filter         Boolean?                   @default(false)
+  is_medical_device     Boolean?                   @default(true)
+  powers_range          String?                    @db.Text
+  replacement_frequency String?                    @db.VarChar(50)
+  water_content         String?                    @db.VarChar(50)
+  color_images          String?                    @db.LongText
+  expiry_date           DateTime?
+  pack_type             String?                    @db.VarChar(50)
+  size_volume           String?                    @db.VarChar(50)
+  astigmatismConfigs    AstigmatismConfiguration[]
   cartItems             CartItem[]
+  contactLensConfigs    ContactLensConfiguration[]
   frameSizes            FrameSize[]
   orderItems            OrderItem[]
   lensCoatings          ProductLensCoating[]
   lensTypes             ProductLensType[]
   variants              ProductVariant[]
-  contactLensConfigs    ContactLensConfiguration[]
-  sphericalConfigs      SphericalConfiguration[]
-  astigmatismConfigs    AstigmatismConfiguration[]
   category              Category                   @relation(fields: [category_id], references: [id])
   subCategory           SubCategory?               @relation(fields: [sub_category_id], references: [id])
-  sub_category_id       Int?
   reviews               Review[]
+  sphericalConfigs      SphericalConfiguration[]
 
   @@index([category_id])
   @@index([sub_category_id])
@@ -257,9 +255,9 @@ model Prescription {
   is_verified       Boolean          @default(false)
   created_at        DateTime         @default(now())
   updated_at        DateTime         @updatedAt
-  orders            Order[]
   cartItems         CartItem[]
   orderItems        OrderItem[]
+  orders            Order[]
   user              User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -270,11 +268,11 @@ model Prescription {
 model Cart {
   id            Int        @id @default(autoincrement())
   user_id       Int        @unique
-  coupon_code   String?    @db.VarChar(50)
-  shipping_info String?    @db.LongText
-  payment_info  String?    @db.LongText
   created_at    DateTime   @default(now())
   updated_at    DateTime   @updatedAt
+  coupon_code   String?    @db.VarChar(50)
+  payment_info  String?    @db.LongText
+  shipping_info String?    @db.LongText
   items         CartItem[]
   user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -293,35 +291,33 @@ model CartItem {
   frame_size_id                 Int?
   customization                 String?                  @db.LongText
   unit_price                    Decimal                  @db.Decimal(10, 2)
-  prescription_id               Int?
-  // Lens configuration fields
-  lens_type                     String?                  @db.VarChar(50) // 'distance_vision', 'near_vision', 'progressive'
-  prescription_data             String?                  @db.LongText // JSON: PD, OD (SPH, CYL, AXIS), OS (SPH, CYL, AXIS)
-  progressive_variant_id        Int? // Reference to PrescriptionLensVariant
-  lens_thickness_material_id    Int? // Reference to LensThicknessMaterial
-  lens_thickness_option_id      Int? // Reference to LensThicknessOption
-  treatment_ids                 String?                  @db.LongText // JSON array of treatment IDs
-  photochromic_color_id         Int? // Reference to LensColor for photochromic
-  prescription_sun_color_id     Int? // Reference to LensColor for prescription lenses sun
-  // Contact Lens specific fields
-  contact_lens_right_qty        Int? // Right eye quantity
-  contact_lens_right_base_curve Decimal?                 @db.Decimal(5, 2) // Right eye base curve (B.C)
-  contact_lens_right_diameter   Decimal?                 @db.Decimal(5, 2) // Right eye diameter
-  contact_lens_right_power      Decimal?                 @db.Decimal(5, 2) // Right eye power (PWR)
-  contact_lens_left_qty         Int? // Left eye quantity
-  contact_lens_left_base_curve  Decimal?                 @db.Decimal(5, 2) // Left eye base curve (B.C)
-  contact_lens_left_diameter    Decimal?                 @db.Decimal(5, 2) // Left eye diameter
-  contact_lens_left_power       Decimal?                 @db.Decimal(5, 2) // Left eye power (PWR)
   created_at                    DateTime                 @default(now())
   updated_at                    DateTime                 @updatedAt
+  prescription_id               Int?
+  lens_thickness_material_id    Int?
+  lens_thickness_option_id      Int?
+  lens_type                     String?                  @db.VarChar(50)
+  photochromic_color_id         Int?
+  prescription_data             String?                  @db.LongText
+  prescription_sun_color_id     Int?
+  progressive_variant_id        Int?
+  treatment_ids                 String?                  @db.LongText
+  contact_lens_left_base_curve  Decimal?                 @db.Decimal(5, 2)
+  contact_lens_left_diameter    Decimal?                 @db.Decimal(5, 2)
+  contact_lens_left_power       Decimal?                 @db.Decimal(5, 2)
+  contact_lens_left_qty         Int?
+  contact_lens_right_base_curve Decimal?                 @db.Decimal(5, 2)
+  contact_lens_right_diameter   Decimal?                 @db.Decimal(5, 2)
+  contact_lens_right_power      Decimal?                 @db.Decimal(5, 2)
+  contact_lens_right_qty        Int?
   cart                          Cart                     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
-  product                       Product                  @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  prescription                  Prescription?            @relation(fields: [prescription_id], references: [id])
-  progressiveVariant            PrescriptionLensVariant? @relation(fields: [progressive_variant_id], references: [id])
   lensThicknessMaterial         LensThicknessMaterial?   @relation(fields: [lens_thickness_material_id], references: [id])
   lensThicknessOption           LensThicknessOption?     @relation(fields: [lens_thickness_option_id], references: [id])
   photochromicColor             LensColor?               @relation("PhotochromicColor", fields: [photochromic_color_id], references: [id])
+  prescription                  Prescription?            @relation(fields: [prescription_id], references: [id])
   prescriptionSunColor          LensColor?               @relation("PrescriptionSunColor", fields: [prescription_sun_color_id], references: [id])
+  product                       Product                  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  progressiveVariant            PrescriptionLensVariant? @relation(fields: [progressive_variant_id], references: [id])
 
   @@unique([cart_id, product_id, lens_index, frame_size_id])
   @@index([cart_id])
@@ -357,9 +353,9 @@ model Order {
   created_at       DateTime       @default(now())
   updated_at       DateTime       @updatedAt
   items            OrderItem[]
-  transactions     Transaction[]
   prescription     Prescription?  @relation(fields: [prescription_id], references: [id])
   user             User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
 
   @@index([user_id])
   @@index([order_number])
@@ -370,47 +366,45 @@ model Order {
 }
 
 model OrderItem {
-  id                            Int      @id @default(autoincrement())
+  id                            Int                      @id @default(autoincrement())
   order_id                      Int
   product_id                    Int
-  product_name                  String   @db.VarChar(255)
-  product_sku                   String   @db.VarChar(100)
-  quantity                      Int      @default(1)
-  unit_price                    Decimal  @db.Decimal(10, 2)
-  total_price                   Decimal  @db.Decimal(10, 2)
+  product_name                  String                   @db.VarChar(255)
+  product_sku                   String                   @db.VarChar(100)
+  quantity                      Int                      @default(1)
+  unit_price                    Decimal                  @db.Decimal(10, 2)
+  total_price                   Decimal                  @db.Decimal(10, 2)
   lens_index                    Decimal?                 @db.Decimal(3, 2)
   lens_coatings                 String?                  @db.LongText
   frame_size_id                 Int?
   customization                 String?                  @db.LongText
+  created_at                    DateTime                 @default(now())
+  updated_at                    DateTime                 @updatedAt
+  contact_lens_left_base_curve  Decimal?                 @db.Decimal(5, 2)
+  contact_lens_left_diameter    Decimal?                 @db.Decimal(5, 2)
+  contact_lens_left_power       Decimal?                 @db.Decimal(5, 2)
+  contact_lens_left_qty         Int?
+  contact_lens_right_base_curve Decimal?                 @db.Decimal(5, 2)
+  contact_lens_right_diameter   Decimal?                 @db.Decimal(5, 2)
+  contact_lens_right_power      Decimal?                 @db.Decimal(5, 2)
+  contact_lens_right_qty        Int?
+  lens_thickness_material_id    Int?
+  lens_thickness_option_id      Int?
+  lens_type                     String?                  @db.VarChar(50)
+  photochromic_color_id         Int?
+  prescription_data             String?                  @db.LongText
   prescription_id               Int?
-  // Lens configuration fields
-  lens_type                     String?                  @db.VarChar(50) // 'distance_vision', 'near_vision', 'progressive'
-  prescription_data             String?                  @db.LongText // JSON: PD, OD (SPH, CYL, AXIS), OS (SPH, CYL, AXIS)
-  progressive_variant_id        Int? // Reference to PrescriptionLensVariant
-  lens_thickness_material_id    Int? // Reference to LensThicknessMaterial
-  lens_thickness_option_id      Int? // Reference to LensThicknessOption
-  treatment_ids                 String?                  @db.LongText // JSON array of treatment IDs
-  photochromic_color_id         Int? // Reference to LensColor for photochromic
-  prescription_sun_color_id     Int? // Reference to LensColor for prescription lenses sun
-  // Contact Lens specific fields
-  contact_lens_right_qty        Int? // Right eye quantity
-  contact_lens_right_base_curve Decimal? @db.Decimal(5, 2) // Right eye base curve (B.C)
-  contact_lens_right_diameter   Decimal? @db.Decimal(5, 2) // Right eye diameter
-  contact_lens_right_power      Decimal? @db.Decimal(5, 2) // Right eye power (PWR)
-  contact_lens_left_qty         Int? // Left eye quantity
-  contact_lens_left_base_curve  Decimal? @db.Decimal(5, 2) // Left eye base curve (B.C)
-  contact_lens_left_diameter    Decimal? @db.Decimal(5, 2) // Left eye diameter
-  contact_lens_left_power       Decimal? @db.Decimal(5, 2) // Left eye power (PWR)
-  created_at                    DateTime @default(now())
-  updated_at                    DateTime @updatedAt
-  order                         Order                    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product                       Product                  @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  prescription                  Prescription?            @relation(fields: [prescription_id], references: [id])
-  progressiveVariant             PrescriptionLensVariant? @relation(fields: [progressive_variant_id], references: [id])
+  prescription_sun_color_id     Int?
+  progressive_variant_id        Int?
+  treatment_ids                 String?                  @db.LongText
   lensThicknessMaterial         LensThicknessMaterial?   @relation(fields: [lens_thickness_material_id], references: [id])
   lensThicknessOption           LensThicknessOption?     @relation(fields: [lens_thickness_option_id], references: [id])
+  order                         Order                    @relation(fields: [order_id], references: [id], onDelete: Cascade)
   photochromicColor             LensColor?               @relation("PhotochromicColorOrderItem", fields: [photochromic_color_id], references: [id])
+  prescription                  Prescription?            @relation(fields: [prescription_id], references: [id])
   prescriptionSunColor          LensColor?               @relation("PrescriptionSunColorOrderItem", fields: [prescription_sun_color_id], references: [id])
+  product                       Product                  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  progressiveVariant            PrescriptionLensVariant? @relation(fields: [progressive_variant_id], references: [id])
 
   @@index([order_id])
   @@index([product_id])
@@ -485,8 +479,8 @@ model LensOption {
   sort_order  Int            @default(0)
   created_at  DateTime       @default(now())
   updated_at  DateTime       @updatedAt
-  finishes    LensFinish[]
   colors      LensColor[]
+  finishes    LensFinish[]
 
   @@index([is_active])
   @@index([type])
@@ -504,8 +498,8 @@ model LensFinish {
   sort_order       Int         @default(0)
   created_at       DateTime    @default(now())
   updated_at       DateTime    @updatedAt
-  lensOption       LensOption  @relation(fields: [lens_option_id], references: [id], onDelete: Cascade)
   colors           LensColor[]
+  lensOption       LensOption  @relation(fields: [lens_option_id], references: [id], onDelete: Cascade)
 
   @@unique([lens_option_id, slug])
   @@index([lens_option_id])
@@ -517,7 +511,6 @@ model LensColor {
   id                        Int                   @id @default(autoincrement())
   lens_option_id            Int?
   lens_finish_id            Int?
-  prescription_lens_type_id Int?
   name                      String                @db.VarChar(100)
   color_code                String                @db.VarChar(50)
   hex_code                  String?               @db.VarChar(7)
@@ -527,13 +520,14 @@ model LensColor {
   sort_order                Int                   @default(0)
   created_at                DateTime              @default(now())
   updated_at                DateTime              @updatedAt
-  lensOption                LensOption?           @relation(fields: [lens_option_id], references: [id], onDelete: Cascade)
-  lensFinish                LensFinish?           @relation(fields: [lens_finish_id], references: [id], onDelete: Cascade)
-  prescriptionLensType      PrescriptionLensType? @relation(fields: [prescription_lens_type_id], references: [id], onDelete: Cascade)
+  prescription_lens_type_id Int?
   photochromicCartItems     CartItem[]            @relation("PhotochromicColor")
   prescriptionSunCartItems  CartItem[]            @relation("PrescriptionSunColor")
+  lensFinish                LensFinish?           @relation(fields: [lens_finish_id], references: [id], onDelete: Cascade)
+  lensOption                LensOption?           @relation(fields: [lens_option_id], references: [id], onDelete: Cascade)
+  prescriptionLensType      PrescriptionLensType? @relation(fields: [prescription_lens_type_id], references: [id], onDelete: Cascade)
   photochromicOrderItems    OrderItem[]           @relation("PhotochromicColorOrderItem")
-  prescriptionSunOrderItems OrderItem[]          @relation("PrescriptionSunColorOrderItem")
+  prescriptionSunOrderItems OrderItem[]           @relation("PrescriptionSunColorOrderItem")
 
   @@index([lens_option_id])
   @@index([lens_finish_id])
@@ -593,9 +587,9 @@ model PrescriptionLensVariant {
   sort_order                Int                  @default(0)
   created_at                DateTime             @default(now())
   updated_at                DateTime             @updatedAt
-  prescriptionLensType      PrescriptionLensType @relation(fields: [prescription_lens_type_id], references: [id], onDelete: Cascade)
   cartItems                 CartItem[]
   orderItems                OrderItem[]
+  prescriptionLensType      PrescriptionLensType @relation(fields: [prescription_lens_type_id], references: [id], onDelete: Cascade)
 
   @@unique([prescription_lens_type_id, slug])
   @@index([prescription_lens_type_id])
@@ -711,14 +705,14 @@ model MarketingCampaign {
   slug          String    @unique @db.VarChar(150)
   description   String?   @db.Text
   campaign_type String?   @db.VarChar(50)
-  image_url     String?   @db.VarChar(500)
-  link_url      String?   @db.VarChar(500)
   config        String?   @db.LongText
   is_active     Boolean   @default(false)
   starts_at     DateTime?
   ends_at       DateTime?
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
+  image_url     String?   @db.VarChar(500)
+  link_url      String?   @db.VarChar(500)
 
   @@index([slug])
   @@index([is_active])
@@ -929,11 +923,11 @@ model JobApplication {
   resume_cv         String            @db.VarChar(500)
   cover_letter_file String?           @db.VarChar(500)
   why_join_message  String            @db.Text
-  status            ApplicationStatus @default(pending)
+  created_at        DateTime          @default(now())
   notes             String?           @db.Text
   reviewed_at       DateTime?
   reviewed_by       Int?
-  created_at        DateTime          @default(now())
+  status            ApplicationStatus @default(pending)
   updated_at        DateTime          @updatedAt
   job               Job?              @relation(fields: [job_id], references: [id])
 
@@ -1065,6 +1059,202 @@ model AnalyticsEvent {
   @@map("analytics_events")
 }
 
+model LensThicknessMaterial {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique @db.VarChar(100)
+  slug        String      @unique @db.VarChar(100)
+  description String?     @db.Text
+  price       Decimal     @default(0.00) @db.Decimal(10, 2)
+  is_active   Boolean     @default(true)
+  sort_order  Int         @default(0)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+
+  @@index([is_active])
+  @@map("lens_thickness_materials")
+}
+
+model LensThicknessOption {
+  id              Int         @id @default(autoincrement())
+  name            String      @unique @db.VarChar(100)
+  slug            String      @unique @db.VarChar(100)
+  description     String?     @db.Text
+  thickness_value Decimal?    @db.Decimal(5, 2)
+  is_active       Boolean     @default(true)
+  sort_order      Int         @default(0)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+
+  @@index([is_active])
+  @@map("lens_thickness_options")
+}
+
+model SphericalConfiguration {
+  id               Int         @id @default(autoincrement())
+  name             String      @db.VarChar(255)
+  display_name     String      @db.VarChar(255)
+  sub_category_id  Int
+  category_id      Int?
+  price            Decimal?    @db.Decimal(10, 2)
+  is_active        Boolean     @default(true)
+  sort_order       Int         @default(0)
+  right_qty        String?     @db.LongText
+  right_base_curve String?     @db.LongText
+  right_diameter   String?     @db.LongText
+  right_power      String?     @db.LongText
+  left_qty         String?     @db.LongText
+  left_base_curve  String?     @db.LongText
+  left_diameter    String?     @db.LongText
+  left_power       String?     @db.LongText
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  productId        Int?
+  category         Category?   @relation(fields: [category_id], references: [id])
+  product          Product?    @relation(fields: [productId], references: [id])
+  subCategory      SubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+
+  @@index([category_id], map: "spherical_configurations_category_id_fkey")
+  @@index([productId], map: "spherical_configurations_productId_fkey")
+  @@index([sub_category_id], map: "spherical_configurations_sub_category_id_fkey")
+  @@map("spherical_configurations")
+}
+
+model AstigmatismConfiguration {
+  id               Int         @id @default(autoincrement())
+  name             String      @db.VarChar(255)
+  display_name     String      @db.VarChar(255)
+  sub_category_id  Int
+  category_id      Int?
+  price            Decimal?    @db.Decimal(10, 2)
+  is_active        Boolean     @default(true)
+  sort_order       Int         @default(0)
+  right_qty        String?     @db.LongText
+  right_base_curve String?     @db.LongText
+  right_diameter   String?     @db.LongText
+  right_power      String?     @db.LongText
+  right_cylinder   String?     @db.LongText
+  right_axis       String?     @db.LongText
+  left_qty         String?     @db.LongText
+  left_base_curve  String?     @db.LongText
+  left_diameter    String?     @db.LongText
+  left_power       String?     @db.LongText
+  left_cylinder    String?     @db.LongText
+  left_axis        String?     @db.LongText
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  productId        Int?
+  category         Category?   @relation(fields: [category_id], references: [id])
+  product          Product?    @relation(fields: [productId], references: [id])
+  subCategory      SubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+
+  @@index([category_id], map: "astigmatism_configurations_category_id_fkey")
+  @@index([productId], map: "astigmatism_configurations_productId_fkey")
+  @@index([sub_category_id], map: "astigmatism_configurations_sub_category_id_fkey")
+  @@map("astigmatism_configurations")
+}
+
+model ContactLensConfiguration {
+  id                  Int                   @id @default(autoincrement())
+  product_id          Int?
+  sub_category_id     Int?
+  configuration_type  ContactLensConfigType
+  lens_type           String?               @db.VarChar(255)
+  right_qty           String?               @db.LongText
+  right_base_curve    String?               @db.LongText
+  right_diameter      String?               @db.LongText
+  right_power         String?               @db.LongText
+  right_cylinder      String?               @db.LongText
+  right_axis          String?               @db.LongText
+  left_qty            String?               @db.LongText
+  left_base_curve     String?               @db.LongText
+  left_diameter       String?               @db.LongText
+  left_power          String?               @db.LongText
+  left_cylinder       String?               @db.LongText
+  left_axis           String?               @db.LongText
+  display_name        String                @db.VarChar(255)
+  is_active           Boolean               @default(true)
+  sort_order          Int                   @default(0)
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  color_images        String?               @db.LongText
+  compare_at_price    Decimal?              @db.Decimal(10, 2)
+  cost_price          Decimal?              @db.Decimal(10, 2)
+  description         String?               @db.Text
+  images              String?               @db.LongText
+  name                String                @db.VarChar(255)
+  price               Decimal?              @db.Decimal(10, 2)
+  short_description   String?               @db.VarChar(500)
+  sku                 String?               @db.VarChar(100)
+  slug                String?               @db.VarChar(255)
+  stock_quantity      Int                   @default(0)
+  stock_status        StockStatus           @default(in_stock)
+  category_id         Int?
+  frame_color         String?               @db.VarChar(100)
+  frame_material      String?               @db.VarChar(255)
+  frame_shape         String?               @db.VarChar(255)
+  gender              Gender                @default(unisex)
+  spherical_lens_type String?               @db.VarChar(100)
+  unit_images         String?               @db.LongText
+  unit_prices         String?               @db.LongText
+  available_units     String?               @db.LongText
+  category            Category?             @relation(fields: [category_id], references: [id])
+  product             Product?              @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  subCategory         SubCategory?          @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@index([category_id])
+  @@index([sub_category_id])
+  @@index([configuration_type])
+  @@index([is_active])
+  @@index([slug])
+  @@index([sku])
+  @@index([configuration_type, is_active])
+  @@index([sub_category_id, configuration_type, is_active])
+  @@index([category_id, is_active])
+  @@map("contact_lens_configurations")
+}
+
+model AstigmatismDropdownValue {
+  id         Int                  @id @default(autoincrement())
+  field_type AstigmatismFieldType
+  value      String               @db.VarChar(50)
+  label      String?              @db.VarChar(100)
+  eye_type   AstigmatismEyeType?
+  is_active  Boolean              @default(true)
+  sort_order Int                  @default(0)
+  created_at DateTime             @default(now())
+  updated_at DateTime             @updatedAt
+
+  @@index([field_type])
+  @@index([eye_type])
+  @@index([is_active])
+  @@index([field_type, is_active])
+  @@map("astigmatism_dropdown_values")
+}
+
+model PrescriptionFormDropdownValue {
+  id         Int                       @id @default(autoincrement())
+  field_type PrescriptionFormFieldType
+  value      String                    @db.VarChar(50)
+  label      String?                   @db.VarChar(100)
+  eye_type   PrescriptionFormEyeType?
+  form_type  PrescriptionFormType?
+  is_active  Boolean                   @default(true)
+  sort_order Int                       @default(0)
+  created_at DateTime                  @default(now())
+  updated_at DateTime                  @updatedAt
+
+  @@index([field_type])
+  @@index([eye_type])
+  @@index([form_type])
+  @@index([is_active])
+  @@map("prescription_form_dropdown_values")
+}
+
 enum UserRole {
   customer
   admin
@@ -1085,44 +1275,11 @@ enum StockStatus {
   backorder
 }
 
-enum FrameShape {
-  round
-  square
-  oval
-  cat_eye
-  aviator
-  rectangle
-  wayfarer
-  geometric
-}
-
-enum FrameMaterial {
-  acetate
-  metal
-  tr90
-  titanium
-  wood
-  mixed
-}
-
 enum Gender {
   men
   women
   unisex
   kids
-}
-
-enum LensTypeEnum {
-  prescription
-  sunglasses
-  reading
-  computer
-  photochromic
-  plastic
-  glass
-  polycarbonate
-  trivex
-  high_index
 }
 
 enum CoatingType {
@@ -1236,193 +1393,6 @@ enum ContactLensConfigType {
   astigmatism
 }
 
-model LensThicknessMaterial {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique @db.VarChar(100)
-  slug        String     @unique @db.VarChar(100)
-  description String?    @db.Text
-  price       Decimal    @default(0.00) @db.Decimal(10, 2)
-  is_active   Boolean    @default(true)
-  sort_order  Int        @default(0)
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-
-  @@index([is_active])
-  @@map("lens_thickness_materials")
-}
-
-model LensThicknessOption {
-  id              Int        @id @default(autoincrement())
-  name            String     @unique @db.VarChar(100)
-  slug            String     @unique @db.VarChar(100)
-  description     String?    @db.Text
-  thickness_value Decimal?   @db.Decimal(5, 2)
-  is_active       Boolean    @default(true)
-  sort_order      Int        @default(0)
-  created_at      DateTime   @default(now())
-  updated_at      DateTime   @updatedAt
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
-
-  @@index([is_active])
-  @@map("lens_thickness_options")
-}
-
-model SphericalConfiguration {
-  id              Int      @id @default(autoincrement())
-  name            String   @db.VarChar(255)
-  display_name    String   @db.VarChar(255)
-  sub_category_id Int
-  category_id     Int?
-  price           Decimal? @db.Decimal(10, 2)
-  is_active       Boolean  @default(true)
-  sort_order      Int      @default(0)
-
-  // Parameter fields - stored as JSON arrays
-  right_qty        String? @db.LongText // JSON array
-  right_base_curve String? @db.LongText // JSON array
-  right_diameter   String? @db.LongText // JSON array
-  right_power      String? @db.LongText // JSON array
-
-  left_qty        String? @db.LongText // JSON array
-  left_base_curve String? @db.LongText // JSON array
-  left_diameter   String? @db.LongText // JSON array
-  left_power      String? @db.LongText // JSON array
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  subCategory SubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
-  category    Category?   @relation(fields: [category_id], references: [id], onDelete: SetNull)
-  product     Product?    @relation(fields: [productId], references: [id])
-  productId   Int?
-
-  @@map("spherical_configurations")
-}
-
-model AstigmatismConfiguration {
-  id              Int      @id @default(autoincrement())
-  name            String   @db.VarChar(255)
-  display_name    String   @db.VarChar(255)
-  sub_category_id Int
-  category_id     Int?
-  price           Decimal? @db.Decimal(10, 2)
-  is_active       Boolean  @default(true)
-  sort_order      Int      @default(0)
-
-  // Parameter fields - stored as JSON arrays
-  right_qty        String? @db.LongText // JSON array
-  right_base_curve String? @db.LongText // JSON array
-  right_diameter   String? @db.LongText // JSON array
-  right_power      String? @db.LongText // JSON array
-  right_cylinder   String? @db.LongText // JSON array
-  right_axis       String? @db.LongText // JSON array
-
-  left_qty        String? @db.LongText // JSON array
-  left_base_curve String? @db.LongText // JSON array
-  left_diameter   String? @db.LongText // JSON array
-  left_power      String? @db.LongText // JSON array
-  left_cylinder   String? @db.LongText // JSON array
-  left_axis       String? @db.LongText // JSON array
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  subCategory SubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
-  category    Category?   @relation(fields: [category_id], references: [id], onDelete: SetNull)
-  product     Product?    @relation(fields: [productId], references: [id])
-  productId   Int?
-
-  @@map("astigmatism_configurations")
-}
-
-model ContactLensConfiguration {
-  id                  Int                   @id @default(autoincrement())
-  // Product-like fields
-  name                String                @db.VarChar(255)
-  slug                String?               @db.VarChar(255)
-  sku                 String?               @db.VarChar(100)
-  description         String?               @db.Text
-  short_description   String?               @db.VarChar(500)
-  price               Decimal?              @db.Decimal(10, 2)
-  compare_at_price    Decimal?              @db.Decimal(10, 2)
-  cost_price          Decimal?              @db.Decimal(10, 2)
-  stock_quantity      Int                   @default(0)
-  stock_status        StockStatus           @default(in_stock)
-  images              String?               @db.LongText // JSON array of image URLs
-  color_images        String?               @db.LongText // JSON array of color-specific images
-  available_units      String?               @db.LongText // JSON array of available units (independent from qty), e.g., [10, 20, 30]
-  unit_prices         String?               @db.LongText // JSON object mapping unit to price, e.g., {"10": 32.00, "20": 60.00, "30": 90.00}
-  unit_images         String?               @db.LongText // JSON object mapping unit to image URLs, e.g., {"10": ["url1"], "20": ["url2"], "30": ["url3"]}
-  frame_shape         String?               @db.VarChar(255)
-  frame_material      String?               @db.VarChar(255)
-  frame_color         String?               @db.VarChar(100)
-  gender              Gender                @default(unisex)
-  lens_type           String?               @db.VarChar(255) // Lens type (prescription, sunglasses, etc.)
-  // Category relationships
-  category_id         Int?
-  sub_category_id     Int? // Sub-subcategory (must have parent)
-  product_id          Int? // Optional link to a product
-  configuration_type  ContactLensConfigType // 'spherical' or 'astigmatism'
-  // For Spherical configurations - parameter fields
-  spherical_lens_type String?               @db.VarChar(100) // Lens type name (e.g., "Daily", "Monthly") - optional
-  // Parameter fields (for both spherical and astigmatism) - stored as JSON arrays to allow multiple selections
-  right_qty           String?               @db.LongText // JSON array of integers
-  right_base_curve    String?               @db.LongText // JSON array of decimals
-  right_diameter      String?               @db.LongText // JSON array of decimals
-  right_power         String?               @db.LongText // JSON array of decimals
-  right_cylinder      String?               @db.LongText // JSON array of decimals (astigmatism only)
-  right_axis          String?               @db.LongText // JSON array of integers (astigmatism only)
-  left_qty            String?               @db.LongText // JSON array of integers
-  left_base_curve     String?               @db.LongText // JSON array of decimals
-  left_diameter       String?               @db.LongText // JSON array of decimals
-  left_power          String?               @db.LongText // JSON array of decimals
-  left_cylinder       String?               @db.LongText // JSON array of decimals (astigmatism only)
-  left_axis           String?               @db.LongText // JSON array of integers (astigmatism only)
-  // Common fields
-  display_name        String                @db.VarChar(255) // Name to show in dropdown
-  is_active           Boolean               @default(true)
-  sort_order          Int                   @default(0)
-  created_at          DateTime              @default(now())
-  updated_at          DateTime              @updatedAt
-  // Relations
-  category            Category?             @relation(fields: [category_id], references: [id], onDelete: SetNull)
-  subCategory         SubCategory?          @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
-  product             Product?              @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([product_id])
-  @@index([category_id])
-  @@index([sub_category_id])
-  @@index([configuration_type])
-  @@index([is_active])
-  @@index([slug])
-  @@index([sku])
-  @@index([configuration_type, is_active])
-  @@index([sub_category_id, configuration_type, is_active])
-  @@index([category_id, is_active])
-  @@map("contact_lens_configurations")
-}
-
-model AstigmatismDropdownValue {
-  id         Int                  @id @default(autoincrement())
-  field_type AstigmatismFieldType // 'power', 'cylinder', 'axis'
-  value      String               @db.VarChar(50) // The actual value (e.g., "-2.00", "0.25", "180")
-  label      String?              @db.VarChar(100) // Display label (optional)
-  eye_type   AstigmatismEyeType? // 'left', 'right', or null for both
-  is_active  Boolean              @default(true)
-  sort_order Int                  @default(0)
-  created_at DateTime             @default(now())
-  updated_at DateTime             @updatedAt
-
-  @@index([field_type])
-  @@index([eye_type])
-  @@index([is_active])
-  @@index([field_type, is_active])
-  @@map("astigmatism_dropdown_values")
-}
-
 enum AstigmatismFieldType {
   qty
   base_curve
@@ -1436,25 +1406,6 @@ enum AstigmatismEyeType {
   left
   right
   both
-}
-
-model PrescriptionFormDropdownValue {
-  id         Int                       @id @default(autoincrement())
-  field_type PrescriptionFormFieldType // 'pd', 'sph', 'cyl', 'axis', 'h', 'year_of_birth', 'select_option'
-  value      String                    @db.VarChar(50) // The actual value (e.g., "-2.00", "0.25", "180", "64")
-  label      String?                   @db.VarChar(100) // Display label (optional)
-  eye_type   PrescriptionFormEyeType? // 'left', 'right', or null for both
-  form_type  PrescriptionFormType? // 'progressive', 'near_vision', 'distance_vision', or null for all
-  is_active  Boolean                   @default(true)
-  sort_order Int                       @default(0)
-  created_at DateTime                  @default(now())
-  updated_at DateTime                  @updatedAt
-
-  @@index([field_type])
-  @@index([eye_type])
-  @@index([form_type])
-  @@index([is_active])
-  @@map("prescription_form_dropdown_values")
 }
 
 enum PrescriptionFormFieldType {
