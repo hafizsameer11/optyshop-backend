@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "optyshop-api-collection",
     "name": "OptyShop API",
-    "description": "Complete API collection for OptyShop - Smart Optical E-Commerce & Simulation System\n\n## Authentication Strategy\n\n### Website (Public) - No Auth Required\n- **Auth**: Register (customer/admin with ALLOW_ADMIN_REGISTRATION), Login (customer/admin), Refresh Token\n- **Products & Categories**: All GET endpoints\n- **Simulations**: All calculation endpoints (PD, lens thickness, recommendations, etc.)\n- **Marketing Content**: Case studies, blog, jobs (GET only)\n- **Forms**: Configs and submissions (GET configs, POST submissions)\n- **CMS**: Banners (/api/banners), Campaigns (/api/campaigns), FAQs (/api/faqs), Pages (/api/pages/:slug), Testimonials (/api/cms/testimonials)\n- **Coupons**: Apply coupon (/api/coupons/apply)\n- **Health**: /health, /api\n\n### Customer (Authenticated) - `Authorization: Bearer {{access_token}}`\n- **Auth**: Get Current User, Update Profile, Change Password, Logout\n- **Cart**: All endpoints\n- **Orders**: Create, List, Get by ID, Cancel (customer actions)\n- **Prescriptions**: All CRUD operations (customer's own prescriptions)\n\n### Admin (Authenticated) - `Authorization: Bearer {{admin_token}}`\n- **Auth**: Get Current User, Update Profile, Change Password, Logout (same endpoints as customer, uses admin_token)\n- **User Management**: Create User (customer/admin), Get All Users, Update User\n- **Admin Dashboard**: All /api/admin/* endpoints (dashboard, products, categories, frame-sizes, lens-types, lens-coatings, orders, coupons, campaigns, banners, blog-posts, faqs, pages)\n- **Orders**: Update status, refund, assign technician\n- **Prescriptions**: Validate, verify\n- **Simulations**: Config, VTO assets, VTO configs\n- **CMS**: Testimonials CRUD (/api/cms/testimonials)\n- **Analytics**: All /api/analytics/* endpoints\n- **Overview**: /api/overview\n\n## User Registration\n- **Customer Registration**: POST /api/auth/register with role=\"customer\" (default)\n- **Admin Registration (Testing)**: POST /api/auth/register with role=\"admin\" - Only works if ALLOW_ADMIN_REGISTRATION=true in .env\n- **Admin User Creation (Production)**: POST /api/admin/users - Recommended way to create admin users",
+    "description": "Complete API collection for OptyShop - Smart Optical E-Commerce & Simulation System\n\n## Authentication Strategy\n\n### Website (Public) - No Auth Required\n- **Auth**: Register (customer/admin with ALLOW_ADMIN_REGISTRATION), Login (customer/admin), Refresh Token\n- **Products & Categories**: All GET endpoints\n- **Simulations**: All calculation endpoints (PD, lens thickness, recommendations, etc.)\n- **Marketing Content**: Case studies, blog, jobs (GET only)\n- **Forms**: Configs and submissions (GET configs, POST submissions)\n- **CMS**: Banners (/api/banners), Campaigns (/api/campaigns), Brands (/api/brands), FAQs (/api/faqs), Pages (/api/pages/:slug), Testimonials (/api/cms/testimonials)\n- **Coupons**: Apply coupon (/api/coupons/apply)\n- **Health**: /health, /api\n\n### Customer (Authenticated) - `Authorization: Bearer {{access_token}}`\n- **Auth**: Get Current User, Update Profile, Change Password, Logout\n- **Cart**: All endpoints\n- **Orders**: Create, List, Get by ID, Cancel (customer actions)\n- **Prescriptions**: All CRUD operations (customer's own prescriptions)\n\n### Admin (Authenticated) - `Authorization: Bearer {{admin_token}}`\n- **Auth**: Get Current User, Update Profile, Change Password, Logout (same endpoints as customer, uses admin_token)\n- **User Management**: Create User (customer/admin), Get All Users, Update User\n- **Admin Dashboard**: All /api/admin/* endpoints (dashboard, products, categories, frame-sizes, lens-types, lens-coatings, orders, coupons, campaigns, brands, banners, blog-posts, faqs, pages)\n- **Orders**: Update status, refund, assign technician\n- **Prescriptions**: Validate, verify\n- **Simulations**: Config, VTO assets, VTO configs\n- **CMS**: Testimonials CRUD (/api/cms/testimonials)\n- **Analytics**: All /api/analytics/* endpoints\n- **Overview**: /api/overview\n\n## User Registration\n- **Customer Registration**: POST /api/auth/register with role=\"customer\" (default)\n- **Admin Registration (Testing)**: POST /api/auth/register with role=\"admin\" - Only works if ALLOW_ADMIN_REGISTRATION=true in .env\n- **Admin User Creation (Production)**: POST /api/admin/users - Recommended way to create admin users",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "optyshop"
   },
@@ -2520,6 +2520,37 @@
                     }
                   ]
                 }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Brands (Public)",
+          "item": [
+            {
+              "name": "Get Brands",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/brands?activeOnly=true",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "brands"
+                  ],
+                  "query": [
+                    {
+                      "key": "activeOnly",
+                      "value": "true",
+                      "description": "Filter only active brands",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all active brands. Returns brands sorted by sort_order (ascending), then by created_at (descending)."
               }
             }
           ]
@@ -6199,15 +6230,66 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{admin_token}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"name\": \"Summer Sale 2024\",\n  \"description\": \"Big summer discounts\",\n  \"start_date\": \"2024-06-01\",\n  \"end_date\": \"2024-08-31\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Campaign image (optional)"
+                    },
+                    {
+                      "key": "name",
+                      "value": "Summer Sale 2024",
+                      "type": "text",
+                      "description": "Campaign name (required)"
+                    },
+                    {
+                      "key": "slug",
+                      "value": "summer-sale-2024",
+                      "type": "text",
+                      "description": "URL-friendly slug (auto-generated if not provided)"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Big summer discounts on all products",
+                      "type": "text",
+                      "description": "Campaign description (required)"
+                    },
+                    {
+                      "key": "campaign_type",
+                      "value": "discount",
+                      "type": "text",
+                      "description": "Campaign type (optional)"
+                    },
+                    {
+                      "key": "link_url",
+                      "value": "https://example.com/summer-sale",
+                      "type": "text",
+                      "description": "Campaign link URL (optional)"
+                    },
+                    {
+                      "key": "starts_at",
+                      "value": "2024-06-01T00:00:00Z",
+                      "type": "text",
+                      "description": "Start date (ISO format, optional)"
+                    },
+                    {
+                      "key": "ends_at",
+                      "value": "2024-08-31T23:59:59Z",
+                      "type": "text",
+                      "description": "End date (ISO format, optional)"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text",
+                      "description": "Active status (default: false)"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/campaigns",
@@ -6230,15 +6312,60 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{admin_token}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"description\": \"Updated campaign description\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Campaign image (optional - only include if updating image)"
+                    },
+                    {
+                      "key": "name",
+                      "value": "Updated Summer Sale 2024",
+                      "type": "text",
+                      "description": "Campaign name (optional)"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Updated campaign description",
+                      "type": "text",
+                      "description": "Campaign description (optional)"
+                    },
+                    {
+                      "key": "campaign_type",
+                      "value": "promotion",
+                      "type": "text",
+                      "description": "Campaign type (optional)"
+                    },
+                    {
+                      "key": "link_url",
+                      "value": "https://example.com/updated-summer-sale",
+                      "type": "text",
+                      "description": "Campaign link URL (optional - set empty string to remove)"
+                    },
+                    {
+                      "key": "starts_at",
+                      "value": "2024-06-01T00:00:00Z",
+                      "type": "text",
+                      "description": "Start date (ISO format, optional)"
+                    },
+                    {
+                      "key": "ends_at",
+                      "value": "2024-08-31T23:59:59Z",
+                      "type": "text",
+                      "description": "End date (ISO format, optional)"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text",
+                      "description": "Active status (optional)"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/campaigns/1",
@@ -6276,6 +6403,228 @@
                     "1"
                   ]
                 }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Brands (Admin)",
+          "item": [
+            {
+              "name": "Get All Brands (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/brands",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "brands"
+                  ]
+                },
+                "description": "Get all brands (including inactive). Returns brands sorted by sort_order (ascending), then by created_at (descending)."
+              }
+            },
+            {
+              "name": "Get Single Brand (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/brands/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "brands",
+                    "1"
+                  ]
+                },
+                "description": "Get a single brand by ID."
+              }
+            },
+            {
+              "name": "Create Brand",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "logo",
+                      "type": "file",
+                      "src": [],
+                      "description": "Brand logo image (optional)"
+                    },
+                    {
+                      "key": "name",
+                      "value": "ZEISS",
+                      "type": "text",
+                      "description": "Brand name (required)"
+                    },
+                    {
+                      "key": "slug",
+                      "value": "zeiss",
+                      "type": "text",
+                      "description": "URL-friendly slug (auto-generated if not provided)"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Premium optical lenses and eyewear",
+                      "type": "text",
+                      "description": "Brand description (optional)"
+                    },
+                    {
+                      "key": "website_url",
+                      "value": "https://www.zeiss.com",
+                      "type": "text",
+                      "description": "Brand website URL (optional)"
+                    },
+                    {
+                      "key": "sort_order",
+                      "value": "0",
+                      "type": "text",
+                      "description": "Sort order (default: 0, lower numbers appear first)"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text",
+                      "description": "Active status (default: true)"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/brands",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "brands"
+                  ]
+                },
+                "description": "Create a new brand. Logo upload is optional. Slug will be auto-generated from name if not provided."
+              }
+            },
+            {
+              "name": "Update Brand",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "logo",
+                      "type": "file",
+                      "src": [],
+                      "description": "Brand logo image (optional - only include if updating logo)"
+                    },
+                    {
+                      "key": "name",
+                      "value": "ZEISS Updated",
+                      "type": "text",
+                      "description": "Brand name (optional)"
+                    },
+                    {
+                      "key": "slug",
+                      "value": "zeiss-updated",
+                      "type": "text",
+                      "description": "URL-friendly slug (optional)"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Updated brand description",
+                      "type": "text",
+                      "description": "Brand description (optional)"
+                    },
+                    {
+                      "key": "website_url",
+                      "value": "https://www.zeiss.com/updated",
+                      "type": "text",
+                      "description": "Brand website URL (optional - set empty string to remove)"
+                    },
+                    {
+                      "key": "sort_order",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Sort order (optional)"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text",
+                      "description": "Active status (optional)"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/brands/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "brands",
+                    "1"
+                  ]
+                },
+                "description": "Update an existing brand. Only include fields you want to update. Logo upload is optional."
+              }
+            },
+            {
+              "name": "Delete Brand",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/brands/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "brands",
+                    "1"
+                  ]
+                },
+                "description": "Delete a brand. This action cannot be undone."
               }
             }
           ]

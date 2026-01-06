@@ -57,7 +57,12 @@ const {
   getCampaignsAdmin,
   createCampaign,
   updateCampaign,
-  deleteCampaign
+  deleteCampaign,
+  getBrandsAdmin,
+  getBrandAdmin,
+  createBrand,
+  updateBrand,
+  deleteBrand
 } = require('../controllers/marketingController');
 const {
   getBannersAdmin,
@@ -276,9 +281,16 @@ router.delete('/coupons/:id', deleteCoupon);
 
 // Campaigns
 router.get('/campaigns', getCampaignsAdmin);
-router.post('/campaigns', createCampaign);
-router.put('/campaigns/:id', updateCampaign);
+router.post('/campaigns', uploadSingle('image'), createCampaign);
+router.put('/campaigns/:id', uploadSingle('image'), updateCampaign);
 router.delete('/campaigns/:id', deleteCampaign);
+
+// Brands
+router.get('/brands', getBrandsAdmin);
+router.get('/brands/:id', getBrandAdmin);
+router.post('/brands', uploadSingle('logo'), createBrand);
+router.put('/brands/:id', uploadSingle('logo'), updateBrand);
+router.delete('/brands/:id', deleteBrand);
 
 // Banners
 router.get('/banners', getBannersAdmin);

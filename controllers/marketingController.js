@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
+const { uploadToS3 } = require('../config/aws');
 
 // ==================== COUPONS ====================
 
@@ -494,6 +495,17 @@ exports.createCampaign = asyncHandler(async (req, res) => {
         campaignData.slug = campaignData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     }
 
+    // Handle image upload if provided
+    if (req.file) {
+        const imageUrl = await uploadToS3(req.file, 'campaigns');
+        campaignData.image_url = imageUrl;
+    }
+
+    // Handle link_url (can be provided directly in body)
+    if (campaignData.link_url === '') {
+        campaignData.link_url = null;
+    }
+
     // Map start_date/end_date to starts_at/ends_at and convert to Date objects
     if (start_date !== undefined) {
         campaignData.starts_at = start_date ? new Date(start_date) : null;
@@ -524,6 +536,17 @@ exports.updateCampaign = asyncHandler(async (req, res) => {
     // Map start_date/end_date to starts_at/ends_at and convert to Date objects
     const updateData = { ...rest };
     
+    // Handle image upload if provided
+    if (req.file) {
+        const imageUrl = await uploadToS3(req.file, 'campaigns');
+        updateData.image_url = imageUrl;
+    }
+
+    // Handle link_url (can be provided directly in body)
+    if (updateData.link_url === '') {
+        updateData.link_url = null;
+    }
+    
     if (start_date !== undefined) {
         updateData.starts_at = start_date ? new Date(start_date) : null;
     } else if (rest.starts_at !== undefined) {
@@ -550,4 +573,151 @@ exports.deleteCampaign = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await prisma.marketingCampaign.delete({ where: { id: parseInt(id) } });
     return success(res, 'Campaign deleted successfully');
+});
+
+// ==================== BRANDS ====================
+
+// @desc    Get all brands (Public - with optional activeOnly filter)
+// @route   GET /api/brands
+// @access  Public
+exports.getBrands = asyncHandler(async (req, res) => {
+    const { activeOnly } = req.query;
+    
+    const where = {};
+    if (activeOnly === 'true') {
+        where.is_active = true;
+    }
+    
+    const brands = await prisma.brand.findMany({
+        where,
+        orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }]
+    });
+    return success(res, 'Brands retrieved successfully', { brands });
+});
+
+// @desc    Get all brands (Admin)
+// @route   GET /api/admin/brands
+// @access  Private/Admin
+exports.getBrandsAdmin = asyncHandler(async (req, res) => {
+    const brands = await prisma.brand.findMany({
+        orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }]
+    });
+    return success(res, 'Brands retrieved successfully', { brands });
+});
+
+// @desc    Get single brand (Admin)
+// @route   GET /api/admin/brands/:id
+// @access  Private/Admin
+exports.getBrandAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const brand = await prisma.brand.findUnique({
+        where: { id: parseInt(id) }
+    });
+    
+    if (!brand) {
+        return error(res, 'Brand not found', 404);
+    }
+    
+    return success(res, 'Brand retrieved successfully', { brand });
+});
+
+// @desc    Create brand (Admin)
+// @route   POST /api/admin/brands
+// @access  Private/Admin
+exports.createBrand = asyncHandler(async (req, res) => {
+    const brandData = { ...req.body };
+    
+    // Auto-generate slug if not provided
+    if (!brandData.slug) {
+        brandData.slug = brandData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    }
+    
+    // Check if slug already exists
+    const existing = await prisma.brand.findUnique({ where: { slug: brandData.slug } });
+    if (existing) {
+        return error(res, 'Brand with this slug already exists', 400);
+    }
+
+    // Handle logo upload if provided
+    if (req.file) {
+        const logoUrl = await uploadToS3(req.file, 'brands');
+        brandData.logo_url = logoUrl;
+    }
+
+    // Handle website_url (can be provided directly in body)
+    if (brandData.website_url === '') {
+        brandData.website_url = null;
+    }
+    
+    // Convert sort_order to integer if provided
+    if (brandData.sort_order !== undefined) {
+        brandData.sort_order = parseInt(brandData.sort_order) || 0;
+    }
+
+    const brand = await prisma.brand.create({
+        data: brandData
+    });
+
+    return success(res, 'Brand created successfully', { brand }, 201);
+});
+
+// @desc    Update brand (Admin)
+// @route   PUT /api/admin/brands/:id
+// @access  Private/Admin
+exports.updateBrand = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    // Check if brand exists
+    const existing = await prisma.brand.findUnique({ where: { id: parseInt(id) } });
+    if (!existing) {
+        return error(res, 'Brand not found', 404);
+    }
+    
+    // Handle slug update - check for uniqueness if slug is being changed
+    if (updateData.slug && updateData.slug !== existing.slug) {
+        const slugExists = await prisma.brand.findUnique({ where: { slug: updateData.slug } });
+        if (slugExists) {
+            return error(res, 'Brand with this slug already exists', 400);
+        }
+    }
+    
+    // Handle logo upload if provided
+    if (req.file) {
+        const logoUrl = await uploadToS3(req.file, 'brands');
+        updateData.logo_url = logoUrl;
+    }
+
+    // Handle website_url (can be provided directly in body)
+    if (updateData.website_url === '') {
+        updateData.website_url = null;
+    }
+    
+    // Convert sort_order to integer if provided
+    if (updateData.sort_order !== undefined) {
+        updateData.sort_order = parseInt(updateData.sort_order) || 0;
+    }
+
+    const brand = await prisma.brand.update({
+        where: { id: parseInt(id) },
+        data: updateData
+    });
+    
+    return success(res, 'Brand updated successfully', { brand });
+});
+
+// @desc    Delete brand (Admin)
+// @route   DELETE /api/admin/brands/:id
+// @access  Private/Admin
+exports.deleteBrand = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    // Check if brand exists
+    const existing = await prisma.brand.findUnique({ where: { id: parseInt(id) } });
+    if (!existing) {
+        return error(res, 'Brand not found', 404);
+    }
+    
+    await prisma.brand.delete({ where: { id: parseInt(id) } });
+    return success(res, 'Brand deleted successfully');
 });

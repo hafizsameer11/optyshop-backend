@@ -28,6 +28,10 @@ const storage = multer.diskStorage({
       folder = 'subcategories';
     } else if (route.includes('/cms') || route.includes('/banners') || route.includes('/admin/banners')) {
       folder = 'cms/banners';
+    } else if (route.includes('/campaigns') || route.includes('/admin/campaigns')) {
+      folder = 'campaigns';
+    } else if (route.includes('/brands') || route.includes('/admin/brands')) {
+      folder = 'brands';
     } else if (file.fieldname === 'attachments') {
       folder = 'support-attachments';
     } else if (file.fieldname === 'model_3d') {
