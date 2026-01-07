@@ -469,6 +469,21 @@ exports.getCampaigns = asyncHandler(async (req, res) => {
     
     const campaigns = await prisma.marketingCampaign.findMany({
         where,
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            campaign_type: true,
+            config: true,
+            is_active: true,
+            starts_at: true,
+            ends_at: true,
+            created_at: true,
+            updated_at: true,
+            image_url: true,
+            link_url: true,
+        },
         orderBy: { created_at: 'desc' }
     });
     return success(res, 'Campaigns retrieved successfully', { campaigns });
@@ -479,6 +494,21 @@ exports.getCampaigns = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.getCampaignsAdmin = asyncHandler(async (req, res) => {
     const campaigns = await prisma.marketingCampaign.findMany({
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            campaign_type: true,
+            config: true,
+            is_active: true,
+            starts_at: true,
+            ends_at: true,
+            created_at: true,
+            updated_at: true,
+            image_url: true,
+            link_url: true,
+        },
         orderBy: { created_at: 'desc' }
     });
     return success(res, 'Campaigns retrieved successfully', { campaigns });
