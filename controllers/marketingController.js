@@ -518,6 +518,11 @@ exports.createCampaign = asyncHandler(async (req, res) => {
     } else if (rest.ends_at !== undefined) {
         campaignData.ends_at = rest.ends_at ? new Date(rest.ends_at) : null;
     }
+    
+    // Convert is_active from string to boolean (FormData sends strings)
+    if (campaignData.is_active !== undefined) {
+        campaignData.is_active = campaignData.is_active === 'true' || campaignData.is_active === true;
+    }
 
     const campaign = await prisma.marketingCampaign.create({
         data: campaignData
@@ -557,6 +562,11 @@ exports.updateCampaign = asyncHandler(async (req, res) => {
         updateData.ends_at = end_date ? new Date(end_date) : null;
     } else if (rest.ends_at !== undefined) {
         updateData.ends_at = rest.ends_at ? new Date(rest.ends_at) : null;
+    }
+    
+    // Convert is_active from string to boolean (FormData sends strings)
+    if (updateData.is_active !== undefined) {
+        updateData.is_active = updateData.is_active === 'true' || updateData.is_active === true;
     }
 
     const campaign = await prisma.marketingCampaign.update({
@@ -653,6 +663,11 @@ exports.createBrand = asyncHandler(async (req, res) => {
     if (brandData.sort_order !== undefined) {
         brandData.sort_order = parseInt(brandData.sort_order) || 0;
     }
+    
+    // Convert is_active from string to boolean (FormData sends strings)
+    if (brandData.is_active !== undefined) {
+        brandData.is_active = brandData.is_active === 'true' || brandData.is_active === true;
+    }
 
     const brand = await prisma.brand.create({
         data: brandData
@@ -696,6 +711,11 @@ exports.updateBrand = asyncHandler(async (req, res) => {
     // Convert sort_order to integer if provided
     if (updateData.sort_order !== undefined) {
         updateData.sort_order = parseInt(updateData.sort_order) || 0;
+    }
+    
+    // Convert is_active from string to boolean (FormData sends strings)
+    if (updateData.is_active !== undefined) {
+        updateData.is_active = updateData.is_active === 'true' || updateData.is_active === true;
     }
 
     const brand = await prisma.brand.update({
