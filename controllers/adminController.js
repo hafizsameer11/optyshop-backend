@@ -2530,9 +2530,9 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const productData = { ...req.body };
 
-  // Validate and parse id parameter
-  if (id === undefined || id === null || id === '') {
-    console.error('Missing product ID in request params:', { params: req.params, url: req.url });
+  // Validate and parse id parameter - handle "undefined" string as well
+  if (!id || id === undefined || id === null || id === '' || id === 'undefined' || id === 'null') {
+    console.error('Missing product ID in request params:', { params: req.params, url: req.url, id, idType: typeof id });
     return error(res, "Product ID is required", 400);
   }
 
