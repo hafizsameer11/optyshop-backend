@@ -2528,20 +2528,19 @@ exports.createProduct = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  
+  const productData = { ...req.body };
+
   // Validate and parse id parameter
-  if (!id || id === undefined || id === null) {
-    console.error('Missing product ID in request params:', req.params);
+  if (id === undefined || id === null || id === '') {
+    console.error('Missing product ID in request params:', { params: req.params, url: req.url });
     return error(res, "Product ID is required", 400);
   }
 
   const productId = parseInt(String(id), 10);
   if (isNaN(productId) || productId <= 0) {
-    console.error('Invalid product ID:', id, 'parsed as:', productId);
-    return error(res, "Invalid product ID. Must be a positive integer", 400);
+    console.error('Invalid product ID:', { id, parsed: productId, type: typeof id });
+    return error(res, `Invalid product ID "${id}". Must be a positive integer`, 400);
   }
-
-  const productData = { ...req.body };
 
   const product = await prisma.product.findUnique({
     where: { id: productId },
