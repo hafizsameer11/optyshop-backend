@@ -2510,7 +2510,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
         ...fullProduct,
         images: finalImages,
         image: finalImages && finalImages.length > 0 ? finalImages[0] : null,
-        color_images: finalColorImages
+        color_images: finalColorImages,
+        // Explicitly include sizeVolumeVariants if they exist
+        sizeVolumeVariants: fullProduct.sizeVolumeVariants || []
       };
 
       return success(res, "Product created successfully", { product: finalFormattedProduct }, 201);
@@ -3613,7 +3615,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     ...finalProduct,
     images: finalImages,
     image: finalImages && finalImages.length > 0 ? finalImages[0] : null,
-    color_images: finalColorImages
+    color_images: finalColorImages,
+    // Explicitly include sizeVolumeVariants if they exist
+    sizeVolumeVariants: (finalProduct.sizeVolumeVariants && Array.isArray(finalProduct.sizeVolumeVariants)) 
+      ? finalProduct.sizeVolumeVariants 
+      : []
   };
 
   return success(res, "Product updated successfully", {
