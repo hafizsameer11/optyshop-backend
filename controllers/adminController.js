@@ -2528,9 +2528,10 @@ exports.createProduct = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  
-  // Validate id parameter
-  if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.trim() === '')) {
+  const productData = { ...req.body };
+
+  // Validate and parse id parameter
+  if (!id) {
     return error(res, "Product ID is required", 400);
   }
 
@@ -2538,8 +2539,6 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   if (isNaN(productId) || productId <= 0) {
     return error(res, "Invalid product ID. Must be a positive integer", 400);
   }
-
-  const productData = { ...req.body };
 
   const product = await prisma.product.findUnique({
     where: { id: productId },
