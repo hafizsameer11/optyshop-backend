@@ -438,7 +438,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
   if (product_type) {
     // Validate product_type against enum values
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene'];
     const normalizedType = product_type.toLowerCase().trim();
     if (validProductTypes.includes(normalizedType)) {
       where.product_type = normalizedType;
