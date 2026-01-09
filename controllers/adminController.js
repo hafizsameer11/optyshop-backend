@@ -3014,7 +3014,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   // Validate and normalize product_type enum if provided
   if (productData.product_type !== undefined) {
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'accessory'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
     const productType = String(productData.product_type).toLowerCase().trim();
 
     // Map common invalid values to valid ones
