@@ -3511,15 +3511,40 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Re-fetch product if variants were modified to include them in response
   let finalProduct = updatedProduct;
   if (variantsData !== null || sizeVolumeVariantsData !== null) {
-    finalProduct = await prisma.product.findUnique({
-      where: { id: updatedProduct.id },
-      include: {
-        category: { select: { id: true, name: true, slug: true } },
-        subCategory: { select: { id: true, name: true, slug: true } },
-        variants: true,
-        sizeVolumeVariants: true
+    // Build include object - conditionally include sizeVolumeVariants if table exists
+    const includeObject = {
+      category: { select: { id: true, name: true, slug: true } },
+      subCategory: { select: { id: true, name: true, slug: true } },
+      variants: true
+    };
+
+    try {
+      finalProduct = await prisma.product.findUnique({
+        where: { id: updatedProduct.id },
+        include: {
+          ...includeObject,
+          sizeVolumeVariants: {
+            orderBy: [
+              { sort_order: 'asc' },
+              { size_volume: 'asc' },
+              { pack_type: 'asc' }
+            ]
+          }
+        }
+      });
+    } catch (err) {
+      // If error is about missing table/model, retry without sizeVolumeVariants
+      if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+        console.warn('⚠️  ProductSizeVolume table does not exist yet. Fetching product without variants. Run migration: npx prisma migrate deploy');
+        finalProduct = await prisma.product.findUnique({
+          where: { id: updatedProduct.id },
+          include: includeObject
+        });
+      } else {
+        // Re-throw other errors
+        throw err;
       }
-    });
+    }
   }
 
   // Format images - parse JSON string to array for response
