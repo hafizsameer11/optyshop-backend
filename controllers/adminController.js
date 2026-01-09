@@ -3035,8 +3035,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       'glasses': 'frame',
       'eyeglass': 'frame',
       'eyeglasses': 'frame',
-      'sunglass': 'sunglasses',
-      'accessories': 'accessory'
+      'sunglass': 'sunglasses'
     };
 
     const normalizedType = productTypeMap[productType] || productType;
