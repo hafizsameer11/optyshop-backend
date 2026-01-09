@@ -11,7 +11,7 @@ const getColorNameFromHex = (hexCode) => {
   if (!hexCode || !hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
     return 'Unknown';
   }
-  
+
   const hex = hexCode.toLowerCase();
   const colorMap = {
     '#000000': 'Black',
@@ -30,14 +30,14 @@ const getColorNameFromHex = (hexCode) => {
     '#a52a2a': 'Brown',
     '#4b0082': 'Indigo'
   };
-  
+
   return colorMap[hex] || `Color ${hexCode}`;
 };
 
 // Helper function to get hex code from color name (for backward compatibility)
 const getHexFromColorName = (colorName) => {
   if (!colorName) return '000000';
-  
+
   const name = colorName.toLowerCase().trim();
   const colorMap = {
     'black': '000000',
@@ -56,14 +56,14 @@ const getHexFromColorName = (colorName) => {
     'yellow': 'ffff00',
     'indigo': '4b0082'
   };
-  
+
   return colorMap[name] || '000000';
 };
 
 // Helper function to get hex code from color name (returns with # prefix)
 const getColorHexCode = (colorName) => {
   if (!colorName) return null;
-  
+
   const name = colorName.toLowerCase().trim();
   const colorMap = {
     'black': '#000000',
@@ -89,7 +89,7 @@ const getColorHexCode = (colorName) => {
     'orange': '#FFA500',
     'indigo': '#4B0082'
   };
-  
+
   return colorMap[name] || null;
 };
 
@@ -105,7 +105,7 @@ exports.getAllSubCategories = asyncHandler(async (req, res) => {
   const where = {};
   if (category_id) where.category_id = parseInt(category_id);
   if (search) where.name = { contains: search };
-  
+
   // Filter by type: 'top-level' or 'nested'
   if (type === 'top-level') {
     where.parent_id = null;
@@ -556,33 +556,33 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
   if (!category) {
     return error(res, `Category with ID ${categoryId} not found. Please create the category first.`, 404);
   }
-  
+
   console.log(`✅ Category found: ${category.name} (ID: ${categoryId})`);
 
   // Handle parent subcategory (for nested subcategories)
   let parentSubcategoryId = null;
-  
+
   // Handle parent subcategory (for nested subcategories)
   // Accept both parent_id and parent_subcategory_id for flexibility
   // Frontend sends null, "null", empty string, or no field for top-level subcategories
   const parentIdValue = parent_id !== undefined ? parent_id : parent_subcategory_id;
-  
+
   // Check if we have a valid parent ID
   // Treat null, undefined, empty string, "null" string, or 0 as "no parent" (top-level)
-  const hasParent = parentIdValue !== undefined && 
-      parentIdValue !== null && 
-      parentIdValue !== '' && 
-      String(parentIdValue).toLowerCase() !== 'null' &&
-      String(parentIdValue).trim() !== '' &&
-      parentIdValue !== 0;
-  
+  const hasParent = parentIdValue !== undefined &&
+    parentIdValue !== null &&
+    parentIdValue !== '' &&
+    String(parentIdValue).toLowerCase() !== 'null' &&
+    String(parentIdValue).trim() !== '' &&
+    parentIdValue !== 0;
+
   if (hasParent) {
-    
+
     const parsedParentId = parseInt(String(parentIdValue).trim(), 10);
     if (isNaN(parsedParentId) || parsedParentId <= 0) {
       return error(res, `Invalid Parent Subcategory ID: "${parentIdValue}". Must be a positive integer.`, 400);
     }
-    
+
     parentSubcategoryId = parsedParentId;
 
     // Verify parent subcategory exists
@@ -628,11 +628,11 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
   }
 
   // Check if subcategory with same name and parent_id exists (allows duplicates under different parents)
-  const existingByName = await prisma.subCategory.findFirst({ 
-    where: { 
+  const existingByName = await prisma.subCategory.findFirst({
+    where: {
       name: name,
-      parent_id: parentSubcategoryId 
-    } 
+      parent_id: parentSubcategoryId
+    }
   });
   if (existingByName) {
     return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
@@ -648,7 +648,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     where: { id: categoryId },
     select: { id: true, name: true }
   });
-  
+
   if (!categoryExists) {
     return error(res, `Category with ID ${categoryId} does not exist in the database. Please create the category first.`, 404);
   }
@@ -658,20 +658,20 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     console.log(`   - Name: ${name}`);
     console.log(`   - Category ID: ${categoryId}`);
     console.log(`   - Parent ID: ${parentSubcategoryId} (${parentSubcategoryId ? 'NESTED' : 'TOP-LEVEL'})`);
-    
+
     const createData = {
-        name,
-        slug: finalSlug,
-        category_id: categoryId,
-        parent_id: parentSubcategoryId !== null ? parentSubcategoryId : null, // Explicitly set parent_id (null for top-level, number for nested)
-        description,
-        is_active: is_active === 'true' || is_active === true,
-        sort_order: parseInt(sort_order, 10) || 0,
-        image: imageUrl
+      name,
+      slug: finalSlug,
+      category_id: categoryId,
+      parent_id: parentSubcategoryId !== null ? parentSubcategoryId : null, // Explicitly set parent_id (null for top-level, number for nested)
+      description,
+      is_active: is_active === 'true' || is_active === true,
+      sort_order: parseInt(sort_order, 10) || 0,
+      image: imageUrl
     };
-    
+
     console.log(`📦 Create data:`, JSON.stringify(createData, null, 2));
-    
+
     const subcategory = await prisma.subCategory.create({
       data: createData,
       include: {
@@ -706,7 +706,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
       where: { id: subcategory.id },
       select: { id: true, parent_id: true, name: true }
     });
-    
+
     console.log(`✅ Subcategory created: ${subcategory.name} (ID: ${subcategory.id})`);
     console.log(`   - parent_id from create response: ${subcategory.parent_id ?? 'null'}`);
     console.log(`   - parent_id from verification query: ${verifySubcategory?.parent_id ?? 'null'}`);
@@ -716,11 +716,11 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     // Use the verified parent_id to ensure accuracy
     const responseData = {
       ...subcategory,
-      parent_id: verifySubcategory?.parent_id !== undefined 
-        ? verifySubcategory.parent_id 
+      parent_id: verifySubcategory?.parent_id !== undefined
+        ? verifySubcategory.parent_id
         : (subcategory.parent_id !== undefined ? subcategory.parent_id : parentSubcategoryId)
     };
-    
+
     console.log(`   - parent_id in final response: ${responseData.parent_id ?? 'null'}`);
 
     return success(res, parentSubcategoryId ? "Nested subcategory created successfully" : "Subcategory created successfully", { subcategory: responseData }, 201);
@@ -729,7 +729,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     console.error('   - Error code:', createError.code);
     console.error('   - Error message:', createError.message);
     console.error('   - Create data that failed:', JSON.stringify(createData, null, 2));
-    
+
     // Check if it's a unique constraint error (P2002) - only for name, slug uniqueness is allowed
     if (createError.code === 'P2002') {
       const target = createError.meta?.target;
@@ -746,27 +746,27 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
         return error(res, `Database migration required: The slug unique constraint still exists. Please run the migration to remove it: DROP INDEX subcategories_slug_parent_id_key ON subcategories;`, 500);
       }
     }
-    
+
     // Check if it's a foreign key constraint error
     if (createError.code === 'P2003' || createError.message?.includes('Foreign key constraint')) {
       // Check if it's a parent_id constraint error
       if (createError.meta?.field_name === 'parent_id' || createError.message?.includes('parent_id')) {
         return error(res, `Parent subcategory with ID ${parentSubcategoryId} not found or invalid. Please ensure the parent subcategory exists.`, 400);
       }
-      
+
       // One more verification - maybe category was deleted between checks?
       const categoryCheck = await prisma.category.findUnique({
         where: { id: categoryId },
         select: { id: true }
       });
-      
+
       if (!categoryCheck) {
         return error(res, `Category with ID ${categoryId} was not found. The category may have been deleted.`, 404);
       }
-      
+
       return error(res, `Failed to create subcategory. Foreign key constraint violation. Please ensure category ID ${categoryId} exists and try again.`, 400);
     }
-    
+
     // Re-throw other errors to be handled by asyncHandler
     throw createError;
   }
@@ -793,13 +793,13 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
   if (name) {
     data.name = name;
     // Check if name is already in use under the same parent (if updating parent_id, check new parent)
-    const currentParentId = parent_id !== undefined ? (parent_id ? parseInt(parent_id) : null) : 
-                            (parent_subcategory_id !== undefined ? (parent_subcategory_id ? parseInt(parent_subcategory_id) : null) : subcategory.parent_id);
-    const existingByName = await prisma.subCategory.findFirst({ 
-      where: { 
+    const currentParentId = parent_id !== undefined ? (parent_id ? parseInt(parent_id) : null) :
+      (parent_subcategory_id !== undefined ? (parent_subcategory_id ? parseInt(parent_subcategory_id) : null) : subcategory.parent_id);
+    const existingByName = await prisma.subCategory.findFirst({
+      where: {
         name: name,
-        parent_id: currentParentId 
-      } 
+        parent_id: currentParentId
+      }
     });
     if (existingByName && existingByName.id !== parseInt(id)) {
       return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
@@ -814,7 +814,7 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
       if (!sanitizedSlug) {
         return error(res, "Invalid slug provided", 400);
       }
-      
+
       data.slug = sanitizedSlug;
     } else if (!newSlug || !newSlug.trim()) {
       // If slug is empty, generate from name
@@ -832,7 +832,7 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     if (isNaN(categoryId)) {
       return error(res, "Invalid Category ID", 400);
     }
-    
+
     // Verify category exists
     const category = await prisma.category.findUnique({
       where: { id: categoryId }
@@ -840,15 +840,15 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     if (!category) {
       return error(res, `Category with ID ${categoryId} not found`, 404);
     }
-    
+
     data.category_id = categoryId;
   }
 
   // Handle parent_id (for nested subcategories)
   if (parent_id !== undefined || parent_subcategory_id !== undefined) {
     // If explicitly set to null or empty string, remove parent (make it top-level)
-    if (parent_id === null || parent_id === '' || parent_id === 'null' || 
-        parent_subcategory_id === null || parent_subcategory_id === '' || parent_subcategory_id === 'null') {
+    if (parent_id === null || parent_id === '' || parent_id === 'null' ||
+      parent_subcategory_id === null || parent_subcategory_id === '' || parent_subcategory_id === 'null') {
       data.parent_id = null;
     } else {
       const parentSubcategoryId = parseInt(parent_id || parent_subcategory_id, 10);
@@ -982,8 +982,8 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     parent_id: updatedSubCategory.parent_id || null
   };
 
-  const message = updatedSubCategory.parent_id 
-    ? "Nested subcategory updated successfully" 
+  const message = updatedSubCategory.parent_id
+    ? "Nested subcategory updated successfully"
     : "Top-level subcategory updated successfully";
 
   return success(res, message, { subcategory: responseData });
@@ -1078,8 +1078,8 @@ exports.deleteSubCategory = asyncHandler(async (req, res) => {
     where: { id: parseInt(id) }
   });
 
-  const responseMessage = subcategory.parent_id 
-    ? "Nested subcategory deleted successfully" 
+  const responseMessage = subcategory.parent_id
+    ? "Nested subcategory deleted successfully"
     : "Top-level subcategory deleted successfully";
 
   return success(res, responseMessage, {
@@ -1451,36 +1451,71 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     ? sortOrder.toLowerCase()
     : 'desc';
 
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            slug: true
+  // Build include object - conditionally include sizeVolumeVariants if table exists
+  const includeObject = {
+    category: {
+      select: {
+        id: true,
+        name: true,
+        slug: true
+      }
+    },
+    subCategory: {
+      select: {
+        id: true,
+        name: true,
+        slug: true
+      }
+    }
+  };
+
+  // Try to include sizeVolumeVariants if the table exists (migration has been run)
+  // If table doesn't exist, Prisma will throw an error, so we'll catch it and retry without it
+  let products, total;
+  try {
+    [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          ...includeObject,
+          sizeVolumeVariants: {
+            orderBy: [
+              { sort_order: 'asc' },
+              { size_volume: 'asc' },
+              { pack_type: 'asc' }
+            ]
           }
         },
-        subCategory: {
-          select: {
-            id: true,
-            name: true,
-            slug: true
-          }
-        }
-      },
-      take: parseInt(limit),
-      skip: skip,
-      orderBy: { [validSortBy]: validSortOrder }
-    }),
-    prisma.product.count({ where })
-  ]);
+        take: parseInt(limit),
+        skip: skip,
+        orderBy: { [validSortBy]: validSortOrder }
+      }),
+      prisma.product.count({ where })
+    ]);
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate dev');
+      [products, total] = await Promise.all([
+        prisma.product.findMany({
+          where,
+          include: includeObject,
+          take: parseInt(limit),
+          skip: skip,
+          orderBy: { [validSortBy]: validSortOrder }
+        }),
+        prisma.product.count({ where })
+      ]);
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   // Helper function to get hex code from color name
   const getColorHexCode = (colorName) => {
     if (!colorName) return null;
-    
+
     const colorMap = {
       'black': '#000000',
       'white': '#FFFFFF',
@@ -1542,7 +1577,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     const colors = colorImages.map((colorData, index) => {
       const hexCode = colorData.hexCode || colorData.hex_code || (colorData.color ? getColorHexCode(colorData.color) : null) || '#000000';
       const colorName = colorData.name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
-      
+
       return {
         name: colorName,
         display_name: colorData.display_name || colorName,
@@ -1550,23 +1585,23 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         hexCode: hexCode, // Hex code for color picker
         price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
         images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
-        primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
-          ? colorData.images[0] 
+        primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0
+          ? colorData.images[0]
           : (colorData.images || null)
       };
     });
 
     // Determine default/selected color
     const defaultColor = colors.length > 0 ? colors[0].value : null;
-    const currentImages = defaultColor && colors.length > 0 
-      ? colors[0].images.length > 0 
-        ? colors[0].images 
+    const currentImages = defaultColor && colors.length > 0
+      ? colors[0].images.length > 0
+        ? colors[0].images
         : images
       : images;
 
     // Get first image URL for easy access in frontend
     const firstImage = currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null);
-    
+
     // Get current variant price (from selected color, or base product price)
     const currentVariantPrice = defaultColor && colors.length > 0 && colors[0].price !== null
       ? colors[0].price
@@ -1637,25 +1672,53 @@ exports.getEyeHygieneProducts = getAllProductsBySection('eye_hygiene');
 exports.getProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const product = await prisma.product.findUnique({
-    where: { id: parseInt(id) },
-    include: {
-      category: true,
-      subCategory: true,
-      variants: true,
-      frameSizes: true,
-      lensTypes: {
-        include: {
-          lensType: true
-        }
-      },
-      lensCoatings: {
-        include: {
-          lensCoating: true
-        }
+  // Build include object - conditionally include sizeVolumeVariants if table exists
+  const includeObject = {
+    category: true,
+    subCategory: true,
+    variants: true,
+    frameSizes: true,
+    lensTypes: {
+      include: {
+        lensType: true
+      }
+    },
+    lensCoatings: {
+      include: {
+        lensCoating: true
       }
     }
-  });
+  };
+
+  // Try to include sizeVolumeVariants if the table exists
+  let product;
+  try {
+    product = await prisma.product.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        ...includeObject,
+        sizeVolumeVariants: {
+          orderBy: [
+            { sort_order: 'asc' },
+            { size_volume: 'asc' },
+            { pack_type: 'asc' }
+          ]
+        }
+      }
+    });
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate dev');
+      product = await prisma.product.findUnique({
+        where: { id: parseInt(id) },
+        include: includeObject
+      });
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   if (!product) {
     return error(res, "Product not found", 404);
@@ -1714,10 +1777,10 @@ exports.createProduct = asyncHandler(async (req, res) => {
     // Format 1: JSON body with images_with_colors array: [{"hexCode": "#000000", "imageUrl": "url1"}, ...]
     // Format 2: Files with pattern: image_#000000, image_#FFD700 (each can have multiple files)
     // Format 3: images array + image_colors array (parallel arrays mapping images to colors)
-    
+
     let generalImages = [];
     const colorImagesMap = {};
-    
+
     // Handle general images (without color codes) - these go to main images array
     if (req.files && req.files.images) {
       try {
@@ -1740,7 +1803,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
         } else if (Array.isArray(req.body.images_with_colors)) {
           imagesWithColors = req.body.images_with_colors;
         }
-        
+
         // Group images by hex code
         imagesWithColors.forEach(item => {
           const hexCode = item.hexCode || item.hex_code;
@@ -1765,14 +1828,14 @@ exports.createProduct = asyncHandler(async (req, res) => {
     // Pattern: image_#000000, image_#FFD700 (each can have multiple files)
     if (req.files) {
       const colorImageUploadPromises = [];
-      
+
       Object.keys(req.files).forEach(key => {
         if (key.startsWith('image_#')) {
           const hexCode = key.replace('image_', '');
           // Validate hex code format
           if (hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
             const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
-            
+
             // Upload files in parallel for this color
             const uploadPromise = Promise.all(
               files.map(file => uploadToS3(file, `products/colors/${hexCode.replace('#', '')}`))
@@ -1789,12 +1852,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
             }).catch(err => {
               console.error(`Error uploading images for ${hexCode}:`, err);
             });
-            
+
             colorImageUploadPromises.push(uploadPromise);
           }
         }
       });
-      
+
       // Wait for all color image uploads to complete
       if (colorImageUploadPromises.length > 0) {
         await Promise.all(colorImageUploadPromises);
@@ -1810,11 +1873,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
         } else if (Array.isArray(req.body.image_colors)) {
           imageColors = req.body.image_colors;
         }
-        
+
         // Upload images first
         const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
         const uploadedUrls = await Promise.all(uploadPromises);
-        
+
         // Map each uploaded image to its color
         uploadedUrls.forEach((url, index) => {
           const hexCode = imageColors[index];
@@ -1833,7 +1896,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
             generalImages.push(url);
           }
         });
-        
+
         // Update general images if any were added
         if (generalImages.length > 0) {
           productData.images = generalImages;
@@ -1851,7 +1914,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
         price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
         images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
       }));
-      
+
       productData.color_images = JSON.stringify(colorImagesArray);
     }
 
@@ -1974,7 +2037,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
       if (subCategory.category_id !== productData.category_id) {
         return error(res, `SubCategory does not belong to the selected Category. Subcategory belongs to "${subCategory.category.name}" (ID: ${subCategory.category_id})`, 400);
       }
-      
+
       // Log if it's a nested subcategory
       if (subCategory.parent) {
         console.log(`✅ Using nested subcategory: ${subCategory.name} (parent: ${subCategory.parent.name})`);
@@ -2061,7 +2124,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
     // Normalize frame_material - handle array format from frontend, store as JSON string
     if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
       let frameMaterial = productData.frame_material;
-      
+
       // Handle JSON array string like "[\"acetate\"]" or "[\"acetate\", \"metal\"]"
       if (typeof frameMaterial === 'string' && frameMaterial.trim().startsWith('[')) {
         try {
@@ -2093,7 +2156,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
         // Single value - store as string
         productData.frame_material = String(frameMaterial).trim();
       }
-      
+
       // If empty after processing, set to null
       if (productData.frame_material === '') {
         productData.frame_material = null;
@@ -2179,6 +2242,20 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
+    // Handle size/volume variants
+    let sizeVolumeVariantsData = [];
+    if (productData.sizeVolumeVariants) {
+      try {
+        sizeVolumeVariantsData =
+          typeof productData.sizeVolumeVariants === "string"
+            ? JSON.parse(productData.sizeVolumeVariants)
+            : productData.sizeVolumeVariants;
+        delete productData.sizeVolumeVariants;
+      } catch (e) {
+        console.error("Error parsing sizeVolumeVariants:", e);
+      }
+    }
+
     // Clean productData - only include valid Prisma fields
     // List of valid Product model fields (excluding relations and auto-generated fields)
     const validProductFields = [
@@ -2231,7 +2308,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
         // Convert empty strings to null for optional fields
         if (optionalStringFields.includes(key) && productData[key] === '') {
           cleanedProductData[key] = null;
-        } 
+        }
         // Handle sub_category_id - convert empty string to null
         else if (key === 'sub_category_id' && (productData[key] === '' || productData[key] === 'null' || productData[key] === null)) {
           cleanedProductData[key] = null;
@@ -2332,71 +2409,76 @@ exports.createProduct = asyncHandler(async (req, res) => {
       color_images: colorImages
     };
 
-    // Create variants separately if any exist
-    if (variantsData && variantsData.length > 0) {
-      await prisma.productVariant.createMany({
-        data: variantsData.map((variant) => ({
-          ...variant,
+    // Create size/volume variants separately if any exist
+    if (sizeVolumeVariantsData && sizeVolumeVariantsData.length > 0) {
+      await prisma.productSizeVolume.createMany({
+        data: sizeVolumeVariantsData.map((variant) => ({
+          size_volume: variant.size_volume || variant.sizeVolume || '',
+          pack_type: variant.pack_type || variant.packType || null,
+          expiry_date: variant.expiry_date || variant.expiryDate ? new Date(variant.expiry_date || variant.expiryDate) : null,
+          price: parseFloat(variant.price || 0),
+          compare_at_price: variant.compare_at_price || variant.compareAtPrice ? parseFloat(variant.compare_at_price || variant.compareAtPrice) : null,
+          cost_price: variant.cost_price || variant.costPrice ? parseFloat(variant.cost_price || variant.costPrice) : null,
+          stock_quantity: parseInt(variant.stock_quantity || variant.stockQuantity || 0, 10),
+          stock_status: variant.stock_status || variant.stockStatus || 'in_stock',
+          sku: variant.sku || null,
+          is_active: variant.is_active !== undefined ? (variant.is_active === 'true' || variant.is_active === true) : true,
+          sort_order: parseInt(variant.sort_order || variant.sortOrder || 0, 10),
           product_id: product.id,
         })),
       });
+    }
 
-      // Fetch the product with variants to return
-      const productWithVariants = await prisma.product.findUnique({
+    // If there were variants of either type, re-fetch including them
+    if ((variantsData && variantsData.length > 0) || (sizeVolumeVariantsData && sizeVolumeVariantsData.length > 0)) {
+      const fullProduct = await prisma.product.findUnique({
         where: { id: product.id },
         include: {
           variants: true,
+          sizeVolumeVariants: true,
           category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
+            select: { id: true, name: true, slug: true }
           },
           subCategory: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
+            select: { id: true, name: true, slug: true }
           }
         },
       });
 
-      // Format images for product with variants
-      let variantImages = productWithVariants.images;
-      if (typeof variantImages === 'string') {
+      // Format images
+      let finalImages = fullProduct.images;
+      if (typeof finalImages === 'string') {
         try {
-          variantImages = JSON.parse(variantImages);
+          finalImages = JSON.parse(finalImages);
         } catch (e) {
-          variantImages = [];
+          finalImages = [];
         }
       }
-      if (!Array.isArray(variantImages)) {
-        variantImages = variantImages ? [variantImages] : [];
+      if (!Array.isArray(finalImages)) {
+        finalImages = finalImages ? [finalImages] : [];
       }
 
-      // Format color_images for product with variants
-      let variantColorImages = productWithVariants.color_images;
-      if (typeof variantColorImages === 'string') {
+      // Format color_images
+      let finalColorImages = fullProduct.color_images;
+      if (typeof finalColorImages === 'string') {
         try {
-          variantColorImages = JSON.parse(variantColorImages);
+          finalColorImages = JSON.parse(finalColorImages);
         } catch (e) {
-          variantColorImages = [];
+          finalColorImages = [];
         }
       }
-      if (!Array.isArray(variantColorImages)) {
-        variantColorImages = variantColorImages ? [variantColorImages] : [];
+      if (!Array.isArray(finalColorImages)) {
+        finalColorImages = finalColorImages ? [finalColorImages] : [];
       }
 
-      const formattedProductWithVariants = {
-        ...productWithVariants,
-        images: variantImages,
-        image: variantImages && variantImages.length > 0 ? variantImages[0] : null,
-        color_images: variantColorImages
+      const finalFormattedProduct = {
+        ...fullProduct,
+        images: finalImages,
+        image: finalImages && finalImages.length > 0 ? finalImages[0] : null,
+        color_images: finalColorImages
       };
 
-      return success(res, "Product created successfully", { product: formattedProductWithVariants }, 201);
+      return success(res, "Product created successfully", { product: finalFormattedProduct }, 201);
     }
 
     return success(res, "Product created successfully", { product: formattedProduct }, 201);
@@ -2423,14 +2505,14 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Handle images with color codes (same approach as create)
   let generalImages = [];
   const colorImagesMap = {};
-  
+
   // Parse existing color images
   if (product.color_images) {
     try {
       const existingColorImages = typeof product.color_images === 'string'
         ? JSON.parse(product.color_images)
         : (Array.isArray(product.color_images) ? product.color_images : []);
-      
+
       // Group existing by hex code
       existingColorImages.forEach(item => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
@@ -2502,7 +2584,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Delete images that were removed (exist in old list but not in new list)
   if (shouldUpdateImages && baseImages !== null) {
     const imagesToDelete = existingImages.filter(oldImage => !baseImages.includes(oldImage));
-    
+
     // If baseImages is empty array, all existing images should be deleted
     if (baseImages.length === 0 && existingImages.length > 0) {
       console.log(`🗑️  Clearing all images, deleting ${existingImages.length} image(s) from storage...`);
@@ -2517,7 +2599,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
             // For S3 URLs, extract key after domain
             key = imageUrl.split('.com/')[1];
           }
-          
+
           await deleteFromS3(key);
           console.log(`✅ Deleted image: ${key}`);
         } catch (err) {
@@ -2538,7 +2620,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
             // For S3 URLs, extract key after domain
             key = imageUrl.split('.com/')[1];
           }
-          
+
           await deleteFromS3(key);
           console.log(`✅ Deleted image: ${key}`);
         } catch (err) {
@@ -2563,7 +2645,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       } else if (Array.isArray(req.body.images_with_colors)) {
         imagesWithColors = req.body.images_with_colors;
       }
-      
+
       // Group images by hex code
       imagesWithColors.forEach(item => {
         const hexCode = item.hexCode || item.hex_code;
@@ -2588,14 +2670,14 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Pattern: image_#000000, image_#FFD700 (each can have multiple files)
   if (req.files) {
     const colorImageUploadPromises = [];
-    
+
     Object.keys(req.files).forEach(key => {
       if (key.startsWith('image_#')) {
         const hexCode = key.replace('image_', '');
         // Validate hex code format
         if (hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
           const files = Array.isArray(req.files[key]) ? req.files[key] : [req.files[key]];
-          
+
           // Upload files in parallel for this color
           const uploadPromise = Promise.all(
             files.map(file => uploadToS3(file, `products/colors/${hexCode.replace('#', '')}`))
@@ -2612,12 +2694,12 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           }).catch(err => {
             console.error(`Error uploading images for ${hexCode}:`, err);
           });
-          
+
           colorImageUploadPromises.push(uploadPromise);
         }
       }
     });
-    
+
     // Wait for all color image uploads to complete
     if (colorImageUploadPromises.length > 0) {
       await Promise.all(colorImageUploadPromises);
@@ -2633,11 +2715,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       } else if (Array.isArray(req.body.image_colors)) {
         imageColors = req.body.image_colors;
       }
-      
+
       // Upload images first
       const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
       const uploadedUrls = await Promise.all(uploadPromises);
-      
+
       // Map each uploaded image to its color
       uploadedUrls.forEach((url, index) => {
         const hexCode = imageColors[index];
@@ -2656,7 +2738,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           generalImages.push(url);
         }
       });
-      
+
       // Update general images if any were added
       if (generalImages.length > 0) {
         productData.images = generalImages;
@@ -2729,7 +2811,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       } else if (Array.isArray(req.body.color_images)) {
         colorImagesData = req.body.color_images;
       }
-      
+
       // REPLACE existing color images (don't merge)
       // Clear the map first if color_images is explicitly provided
       if (req.body.color_images !== null && req.body.color_images !== '' && req.body.color_images !== '[]') {
@@ -2745,7 +2827,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           }
         });
       }
-      
+
       // Add/update color images from the provided data
       colorImagesData.forEach(item => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
@@ -2828,7 +2910,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
           const existingImageUrls = existingColor.images ? (Array.isArray(existingColor.images) ? existingColor.images : [existingColor.images]) : [];
           const newImageSet = newColorImagesMap[hexCode] || new Set();
-          
+
           existingImageUrls.forEach(imageUrl => {
             if (!newImageSet.has(imageUrl)) {
               // This image was removed, mark it for deletion
@@ -2843,7 +2925,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     // Delete all marked color images
     if (colorImagesToDelete.length > 0) {
       console.log(`🗑️  Deleting ${colorImagesToDelete.length} removed color image(s) from storage...`);
-      const deletePromises = colorImagesToDelete.map(({ key, imageUrl }) => 
+      const deletePromises = colorImagesToDelete.map(({ key, imageUrl }) =>
         deleteFromS3(key)
           .then(() => {
             console.log(`✅ Deleted color image: ${key}`);
@@ -2864,7 +2946,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
       images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
     }));
-    
+
     productData.color_images = JSON.stringify(colorImagesArray);
   } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
     // Allow clearing color images - explicitly set to null when cleared
@@ -2970,7 +3052,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Normalize frame_material if provided - handle array format from frontend, store as JSON string
   if (productData.frame_material !== undefined && productData.frame_material !== null && productData.frame_material !== '') {
     let frameMaterial = productData.frame_material;
-    
+
     // Handle JSON array string like "[\"acetate\"]" or "[\"acetate\", \"metal\"]"
     if (typeof frameMaterial === 'string' && frameMaterial.trim().startsWith('[')) {
       try {
@@ -3000,7 +3082,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       // Single value - store as string
       productData.frame_material = String(frameMaterial).trim();
     }
-    
+
     // If empty after processing, set to null
     if (productData.frame_material === '') {
       productData.frame_material = null;
@@ -3041,7 +3123,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   // Determine the category ID that will be used (new category or existing)
   const finalCategoryId = productData.category_id || product.category_id;
-  
+
   // Validate sub_category_id if provided
   if (productData.sub_category_id !== undefined) {
     if (productData.sub_category_id === 'null' || productData.sub_category_id === null || productData.sub_category_id === '') {
@@ -3070,7 +3152,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       if (subCategory.category_id !== finalCategoryId) {
         return error(res, `SubCategory does not belong to the product's Category. Subcategory belongs to "${subCategory.category.name}" (ID: ${subCategory.category_id})`, 400);
       }
-      
+
       // Log if it's a nested subcategory
       if (subCategory.parent) {
         console.log(`✅ Updating product with nested subcategory: ${subCategory.name} (parent: ${subCategory.parent.name})`);
@@ -3142,8 +3224,34 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;
   }
 
+  // Handle variants
+  let variantsData = null;
+  if (req.body.variants !== undefined) {
+    try {
+      variantsData =
+        typeof req.body.variants === "string"
+          ? JSON.parse(req.body.variants)
+          : req.body.variants;
+    } catch (e) {
+      console.error("Error parsing variants:", e);
+    }
+  }
+
+  // Handle size/volume variants
+  let sizeVolumeVariantsData = null;
+  if (req.body.sizeVolumeVariants !== undefined) {
+    try {
+      sizeVolumeVariantsData =
+        typeof req.body.sizeVolumeVariants === "string"
+          ? JSON.parse(req.body.sizeVolumeVariants)
+          : req.body.sizeVolumeVariants;
+    } catch (e) {
+      console.error("Error parsing sizeVolumeVariants:", e);
+    }
+  }
+
   // Remove non-Prisma fields that might be in the request
-  const fieldsToRemove = ['replace_images', 'variants'];
+  const fieldsToRemove = ['replace_images', 'variants', 'sizeVolumeVariants'];
   fieldsToRemove.forEach(field => {
     delete productData[field];
   });
@@ -3200,7 +3308,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       // Convert empty strings to null for optional fields
       if (optionalStringFields.includes(key) && productData[key] === '') {
         cleanedProductData[key] = null;
-      } 
+      }
       // Handle images and color_images - ensure null is explicitly set when cleared
       else if ((key === 'images' || key === 'color_images') && (productData[key] === null || (Array.isArray(productData[key]) && productData[key].length === 0))) {
         cleanedProductData[key] = null;
@@ -3221,7 +3329,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   // Convert category_id and sub_category_id to Prisma relation syntax if they exist
   const updateData = { ...cleanedProductData };
-  
+
   // Handle category relation
   if (updateData.category_id !== undefined) {
     updateData.category = {
@@ -3229,7 +3337,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     };
     delete updateData.category_id;
   }
-  
+
   // Handle subCategory relation
   if (updateData.sub_category_id !== undefined) {
     if (updateData.sub_category_id === null || updateData.sub_category_id === 'null' || updateData.sub_category_id === '') {
@@ -3265,37 +3373,134 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   });
 
-  // Format images - parse JSON string to array for response
-  let images = updatedProduct.images;
-  if (typeof images === 'string') {
-    try {
-      images = JSON.parse(images);
-    } catch (e) {
-      images = [];
+  // Handle variants sync if provided
+  if (variantsData !== null) {
+    // Current approach: Delete and recreate variants for simplicity, or sync if IDs provided
+    // For now, let's do a simple sync if IDs are present
+    const existingVariants = await prisma.productVariant.findMany({
+      where: { product_id: updatedProduct.id }
+    });
+    const existingVariantIds = existingVariants.map(v => v.id);
+    const providedVariantIds = variantsData.filter(v => v.id).map(v => parseInt(v.id));
+
+    // Delete variants not in the provided list
+    const variantsToDelete = existingVariantIds.filter(vid => !providedVariantIds.includes(vid));
+    if (variantsToDelete.length > 0) {
+      await prisma.productVariant.deleteMany({
+        where: { id: { in: variantsToDelete } }
+      });
+    }
+
+    // Update or create variants
+    for (const variant of variantsData) {
+      if (variant.id) {
+        const { id: vid, ...vData } = variant;
+        await prisma.productVariant.update({
+          where: { id: parseInt(vid) },
+          data: { ...vData, product_id: updatedProduct.id }
+        });
+      } else {
+        await prisma.productVariant.create({
+          data: { ...variant, product_id: updatedProduct.id }
+        });
+      }
     }
   }
-  if (!Array.isArray(images)) {
-    images = images ? [images] : [];
+
+  // Handle size/volume variants sync if provided
+  if (sizeVolumeVariantsData !== null) {
+    const existingSvv = await prisma.productSizeVolume.findMany({
+      where: { product_id: updatedProduct.id }
+    });
+    const existingSvvIds = existingSvv.map(v => v.id);
+    const providedSvvIds = sizeVolumeVariantsData.filter(v => v.id).map(v => parseInt(v.id));
+
+    // Delete variants not in the provided list
+    const svvToDelete = existingSvvIds.filter(svvid => !providedSvvIds.includes(svvid));
+    if (svvToDelete.length > 0) {
+      await prisma.productSizeVolume.deleteMany({
+        where: { id: { in: svvToDelete } }
+      });
+    }
+
+    // Update or create variants
+    for (const variant of sizeVolumeVariantsData) {
+      const vData = {
+        size_volume: variant.size_volume || variant.sizeVolume || '',
+        pack_type: variant.pack_type !== undefined ? (variant.pack_type || variant.packType || null) : undefined,
+        expiry_date: variant.expiry_date || variant.expiryDate ? new Date(variant.expiry_date || variant.expiryDate) : (variant.expiry_date === null ? null : undefined),
+        price: variant.price !== undefined ? parseFloat(variant.price) : undefined,
+        compare_at_price: variant.compare_at_price !== undefined ? (variant.compare_at_price ? parseFloat(variant.compare_at_price) : null) : undefined,
+        cost_price: variant.cost_price !== undefined ? (variant.cost_price ? parseFloat(variant.cost_price) : null) : undefined,
+        stock_quantity: variant.stock_quantity !== undefined ? parseInt(variant.stock_quantity, 10) : undefined,
+        stock_status: variant.stock_status || variant.stockStatus || undefined,
+        sku: variant.sku !== undefined ? (variant.sku || null) : undefined,
+        is_active: variant.is_active !== undefined ? (variant.is_active === 'true' || variant.is_active === true) : undefined,
+        sort_order: variant.sort_order !== undefined ? parseInt(variant.sort_order, 10) : undefined,
+        product_id: updatedProduct.id
+      };
+
+      // Remove undefined fields
+      Object.keys(vData).forEach(key => vData[key] === undefined && delete vData[key]);
+
+      if (variant.id) {
+        await prisma.productSizeVolume.update({
+          where: { id: parseInt(variant.id) },
+          data: vData
+        });
+      } else {
+        await prisma.productSizeVolume.create({
+          data: vData
+        });
+      }
+    }
+  }
+
+  // Re-fetch product if variants were modified to include them in response
+  let finalProduct = updatedProduct;
+  if (variantsData !== null || sizeVolumeVariantsData !== null) {
+    finalProduct = await prisma.product.findUnique({
+      where: { id: updatedProduct.id },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        subCategory: { select: { id: true, name: true, slug: true } },
+        variants: true,
+        sizeVolumeVariants: true
+      }
+    });
+  }
+
+  // Format images - parse JSON string to array for response
+  let finalImages = finalProduct.images;
+  if (typeof finalImages === 'string') {
+    try {
+      finalImages = JSON.parse(finalImages);
+    } catch (e) {
+      finalImages = [];
+    }
+  }
+  if (!Array.isArray(finalImages)) {
+    finalImages = finalImages ? [finalImages] : [];
   }
 
   // Format color_images - parse JSON string to array for response
-  let colorImages = updatedProduct.color_images;
-  if (typeof colorImages === 'string') {
+  let finalColorImages = finalProduct.color_images;
+  if (typeof finalColorImages === 'string') {
     try {
-      colorImages = JSON.parse(colorImages);
+      finalColorImages = JSON.parse(finalColorImages);
     } catch (e) {
-      colorImages = [];
+      finalColorImages = [];
     }
   }
-  if (!Array.isArray(colorImages)) {
-    colorImages = colorImages ? [colorImages] : [];
+  if (!Array.isArray(finalColorImages)) {
+    finalColorImages = finalColorImages ? [finalColorImages] : [];
   }
 
   const formattedProduct = {
-    ...updatedProduct,
-    images,
-    image: images && images.length > 0 ? images[0] : null,
-    color_images: colorImages
+    ...finalProduct,
+    images: finalImages,
+    image: finalImages && finalImages.length > 0 ? finalImages[0] : null,
+    color_images: finalColorImages
   };
 
   return success(res, "Product updated successfully", {
@@ -3487,13 +3692,13 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
         prescription_data: item.prescription_data ? (typeof item.prescription_data === 'string' ? JSON.parse(item.prescription_data) : item.prescription_data) : null,
         treatment_ids: item.treatment_ids ? (typeof item.treatment_ids === 'string' ? JSON.parse(item.treatment_ids) : item.treatment_ids) : null
       };
-      
+
       // Add formatted contact lens details
-      const hasContactLensData = item.contact_lens_right_qty !== null || 
-                                  item.contact_lens_left_qty !== null ||
-                                  item.contact_lens_right_power !== null ||
-                                  item.contact_lens_left_power !== null;
-      
+      const hasContactLensData = item.contact_lens_right_qty !== null ||
+        item.contact_lens_left_qty !== null ||
+        item.contact_lens_right_power !== null ||
+        item.contact_lens_left_power !== null;
+
       if (hasContactLensData) {
         parsedItem.contact_lens_details = {
           right_eye: {
@@ -3518,7 +3723,7 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
       } else {
         parsedItem.contact_lens_details = null;
       }
-      
+
       return parsedItem;
     })
   };

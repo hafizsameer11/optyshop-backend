@@ -138,6 +138,7 @@ model Product {
   lensCoatings          ProductLensCoating[]
   lensTypes             ProductLensType[]
   variants              ProductVariant[]
+  sizeVolumeVariants    ProductSizeVolume[]
   category              Category                   @relation(fields: [category_id], references: [id])
   subCategory           SubCategory?               @relation(fields: [sub_category_id], references: [id])
   reviews               Review[]
@@ -654,6 +655,30 @@ model ProductVariant {
 
   @@index([product_id])
   @@map("product_variants")
+}
+
+model ProductSizeVolume {
+  id               Int         @id @default(autoincrement())
+  product_id       Int
+  size_volume      String      @db.VarChar(50)
+  pack_type        String?     @db.VarChar(50)
+  price            Decimal     @db.Decimal(10, 2)
+  compare_at_price Decimal?    @db.Decimal(10, 2)
+  cost_price       Decimal?    @db.Decimal(10, 2)
+  stock_quantity   Int         @default(0)
+  stock_status     StockStatus @default(in_stock)
+  sku              String?     @db.VarChar(100)
+  expiry_date      DateTime?
+  is_active        Boolean     @default(true)
+  sort_order       Int         @default(0)
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  product          Product     @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@index([is_active])
+  @@unique([product_id, size_volume, pack_type])
+  @@map("product_size_volumes")
 }
 
 model LensPackage {

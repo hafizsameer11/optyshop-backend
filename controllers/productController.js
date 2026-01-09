@@ -468,39 +468,74 @@ exports.getProducts = asyncHandler(async (req, res) => {
     where.is_featured = true;
   }
 
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: {
-        category: {
+  // Build include object - conditionally include sizeVolumeVariants if table exists
+  const includeObject = {
+    category: {
+      select: {
+        id: true,
+        name: true,
+        slug: true
+      }
+    },
+    subCategory: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        parent_id: true,
+        parent: {
           select: {
             id: true,
             name: true,
             slug: true
           }
-        },
-        subCategory: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            parent_id: true,
-            parent: {
-              select: {
-                id: true,
-                name: true,
-                slug: true
-              }
-            }
-          }
         }
-      },
-      take: parseInt(limit),
-      skip: parseInt(skip),
-      orderBy: { [sortBy]: sortOrder.toLowerCase() }
-    }),
-    prisma.product.count({ where })
-  ]);
+      }
+    }
+  };
+
+  // Try to include sizeVolumeVariants if the table exists (migration has been run)
+  let products, total;
+  try {
+    [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          ...includeObject,
+          sizeVolumeVariants: {
+            where: { is_active: true },
+            orderBy: [
+              { sort_order: 'asc' },
+              { size_volume: 'asc' },
+              { pack_type: 'asc' }
+            ]
+          }
+        },
+        take: parseInt(limit),
+        skip: parseInt(skip),
+        orderBy: { [sortBy]: sortOrder.toLowerCase() }
+      }),
+      prisma.product.count({ where })
+    ]);
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate dev');
+      [products, total] = await Promise.all([
+        prisma.product.findMany({
+          where,
+          include: includeObject,
+          take: parseInt(limit),
+          skip: parseInt(skip),
+          orderBy: { [sortBy]: sortOrder.toLowerCase() }
+        }),
+        prisma.product.count({ where })
+      ]);
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   // Format products with images and color_images
   const formattedProducts = products.map(product => {
@@ -574,94 +609,123 @@ exports.getEyeHygieneProducts = getProductsBySection('eye_hygiene');
 exports.getProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const product = await prisma.product.findUnique({
-    where: { id: parseInt(id) },
-    include: {
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          description: true
-        }
-      },
-      subCategory: {
-        select: {
-          id: true,
-          name: true,
-          slug: true
-        }
-      },
-      frameSizes: {
-        select: {
-          id: true,
-          lens_width: true,
-          bridge_width: true,
-          temple_length: true,
-          frame_width: true,
-          frame_height: true,
-          size_label: true
-        }
-      },
-      lensTypes: {
-        include: {
-          lensType: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              index: true,
-              thickness_factor: true,
-              price_adjustment: true
-            }
-          }
-        }
-      },
-      lensCoatings: {
-        include: {
-          lensCoating: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              type: true,
-              price_adjustment: true
-            }
-          }
-        }
-      },
-      contactLensConfigs: {
-        where: { is_active: true },
-        orderBy: [
-          { sort_order: 'asc' },
-          { display_name: 'asc' }
-        ],
-        select: {
-          id: true,
-          configuration_type: true,
-          display_name: true,
-          lens_type: true,
-          right_qty: true,
-          right_base_curve: true,
-          right_diameter: true,
-          right_power: true,
-          right_cylinder: true,
-          right_axis: true,
-          left_qty: true,
-          left_base_curve: true,
-          left_diameter: true,
-          left_power: true,
-          left_cylinder: true,
-          left_axis: true
-        }
-      },
-      reviews: {
-        where: { is_approved: true },
-        take: 10,
-        orderBy: { created_at: 'desc' }
+  // Build include object - conditionally include sizeVolumeVariants if table exists
+  const includeObject = {
+    category: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true
       }
+    },
+    subCategory: {
+      select: {
+        id: true,
+        name: true,
+        slug: true
+      }
+    },
+    frameSizes: {
+      select: {
+        id: true,
+        lens_width: true,
+        bridge_width: true,
+        temple_length: true,
+        frame_width: true,
+        frame_height: true,
+        size_label: true
+      }
+    },
+    lensTypes: {
+      include: {
+        lensType: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            index: true,
+            thickness_factor: true,
+            price_adjustment: true
+          }
+        }
+      }
+    },
+    lensCoatings: {
+      include: {
+        lensCoating: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            type: true,
+            price_adjustment: true
+          }
+        }
+      }
+    },
+    contactLensConfigs: {
+      where: { is_active: true },
+      orderBy: [
+        { sort_order: 'asc' },
+        { display_name: 'asc' }
+      ],
+      select: {
+        id: true,
+        configuration_type: true,
+        display_name: true,
+        lens_type: true,
+        right_qty: true,
+        right_base_curve: true,
+        right_diameter: true,
+        right_power: true,
+        right_cylinder: true,
+        right_axis: true,
+        left_qty: true,
+        left_base_curve: true,
+        left_diameter: true,
+        left_power: true,
+        left_cylinder: true,
+        left_axis: true
+      }
+    },
+    reviews: {
+      where: { is_approved: true },
+      take: 10,
+      orderBy: { created_at: 'desc' }
     }
-  });
+  };
+
+  // Try to include sizeVolumeVariants if the table exists
+  let product;
+  try {
+    product = await prisma.product.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        ...includeObject,
+        sizeVolumeVariants: {
+          where: { is_active: true },
+          orderBy: [
+            { sort_order: 'asc' },
+            { size_volume: 'asc' },
+            { pack_type: 'asc' }
+          ]
+        }
+      }
+    });
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate dev');
+      product = await prisma.product.findUnique({
+        where: { id: parseInt(id) },
+        include: includeObject
+      });
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   if (!product) {
     return error(res, 'Product not found', 404);
@@ -707,6 +771,8 @@ exports.getProduct = asyncHandler(async (req, res) => {
     transformedProduct.size_volume = product.size_volume || null;
     transformedProduct.pack_type = product.pack_type || null;
     transformedProduct.expiry_date = product.expiry_date || null;
+    // Include size/volume variants if they exist
+    transformedProduct.size_volume_variants = (product.sizeVolumeVariants && Array.isArray(product.sizeVolumeVariants)) ? product.sizeVolumeVariants : [];
   }
 
   // Add caching for single product (2 minutes) - product details change less frequently
@@ -719,94 +785,123 @@ exports.getProduct = asyncHandler(async (req, res) => {
 exports.getProductBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
-  const product = await prisma.product.findFirst({
-    where: { slug, is_active: true },
-    include: {
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          description: true
-        }
-      },
-      subCategory: {
-        select: {
-          id: true,
-          name: true,
-          slug: true
-        }
-      },
-      frameSizes: {
-        select: {
-          id: true,
-          lens_width: true,
-          bridge_width: true,
-          temple_length: true,
-          frame_width: true,
-          frame_height: true,
-          size_label: true
-        }
-      },
-      lensTypes: {
-        include: {
-          lensType: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              index: true,
-              thickness_factor: true,
-              price_adjustment: true
-            }
-          }
-        }
-      },
-      lensCoatings: {
-        include: {
-          lensCoating: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              type: true,
-              price_adjustment: true
-            }
-          }
-        }
-      },
-      contactLensConfigs: {
-        where: { is_active: true },
-        orderBy: [
-          { sort_order: 'asc' },
-          { display_name: 'asc' }
-        ],
-        select: {
-          id: true,
-          configuration_type: true,
-          display_name: true,
-          lens_type: true,
-          right_qty: true,
-          right_base_curve: true,
-          right_diameter: true,
-          right_power: true,
-          right_cylinder: true,
-          right_axis: true,
-          left_qty: true,
-          left_base_curve: true,
-          left_diameter: true,
-          left_power: true,
-          left_cylinder: true,
-          left_axis: true
-        }
-      },
-      reviews: {
-        where: { is_approved: true },
-        take: 10,
-        orderBy: { created_at: 'desc' }
+  // Build include object - conditionally include sizeVolumeVariants if table exists
+  const includeObject = {
+    category: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true
       }
+    },
+    subCategory: {
+      select: {
+        id: true,
+        name: true,
+        slug: true
+      }
+    },
+    frameSizes: {
+      select: {
+        id: true,
+        lens_width: true,
+        bridge_width: true,
+        temple_length: true,
+        frame_width: true,
+        frame_height: true,
+        size_label: true
+      }
+    },
+    lensTypes: {
+      include: {
+        lensType: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            index: true,
+            thickness_factor: true,
+            price_adjustment: true
+          }
+        }
+      }
+    },
+    lensCoatings: {
+      include: {
+        lensCoating: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            type: true,
+            price_adjustment: true
+          }
+        }
+      }
+    },
+    contactLensConfigs: {
+      where: { is_active: true },
+      orderBy: [
+        { sort_order: 'asc' },
+        { display_name: 'asc' }
+      ],
+      select: {
+        id: true,
+        configuration_type: true,
+        display_name: true,
+        lens_type: true,
+        right_qty: true,
+        right_base_curve: true,
+        right_diameter: true,
+        right_power: true,
+        right_cylinder: true,
+        right_axis: true,
+        left_qty: true,
+        left_base_curve: true,
+        left_diameter: true,
+        left_power: true,
+        left_cylinder: true,
+        left_axis: true
+      }
+    },
+    reviews: {
+      where: { is_approved: true },
+      take: 10,
+      orderBy: { created_at: 'desc' }
     }
-  });
+  };
+
+  // Try to include sizeVolumeVariants if the table exists
+  let product;
+  try {
+    product = await prisma.product.findFirst({
+      where: { slug, is_active: true },
+      include: {
+        ...includeObject,
+        sizeVolumeVariants: {
+          where: { is_active: true },
+          orderBy: [
+            { sort_order: 'asc' },
+            { size_volume: 'asc' },
+            { pack_type: 'asc' }
+          ]
+        }
+      }
+    });
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate dev');
+      product = await prisma.product.findFirst({
+        where: { slug, is_active: true },
+        include: includeObject
+      });
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   if (!product) {
     return error(res, 'Product not found', 404);
@@ -884,6 +979,8 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     transformedProduct.size_volume = product.size_volume || null;
     transformedProduct.pack_type = product.pack_type || null;
     transformedProduct.expiry_date = product.expiry_date || null;
+    // Include size/volume variants if they exist
+    transformedProduct.size_volume_variants = (product.sizeVolumeVariants && Array.isArray(product.sizeVolumeVariants)) ? product.sizeVolumeVariants : [];
   }
 
   // Add caching for single product by slug (2 minutes) - product details change less frequently
