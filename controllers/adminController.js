@@ -2046,7 +2046,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
 
     // Validate and normalize product_type enum
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'accessory'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
     if (productData.product_type !== undefined) {
       const productType = String(productData.product_type).toLowerCase().trim();
 
