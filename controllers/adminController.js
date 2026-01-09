@@ -3400,7 +3400,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   }
 
   const updatedProduct = await prisma.product.update({
-    where: { id: parseInt(id) },
+    where: { id: productId },
     data: updateData,
     include: {
       category: {
