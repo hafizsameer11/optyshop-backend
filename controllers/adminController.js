@@ -4599,3 +4599,344 @@ exports.bulkUploadProducts = asyncHandler(async (req, res) => {
       }
     });
 });
+
+// ==================== PRODUCT SIZE/VOLUME VARIANTS MANAGEMENT ====================
+
+// @desc    Get all size/volume variants for a product (Admin)
+// @route   GET /api/admin/products/:productId/size-volume-variants
+// @access  Private/Admin
+exports.getProductSizeVolumeVariants = asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+
+  // Validate product exists
+  const product = await prisma.product.findUnique({
+    where: { id: parseInt(productId) },
+    select: { id: true, name: true }
+  });
+
+  if (!product) {
+    return error(res, "Product not found", 404);
+  }
+
+  try {
+    const variants = await prisma.productSizeVolume.findMany({
+      where: { product_id: parseInt(productId) },
+      orderBy: [
+        { sort_order: 'asc' },
+        { size_volume: 'asc' },
+        { pack_type: 'asc' }
+      ]
+    });
+
+    return success(res, "Size/volume variants retrieved successfully", {
+      product_id: parseInt(productId),
+      variants
+    });
+  } catch (err) {
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      return error(res, "ProductSizeVolume table does not exist. Please run migration: npx prisma migrate dev", 503);
+    }
+    throw err;
+  }
+});
+
+// @desc    Get single size/volume variant (Admin)
+// @route   GET /api/admin/products/:productId/size-volume-variants/:variantId
+// @access  Private/Admin
+exports.getProductSizeVolumeVariant = asyncHandler(async (req, res) => {
+  const { productId, variantId } = req.params;
+
+  try {
+    const variant = await prisma.productSizeVolume.findFirst({
+      where: {
+        id: parseInt(variantId),
+        product_id: parseInt(productId)
+      }
+    });
+
+    if (!variant) {
+      return error(res, "Size/volume variant not found", 404);
+    }
+
+    return success(res, "Size/volume variant retrieved successfully", { variant });
+  } catch (err) {
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      return error(res, "ProductSizeVolume table does not exist. Please run migration: npx prisma migrate dev", 503);
+    }
+    throw err;
+  }
+});
+
+// @desc    Create size/volume variant for a product (Admin)
+// @route   POST /api/admin/products/:productId/size-volume-variants
+// @access  Private/Admin
+exports.createProductSizeVolumeVariant = asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+  const variantData = req.body;
+
+  // Validate product exists
+  const product = await prisma.product.findUnique({
+    where: { id: parseInt(productId) },
+    select: { id: true, name: true }
+  });
+
+  if (!product) {
+    return error(res, "Product not found", 404);
+  }
+
+  // Validate required fields
+  if (!variantData.size_volume && !variantData.sizeVolume) {
+    return error(res, "size_volume is required", 400);
+  }
+  if (variantData.price === undefined && variantData.price === null) {
+    return error(res, "price is required", 400);
+  }
+
+  try {
+    // Prepare variant data
+    const vData = {
+      product_id: parseInt(productId),
+      size_volume: variantData.size_volume || variantData.sizeVolume || '',
+      pack_type: variantData.pack_type || variantData.packType || null,
+      price: parseFloat(variantData.price),
+      compare_at_price: variantData.compare_at_price || variantData.compareAtPrice ? parseFloat(variantData.compare_at_price || variantData.compareAtPrice) : null,
+      cost_price: variantData.cost_price || variantData.costPrice ? parseFloat(variantData.cost_price || variantData.costPrice) : null,
+      stock_quantity: parseInt(variantData.stock_quantity || variantData.stockQuantity || 0, 10),
+      stock_status: variantData.stock_status || variantData.stockStatus || 'in_stock',
+      sku: variantData.sku || null,
+      is_active: variantData.is_active !== undefined ? (variantData.is_active === 'true' || variantData.is_active === true) : true,
+      sort_order: parseInt(variantData.sort_order || variantData.sortOrder || 0, 10),
+      expiry_date: variantData.expiry_date || variantData.expiryDate ? new Date(variantData.expiry_date || variantData.expiryDate) : null
+    };
+
+    // Validate stock_status
+    const validStockStatuses = ['in_stock', 'out_of_stock', 'backorder'];
+    if (!validStockStatuses.includes(vData.stock_status)) {
+      return error(res, `Invalid stock_status. Valid values: ${validStockStatuses.join(', ')}`, 400);
+    }
+
+    const variant = await prisma.productSizeVolume.create({
+      data: vData
+    });
+
+    return success(res, "Size/volume variant created successfully", { variant }, 201);
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return error(res, "A variant with this size_volume and pack_type already exists for this product", 409);
+    }
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      return error(res, "ProductSizeVolume table does not exist. Please run migration: npx prisma migrate dev", 503);
+    }
+    throw err;
+  }
+});
+
+// @desc    Update size/volume variant (Admin)
+// @route   PUT /api/admin/products/:productId/size-volume-variants/:variantId
+// @access  Private/Admin
+exports.updateProductSizeVolumeVariant = asyncHandler(async (req, res) => {
+  const { productId, variantId } = req.params;
+  const variantData = req.body;
+
+  try {
+    // Verify variant exists and belongs to product
+    const existingVariant = await prisma.productSizeVolume.findFirst({
+      where: {
+        id: parseInt(variantId),
+        product_id: parseInt(productId)
+      }
+    });
+
+    if (!existingVariant) {
+      return error(res, "Size/volume variant not found", 404);
+    }
+
+    // Prepare update data
+    const vData = {};
+    if (variantData.size_volume !== undefined || variantData.sizeVolume !== undefined) {
+      vData.size_volume = variantData.size_volume || variantData.sizeVolume || '';
+    }
+    if (variantData.pack_type !== undefined || variantData.packType !== undefined) {
+      vData.pack_type = variantData.pack_type !== null ? (variantData.pack_type || variantData.packType || null) : null;
+    }
+    if (variantData.price !== undefined) {
+      vData.price = parseFloat(variantData.price);
+    }
+    if (variantData.compare_at_price !== undefined || variantData.compareAtPrice !== undefined) {
+      vData.compare_at_price = variantData.compare_at_price !== null ? parseFloat(variantData.compare_at_price || variantData.compareAtPrice) : null;
+    }
+    if (variantData.cost_price !== undefined || variantData.costPrice !== undefined) {
+      vData.cost_price = variantData.cost_price !== null ? parseFloat(variantData.cost_price || variantData.costPrice) : null;
+    }
+    if (variantData.stock_quantity !== undefined || variantData.stockQuantity !== undefined) {
+      vData.stock_quantity = parseInt(variantData.stock_quantity || variantData.stockQuantity || 0, 10);
+    }
+    if (variantData.stock_status !== undefined || variantData.stockStatus !== undefined) {
+      const stockStatus = variantData.stock_status || variantData.stockStatus;
+      const validStockStatuses = ['in_stock', 'out_of_stock', 'backorder'];
+      if (!validStockStatuses.includes(stockStatus)) {
+        return error(res, `Invalid stock_status. Valid values: ${validStockStatuses.join(', ')}`, 400);
+      }
+      vData.stock_status = stockStatus;
+    }
+    if (variantData.sku !== undefined) {
+      vData.sku = variantData.sku || null;
+    }
+    if (variantData.is_active !== undefined) {
+      vData.is_active = variantData.is_active === 'true' || variantData.is_active === true || variantData.is_active === 1;
+    }
+    if (variantData.sort_order !== undefined || variantData.sortOrder !== undefined) {
+      vData.sort_order = parseInt(variantData.sort_order || variantData.sortOrder || 0, 10);
+    }
+    if (variantData.expiry_date !== undefined || variantData.expiryDate !== undefined) {
+      const expiryDate = variantData.expiry_date || variantData.expiryDate;
+      vData.expiry_date = expiryDate ? (expiryDate === 'null' || expiryDate === null ? null : new Date(expiryDate)) : null;
+    }
+
+    const variant = await prisma.productSizeVolume.update({
+      where: { id: parseInt(variantId) },
+      data: vData
+    });
+
+    return success(res, "Size/volume variant updated successfully", { variant });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return error(res, "Size/volume variant not found", 404);
+    }
+    if (err.code === 'P2002') {
+      return error(res, "A variant with this size_volume and pack_type already exists for this product", 409);
+    }
+    if (err.code === 'P2001' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      return error(res, "ProductSizeVolume table does not exist. Please run migration: npx prisma migrate dev", 503);
+    }
+    throw err;
+  }
+});
+
+// @desc    Delete size/volume variant (Admin)
+// @route   DELETE /api/admin/products/:productId/size-volume-variants/:variantId
+// @access  Private/Admin
+exports.deleteProductSizeVolumeVariant = asyncHandler(async (req, res) => {
+  const { productId, variantId } = req.params;
+
+  try {
+    // Verify variant exists and belongs to product
+    const variant = await prisma.productSizeVolume.findFirst({
+      where: {
+        id: parseInt(variantId),
+        product_id: parseInt(productId)
+      }
+    });
+
+    if (!variant) {
+      return error(res, "Size/volume variant not found", 404);
+    }
+
+    await prisma.productSizeVolume.delete({
+      where: { id: parseInt(variantId) }
+    });
+
+    return success(res, "Size/volume variant deleted successfully");
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return error(res, "Size/volume variant not found", 404);
+    }
+    if (err.code === 'P2001' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      return error(res, "ProductSizeVolume table does not exist. Please run migration: npx prisma migrate dev", 503);
+    }
+    throw err;
+  }
+});
+
+// @desc    Bulk update size/volume variants (Admin) - replaces all variants for a product
+// @route   PUT /api/admin/products/:productId/size-volume-variants/bulk
+// @access  Private/Admin
+exports.bulkUpdateProductSizeVolumeVariants = asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+  const { variants } = req.body;
+
+  // Validate product exists
+  const product = await prisma.product.findUnique({
+    where: { id: parseInt(productId) },
+    select: { id: true, name: true }
+  });
+
+  if (!product) {
+    return error(res, "Product not found", 404);
+  }
+
+  if (!Array.isArray(variants)) {
+    return error(res, "variants must be an array", 400);
+  }
+
+  try {
+    // Get existing variants
+    const existingVariants = await prisma.productSizeVolume.findMany({
+      where: { product_id: parseInt(productId) }
+    });
+
+    const existingIds = existingVariants.map(v => v.id);
+    const providedIds = variants.filter(v => v.id).map(v => parseInt(v.id));
+
+    // Delete variants not in the provided list
+    const idsToDelete = existingIds.filter(id => !providedIds.includes(id));
+    if (idsToDelete.length > 0) {
+      await prisma.productSizeVolume.deleteMany({
+        where: { id: { in: idsToDelete } }
+      });
+    }
+
+    // Update or create variants
+    const updatedVariants = [];
+    for (const variant of variants) {
+      const vData = {
+        product_id: parseInt(productId),
+        size_volume: variant.size_volume || variant.sizeVolume || '',
+        pack_type: variant.pack_type || variant.packType || null,
+        price: parseFloat(variant.price || 0),
+        compare_at_price: variant.compare_at_price || variant.compareAtPrice ? parseFloat(variant.compare_at_price || variant.compareAtPrice) : null,
+        cost_price: variant.cost_price || variant.costPrice ? parseFloat(variant.cost_price || variant.costPrice) : null,
+        stock_quantity: parseInt(variant.stock_quantity || variant.stockQuantity || 0, 10),
+        stock_status: variant.stock_status || variant.stockStatus || 'in_stock',
+        sku: variant.sku || null,
+        is_active: variant.is_active !== undefined ? (variant.is_active === 'true' || variant.is_active === true) : true,
+        sort_order: parseInt(variant.sort_order || variant.sortOrder || 0, 10),
+        expiry_date: variant.expiry_date || variant.expiryDate ? new Date(variant.expiry_date || variant.expiryDate) : null
+      };
+
+      let variantResult;
+      if (variant.id) {
+        variantResult = await prisma.productSizeVolume.update({
+          where: { id: parseInt(variant.id) },
+          data: vData
+        });
+      } else {
+        variantResult = await prisma.productSizeVolume.create({
+          data: vData
+        });
+      }
+      updatedVariants.push(variantResult);
+    }
+
+    // Sort variants by sort_order, size_volume, pack_type
+    updatedVariants.sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      if (a.size_volume !== b.size_volume) return a.size_volume.localeCompare(b.size_volume);
+      if (a.pack_type && b.pack_type) return a.pack_type.localeCompare(b.pack_type);
+      return 0;
+    });
+
+    return success(res, "Size/volume variants updated successfully", {
+      product_id: parseInt(productId),
+      variants: updatedVariants
+    });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return error(res, "A variant with duplicate size_volume and pack_type exists", 409);
+    }
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      return error(res, "ProductSizeVolume table does not exist. Please run migration: npx prisma migrate dev", 503);
+    }
+    throw err;
+  }
+});

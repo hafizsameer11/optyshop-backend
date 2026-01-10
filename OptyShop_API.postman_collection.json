@@ -3748,6 +3748,24 @@
                       "value": "[{\"size_volume\": \"5ml\", \"pack_type\": \"Single\", \"price\": 8.00, \"stock_quantity\": 50, \"stock_status\": \"in_stock\", \"sku\": \"EYE-001-5ML\", \"is_active\": true, \"sort_order\": 1}, {\"size_volume\": \"10ml\", \"pack_type\": \"Pack of 2\", \"price\": 25.00, \"stock_quantity\": 30, \"stock_status\": \"in_stock\", \"sku\": \"EYE-001-10ML-2PK\", \"is_active\": true, \"sort_order\": 2}]",
                       "type": "text",
                       "description": "Optional: JSON array of size/volume variants for Eye Hygiene products. Each variant can have: size_volume (required, e.g., \"5ml\", \"10ml\"), pack_type (optional, e.g., \"Single\", \"Pack of 2\"), price (required), compare_at_price (optional), cost_price (optional), stock_quantity (required), stock_status (optional, default: \"in_stock\"), sku (optional), expiry_date (optional, ISO 8601 format), is_active (optional, default: true), sort_order (optional, default: 0). Example: [{\"size_volume\": \"5ml\", \"pack_type\": \"Single\", \"price\": 8.00, \"stock_quantity\": 50}]"
+                    },
+                    {
+                      "key": "meta_title",
+                      "value": "SEO Title for Product",
+                      "type": "text",
+                      "description": "Optional: SEO meta title (max 255 characters). Used for search engine optimization."
+                    },
+                    {
+                      "key": "meta_description",
+                      "value": "SEO description for the product",
+                      "type": "text",
+                      "description": "Optional: SEO meta description. Used for search engine optimization."
+                    },
+                    {
+                      "key": "meta_keywords",
+                      "value": "keyword1, keyword2, keyword3",
+                      "type": "text",
+                      "description": "Optional: SEO meta keywords (comma-separated, max 255 characters). Used for search engine optimization."
                     }
                   ]
                 },
@@ -3894,6 +3912,24 @@
                       "value": "",
                       "type": "text",
                       "description": "Optional: JSON array of size/volume variants for Eye Hygiene products. ⚠️ REPLACES all existing variants (does NOT merge). Send complete list of variants that should remain. Variants NOT in this list will be DELETED. To update existing variant, include its \"id\". To create new variant, omit \"id\". To clear all: \"[]\" or null. Example: [{\"id\": 1, \"size_volume\": \"5ml\", \"pack_type\": \"Single\", \"price\": 9.00, \"stock_quantity\": 60}, {\"size_volume\": \"30ml\", \"pack_type\": \"Single\", \"price\": 20.00, \"stock_quantity\": 40}]"
+                    },
+                    {
+                      "key": "meta_title",
+                      "value": "Updated SEO Title",
+                      "type": "text",
+                      "description": "Optional: SEO meta title (max 255 characters). Used for search engine optimization."
+                    },
+                    {
+                      "key": "meta_description",
+                      "value": "Updated SEO description",
+                      "type": "text",
+                      "description": "Optional: SEO meta description. Used for search engine optimization."
+                    },
+                    {
+                      "key": "meta_keywords",
+                      "value": "updated, keywords, seo",
+                      "type": "text",
+                      "description": "Optional: SEO meta keywords (comma-separated, max 255 characters). Used for search engine optimization."
                     }
                   ]
                 },
@@ -4457,6 +4493,190 @@
                   ]
                 },
                 "description": "Get single product by ID (admin view - includes inactive products).\n\n**Response includes:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Variant name (e.g., \"Black Classic\", \"Gold Premium\")\n  - `display_name`: Display name shown to customers (e.g., \"Black Classic Premium\")\n  - `price`: Variant-specific price (null if using base product price)\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display\n- `selectedColor`: Default selected color value (first color or null)\n- `currentVariantPrice`: Current variant price (or base product price if variant has no price)\n- All product fields including variants, frameSizes, lensTypes, lensCoatings\n- `is_active`, `is_featured` status fields\n\n**Frontend can use `colors` array to display color swatches and switch images dynamically.**"
+              }
+            },
+            {
+              "name": "Get All Size/Volume Variants for Product",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/size-volume-variants",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "size-volume-variants"
+                  ]
+                },
+                "description": "Get all size/volume variants for a specific product. Admin only.\n\n**Response includes:**\n- `product_id`: Product ID\n- `variants`: Array of size/volume variants, each with:\n  - `id`: Variant ID\n  - `size_volume`: Size/volume (e.g., \"5ml\", \"10ml\")\n  - `pack_type`: Pack type (e.g., \"Single\", \"Pack of 2\")\n  - `price`: Variant price\n  - `compare_at_price`: Compare at price\n  - `cost_price`: Cost price\n  - `stock_quantity`: Stock quantity\n  - `stock_status`: Stock status (in_stock, out_of_stock, backorder)\n  - `sku`: Variant SKU\n  - `expiry_date`: Expiry date\n  - `is_active`: Active status\n  - `sort_order`: Sort order\n\n**Variants are sorted by:** sort_order (asc), size_volume (asc), pack_type (asc)"
+              }
+            },
+            {
+              "name": "Get Single Size/Volume Variant",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/size-volume-variants/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "size-volume-variants",
+                    "1"
+                  ]
+                },
+                "description": "Get a single size/volume variant by ID. Admin only.\n\n**Response includes:**\n- Complete variant details including all fields"
+              }
+            },
+            {
+              "name": "Create Size/Volume Variant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"size_volume\": \"5ml\",\n  \"pack_type\": \"Single\",\n  \"price\": 8.00,\n  \"compare_at_price\": 10.00,\n  \"cost_price\": 5.00,\n  \"stock_quantity\": 50,\n  \"stock_status\": \"in_stock\",\n  \"sku\": \"EYE-001-5ML\",\n  \"expiry_date\": \"2025-12-31\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/size-volume-variants",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "size-volume-variants"
+                  ]
+                },
+                "description": "Create a new size/volume variant for a product. Admin only.\n\n**Required Fields:**\n- `size_volume`: Size/volume (e.g., \"5ml\", \"10ml\", \"30ml\")\n- `price`: Price for this variant\n\n**Optional Fields:**\n- `pack_type`: Pack type (e.g., \"Single\", \"Pack of 2\")\n- `compare_at_price`: Compare at price\n- `cost_price`: Cost price\n- `stock_quantity`: Stock quantity (default: 0)\n- `stock_status`: in_stock, out_of_stock, backorder (default: in_stock)\n- `sku`: Variant SKU\n- `expiry_date`: Expiry date (ISO 8601 format)\n- `is_active`: Active status (default: true)\n- `sort_order`: Sort order (default: 0)\n\n**Important:**\n- Each product can only have one variant per unique combination of `size_volume` and `pack_type`\n- Returns 409 Conflict if duplicate variant exists"
+              }
+            },
+            {
+              "name": "Update Size/Volume Variant",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"size_volume\": \"5ml\",\n  \"pack_type\": \"Single\",\n  \"price\": 9.00,\n  \"stock_quantity\": 60,\n  \"stock_status\": \"in_stock\",\n  \"is_active\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/size-volume-variants/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "size-volume-variants",
+                    "1"
+                  ]
+                },
+                "description": "Update an existing size/volume variant. Admin only.\n\n**All fields are optional** - only send fields you want to update.\n\n**Fields:**\n- `size_volume`: Size/volume\n- `pack_type`: Pack type (can be null)\n- `price`: Price\n- `compare_at_price`: Compare at price (can be null)\n- `cost_price`: Cost price (can be null)\n- `stock_quantity`: Stock quantity\n- `stock_status`: in_stock, out_of_stock, backorder\n- `sku`: Variant SKU (can be null)\n- `expiry_date`: Expiry date (ISO 8601 format, can be null)\n- `is_active`: Active status\n- `sort_order`: Sort order\n\n**Important:**\n- Returns 409 Conflict if update would create a duplicate variant (same size_volume + pack_type combination)"
+              }
+            },
+            {
+              "name": "Delete Size/Volume Variant",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/size-volume-variants/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "size-volume-variants",
+                    "1"
+                  ]
+                },
+                "description": "Delete a size/volume variant. Admin only.\n\n**Response:**\n- Success message confirming deletion"
+              }
+            },
+            {
+              "name": "Bulk Update Size/Volume Variants",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"variants\": [\n    {\n      \"id\": 1,\n      \"size_volume\": \"5ml\",\n      \"pack_type\": \"Single\",\n      \"price\": 9.00,\n      \"stock_quantity\": 60\n    },\n    {\n      \"id\": 2,\n      \"size_volume\": \"10ml\",\n      \"pack_type\": \"Single\",\n      \"price\": 14.00,\n      \"stock_quantity\": 75\n    },\n    {\n      \"size_volume\": \"30ml\",\n      \"pack_type\": \"Single\",\n      \"price\": 20.00,\n      \"stock_quantity\": 40,\n      \"stock_status\": \"in_stock\",\n      \"is_active\": true,\n      \"sort_order\": 3\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/size-volume-variants/bulk",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "size-volume-variants",
+                    "bulk"
+                  ]
+                },
+                "description": "Bulk update size/volume variants for a product. **Replaces all existing variants**. Admin only.\n\n**How it works:**\n- Variants with `id` will be updated\n- Variants without `id` will be created\n- Variants NOT included in the array will be deleted\n\n**Request Body:**\n```json\n{\n  \"variants\": [\n    {\n      \"id\": 1,  // Update existing variant\n      \"size_volume\": \"5ml\",\n      \"price\": 9.00\n    },\n    {\n      // Create new variant (no id)\n      \"size_volume\": \"30ml\",\n      \"pack_type\": \"Single\",\n      \"price\": 20.00,\n      \"stock_quantity\": 40\n    }\n    // Variant with id=2 not included = will be deleted\n  ]\n}\n```\n\n**Response includes:**\n- All variants after update (updated and newly created)\n- Sorted by sort_order, size_volume, pack_type\n\n**Important:**\n- This endpoint **REPLACES** all variants - send the complete list you want to keep\n- To clear all variants, send empty array: `{\"variants\": []}`"
               }
             },
             {
