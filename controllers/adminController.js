@@ -2434,20 +2434,28 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (sizeVolumeVariantsData && sizeVolumeVariantsData.length > 0) {
       try {
         await prisma.productSizeVolume.createMany({
-          data: sizeVolumeVariantsData.map((variant) => ({
-            size_volume: variant.size_volume || variant.sizeVolume || '',
-            pack_type: variant.pack_type || variant.packType || null,
-            expiry_date: variant.expiry_date || variant.expiryDate ? new Date(variant.expiry_date || variant.expiryDate) : null,
-            price: parseFloat(variant.price || 0),
-            compare_at_price: variant.compare_at_price || variant.compareAtPrice ? parseFloat(variant.compare_at_price || variant.compareAtPrice) : null,
-            cost_price: variant.cost_price || variant.costPrice ? parseFloat(variant.cost_price || variant.costPrice) : null,
-            stock_quantity: parseInt(variant.stock_quantity || variant.stockQuantity || 0, 10),
-            stock_status: variant.stock_status || variant.stockStatus || 'in_stock',
-            sku: variant.sku || null,
-            is_active: variant.is_active !== undefined ? (variant.is_active === 'true' || variant.is_active === true) : true,
-            sort_order: parseInt(variant.sort_order || variant.sortOrder || 0, 10),
-            product_id: product.id,
-          })),
+          data: sizeVolumeVariantsData.map((variant) => {
+            // Handle is_active - convert string/boolean to boolean, default to true if not provided
+            let isActive = true; // Default to true
+            if (variant.is_active !== undefined && variant.is_active !== null) {
+              isActive = variant.is_active === 'true' || variant.is_active === true || variant.is_active === '1' || variant.is_active === 1;
+            }
+
+            return {
+              size_volume: variant.size_volume || variant.sizeVolume || '',
+              pack_type: variant.pack_type || variant.packType || null,
+              expiry_date: variant.expiry_date || variant.expiryDate ? new Date(variant.expiry_date || variant.expiryDate) : null,
+              price: parseFloat(variant.price || 0),
+              compare_at_price: variant.compare_at_price || variant.compareAtPrice ? parseFloat(variant.compare_at_price || variant.compareAtPrice) : null,
+              cost_price: variant.cost_price || variant.costPrice ? parseFloat(variant.cost_price || variant.costPrice) : null,
+              stock_quantity: parseInt(variant.stock_quantity || variant.stockQuantity || 0, 10),
+              stock_status: variant.stock_status || variant.stockStatus || 'in_stock',
+              sku: variant.sku || null,
+              is_active: isActive, // Always set is_active (defaults to true)
+              sort_order: parseInt(variant.sort_order || variant.sortOrder || 0, 10),
+              product_id: product.id,
+            };
+          }),
         });
       } catch (err) {
         // If table doesn't exist, log warning but don't fail product creation
@@ -3520,6 +3528,12 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
         // Update or create variants
         for (const variant of sizeVolumeVariantsData) {
+          // Handle is_active - convert string/boolean to boolean, default to true if not provided
+          let isActive = true; // Default to true
+          if (variant.is_active !== undefined && variant.is_active !== null) {
+            isActive = variant.is_active === 'true' || variant.is_active === true || variant.is_active === '1' || variant.is_active === 1;
+          }
+
           const vData = {
             size_volume: variant.size_volume || variant.sizeVolume || '',
             pack_type: variant.pack_type !== undefined ? (variant.pack_type || variant.packType || null) : undefined,
@@ -3530,29 +3544,78 @@ exports.updateProduct = asyncHandler(async (req, res) => {
             stock_quantity: variant.stock_quantity !== undefined ? parseInt(variant.stock_quantity, 10) : undefined,
             stock_status: variant.stock_status || variant.stockStatus || undefined,
             sku: variant.sku !== undefined ? (variant.sku || null) : undefined,
-            is_active: variant.is_active !== undefined ? (variant.is_active === 'true' || variant.is_active === true) : undefined,
+            is_active: isActive, // Always set is_active (defaults to true)
             sort_order: variant.sort_order !== undefined ? parseInt(variant.sort_order, 10) : undefined,
             product_id: updatedProduct.id
           };
 
-          // Remove undefined fields
-          Object.keys(vData).forEach(key => vData[key] === undefined && delete vData[key]);
+          // Remove undefined fields (but keep is_active since it's always defined now)
+          Object.keys(vData).forEach(key => {
+            if (key !== 'is_active' && vData[key] === undefined) {
+              delete vData[key];
+            }
+          });
 
           try {
             if (variant.id) {
+              // Update existing variant
               await prisma.productSizeVolume.update({
                 where: { id: parseInt(variant.id) },
                 data: vData
               });
             } else {
-              await prisma.productSizeVolume.create({
-                data: vData
-              });
+              // Check if variant with same size_volume and pack_type already exists
+              try {
+                const existingVariant = await prisma.productSizeVolume.findFirst({
+                  where: {
+                    product_id: updatedProduct.id,
+                    size_volume: vData.size_volume,
+                    pack_type: vData.pack_type || null
+                  }
+                });
+
+                if (existingVariant) {
+                  // Update existing variant instead of creating duplicate
+                  console.log(`🔄 Variant with size_volume="${vData.size_volume}" and pack_type="${vData.pack_type || null}" already exists. Updating instead of creating.`);
+                  await prisma.productSizeVolume.update({
+                    where: { id: existingVariant.id },
+                    data: vData
+                  });
+                } else {
+                  // Create new variant
+                  await prisma.productSizeVolume.create({
+                    data: vData
+                  });
+                }
+              } catch (createErr) {
+                // If it's a unique constraint error, try to find and update the existing variant
+                if (createErr.code === 'P2002') {
+                  const existingVariant = await prisma.productSizeVolume.findFirst({
+                    where: {
+                      product_id: updatedProduct.id,
+                      size_volume: vData.size_volume,
+                      pack_type: vData.pack_type || null
+                    }
+                  });
+                  if (existingVariant) {
+                    console.log(`🔄 Unique constraint violation: Variant already exists. Updating existing variant ID ${existingVariant.id}.`);
+                    await prisma.productSizeVolume.update({
+                      where: { id: existingVariant.id },
+                      data: vData
+                    });
+                  } else {
+                    throw createErr;
+                  }
+                } else {
+                  throw createErr;
+                }
+              }
             }
           } catch (err) {
             if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
               console.warn('⚠️  ProductSizeVolume table does not exist. Skipping variant create/update. Run migration: npx prisma migrate deploy');
             } else {
+              console.error(`❌ Error creating/updating variant:`, err);
               throw err;
             }
           }
