@@ -11,6 +11,12 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  getAllSizeVolumeVariants,
+  getSizeVolumeVariant,
+  createSizeVolumeVariant,
+  updateSizeVolumeVariant,
+  deleteSizeVolumeVariant,
+  bulkUpdateSizeVolumeVariants,
   getAllUsers,
   createUser,
   updateUser,
@@ -224,6 +230,14 @@ router.put('/products/:id',
 );
 router.delete('/products/:id', deleteProduct);
 router.post('/products/bulk-upload', uploadSingle('file'), bulkUploadProducts);
+
+// Size/Volume Variants (for Eye Hygiene products)
+router.get('/products/:productId/size-volume-variants', getAllSizeVolumeVariants);
+router.get('/products/:productId/size-volume-variants/:variantId', getSizeVolumeVariant);
+router.post('/products/:productId/size-volume-variants', createSizeVolumeVariant);
+router.put('/products/:productId/size-volume-variants/:variantId', updateSizeVolumeVariant);
+router.delete('/products/:productId/size-volume-variants/:variantId', deleteSizeVolumeVariant);
+router.put('/products/:productId/size-volume-variants/bulk', bulkUpdateSizeVolumeVariants);
 
 // Frame Sizes
 router.get('/frame-sizes', getAllFrameSizes);
