@@ -1476,16 +1476,39 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     }
   };
 
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: includeObject,
-      take: parseInt(limit),
-      skip: skip,
-      orderBy: { [validSortBy]: validSortOrder }
-    }),
-    prisma.product.count({ where })
-  ]);
+  let products, total;
+  try {
+    [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: includeObject,
+        take: parseInt(limit),
+        skip: skip,
+        orderBy: { [validSortBy]: validSortOrder }
+      }),
+      prisma.product.count({ where })
+    ]);
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate deploy');
+      // Remove sizeVolumeVariants from include
+      const { sizeVolumeVariants, ...includeWithoutVariants } = includeObject;
+      [products, total] = await Promise.all([
+        prisma.product.findMany({
+          where,
+          include: includeWithoutVariants,
+          take: parseInt(limit),
+          skip: skip,
+          orderBy: { [validSortBy]: validSortOrder }
+        }),
+        prisma.product.count({ where })
+      ]);
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   // Helper function to get hex code from color name
   const getColorHexCode = (colorName) => {
@@ -1671,10 +1694,27 @@ exports.getProduct = asyncHandler(async (req, res) => {
     }
   };
 
-  const product = await prisma.product.findUnique({
-    where: { id: parseInt(id) },
-    include: includeObject
-  });
+  let product;
+  try {
+    product = await prisma.product.findUnique({
+      where: { id: parseInt(id) },
+      include: includeObject
+    });
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Run migration: npx prisma migrate deploy');
+      // Remove sizeVolumeVariants from include
+      const { sizeVolumeVariants, ...includeWithoutVariants } = includeObject;
+      product = await prisma.product.findUnique({
+        where: { id: parseInt(id) },
+        include: includeWithoutVariants
+      });
+    } else {
+      // Re-throw other errors
+      throw err;
+    }
+  }
 
   if (!product) {
     return error(res, "Product not found", 404);
