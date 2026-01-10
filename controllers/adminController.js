@@ -2405,7 +2405,8 @@ exports.createProduct = asyncHandler(async (req, res) => {
       ...product,
       images,
       image: images && images.length > 0 ? images[0] : null,
-      color_images: colorImages
+      color_images: colorImages,
+      sizeVolumeVariants: [] // Initialize empty array, will be populated if variants are created
     };
 
     // Create size/volume variants separately if any exist
@@ -2458,6 +2459,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
           include: {
             ...includeObject,
             sizeVolumeVariants: {
+              where: { is_active: true },
               orderBy: [
                 { sort_order: 'asc' },
                 { size_volume: 'asc' },
@@ -3546,43 +3548,47 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // Re-fetch product if variants were modified to include them in response
-  let finalProduct = updatedProduct;
-  if (variantsData !== null || sizeVolumeVariantsData !== null) {
-    // Build include object - conditionally include sizeVolumeVariants if table exists
-    const includeObject = {
-      category: { select: { id: true, name: true, slug: true } },
-      subCategory: { select: { id: true, name: true, slug: true } },
-      variants: true
-    };
+  // Always re-fetch product to include variants and relations in response
+  // Build include object - conditionally include sizeVolumeVariants if table exists
+  const includeObject = {
+    category: { select: { id: true, name: true, slug: true } },
+    subCategory: { select: { id: true, name: true, slug: true } },
+    variants: true
+  };
 
-    try {
+  let finalProduct;
+  try {
+    finalProduct = await prisma.product.findUnique({
+      where: { id: updatedProduct.id },
+      include: {
+        ...includeObject,
+        sizeVolumeVariants: {
+          where: { is_active: true },
+          orderBy: [
+            { sort_order: 'asc' },
+            { size_volume: 'asc' },
+            { pack_type: 'asc' }
+          ]
+        }
+      }
+    });
+  } catch (err) {
+    // If error is about missing table/model, retry without sizeVolumeVariants
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
+      console.warn('⚠️  ProductSizeVolume table does not exist yet. Fetching product without variants. Run migration: npx prisma migrate deploy');
       finalProduct = await prisma.product.findUnique({
         where: { id: updatedProduct.id },
-        include: {
-          ...includeObject,
-          sizeVolumeVariants: {
-            orderBy: [
-              { sort_order: 'asc' },
-              { size_volume: 'asc' },
-              { pack_type: 'asc' }
-            ]
-          }
-        }
+        include: includeObject
       });
-    } catch (err) {
-      // If error is about missing table/model, retry without sizeVolumeVariants
-      if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('Unknown model') || err.message?.includes('does not exist')) {
-        console.warn('⚠️  ProductSizeVolume table does not exist yet. Fetching product without variants. Run migration: npx prisma migrate deploy');
-        finalProduct = await prisma.product.findUnique({
-          where: { id: updatedProduct.id },
-          include: includeObject
-        });
-      } else {
-        // Re-throw other errors
-        throw err;
-      }
+    } else {
+      // Re-throw other errors
+      throw err;
     }
+  }
+
+  // If finalProduct is still undefined, use updatedProduct as fallback
+  if (!finalProduct) {
+    finalProduct = updatedProduct;
   }
 
   // Format images - parse JSON string to array for response
