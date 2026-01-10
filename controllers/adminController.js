@@ -1479,6 +1479,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         include: {
           ...includeObject,
           sizeVolumeVariants: {
+            where: { is_active: true },
             orderBy: [
               { sort_order: 'asc' },
               { size_volume: 'asc' },
@@ -1506,6 +1507,8 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         }),
         prisma.product.count({ where })
       ]);
+      // Ensure sizeVolumeVariants exists for all products even if table doesn't exist
+      products = products.map(p => ({ ...p, sizeVolumeVariants: [] }));
     } else {
       // Re-throw other errors
       throw err;
@@ -1618,7 +1621,11 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       colors: colors, // Array of color objects for swatches with name, display_name, price
       selectedColor: defaultColor, // Default selected color value
       currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
-      model_3d_url: product.model_3d_url || null
+      model_3d_url: product.model_3d_url || null,
+      // Explicitly include sizeVolumeVariants (always present, empty array if none)
+      sizeVolumeVariants: (product.sizeVolumeVariants && Array.isArray(product.sizeVolumeVariants))
+        ? product.sizeVolumeVariants
+        : []
     };
   };
 
@@ -1698,6 +1705,7 @@ exports.getProduct = asyncHandler(async (req, res) => {
       include: {
         ...includeObject,
         sizeVolumeVariants: {
+          where: { is_active: true },
           orderBy: [
             { sort_order: 'asc' },
             { size_volume: 'asc' },
@@ -1714,6 +1722,10 @@ exports.getProduct = asyncHandler(async (req, res) => {
         where: { id: parseInt(id) },
         include: includeObject
       });
+      // Ensure sizeVolumeVariants exists even if table doesn't exist
+      if (product) {
+        product.sizeVolumeVariants = [];
+      }
     } else {
       // Re-throw other errors
       throw err;
@@ -1722,6 +1734,11 @@ exports.getProduct = asyncHandler(async (req, res) => {
 
   if (!product) {
     return error(res, "Product not found", 404);
+  }
+
+  // Ensure sizeVolumeVariants is always defined (fallback if query didn't include it)
+  if (!product.sizeVolumeVariants) {
+    product.sizeVolumeVariants = [];
   }
 
   // Format images - parse JSON string to array
@@ -1755,7 +1772,11 @@ exports.getProduct = asyncHandler(async (req, res) => {
     images,
     image: images && images.length > 0 ? images[0] : null,
     color_images: colorImages,
-    model_3d_url: product.model_3d_url || null
+    model_3d_url: product.model_3d_url || null,
+    // Explicitly include sizeVolumeVariants (always present, empty array if none)
+    sizeVolumeVariants: (product.sizeVolumeVariants && Array.isArray(product.sizeVolumeVariants))
+      ? product.sizeVolumeVariants
+      : []
   };
 
   return success(res, "Product retrieved successfully", { product: formattedProduct });
