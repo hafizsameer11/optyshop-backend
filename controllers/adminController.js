@@ -1412,9 +1412,9 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     const searchTerm = search.trim(); // Remove leading/trailing spaces
     if (searchTerm) {
       where.OR = [
-        { name: { contains: searchTerm, mode: 'insensitive' } },
-        { description: { not: null, contains: searchTerm, mode: 'insensitive' } },
-        { sku: { contains: searchTerm, mode: 'insensitive' } }
+        { name: { contains: searchTerm } },
+        { description: { not: null, contains: searchTerm } },
+        { sku: { contains: searchTerm } }
       ];
     }
   }
@@ -3706,13 +3706,13 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 
   if (search) {
     where.OR = [
-      { order_number: { contains: search, mode: "insensitive" } },
+      { order_number: { contains: search } },
       {
         user: {
           OR: [
-            { first_name: { contains: search, mode: "insensitive" } },
-            { last_name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
+            { first_name: { contains: search } },
+            { last_name: { contains: search } },
+            { email: { contains: search } },
           ],
         },
       },
@@ -4014,9 +4014,9 @@ exports.getAllCategories = asyncHandler(async (req, res) => {
   // Apply filters
   if (search) {
     where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { slug: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } }
+      { name: { contains: search } },
+      { slug: { contains: search } },
+      { description: { contains: search } }
     ];
   }
 
@@ -4136,7 +4136,7 @@ exports.getAllFrameSizes = asyncHandler(async (req, res) => {
   // Apply filters
   if (search) {
     where.OR = [
-      { size_label: { contains: search, mode: 'insensitive' } }
+      { size_label: { contains: search } }
     ];
   }
 
@@ -4294,9 +4294,9 @@ exports.getAllLensTypes = asyncHandler(async (req, res) => {
   // Apply filters
   if (search) {
     where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { slug: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } }
+      { name: { contains: search } },
+      { slug: { contains: search } },
+      { description: { contains: search } }
     ];
   }
 
@@ -4412,9 +4412,9 @@ exports.getAllLensCoatings = asyncHandler(async (req, res) => {
   // Apply filters
   if (search) {
     where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { slug: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } }
+      { name: { contains: search } },
+      { slug: { contains: search } },
+      { description: { contains: search } }
     ];
   }
 
