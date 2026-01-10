@@ -44,12 +44,6 @@ const {
   updateLensCoating,
   deleteLensCoating,
   bulkUploadProducts,
-  getProductSizeVolumeVariants,
-  getProductSizeVolumeVariant,
-  createProductSizeVolumeVariant,
-  updateProductSizeVolumeVariant,
-  deleteProductSizeVolumeVariant,
-  bulkUpdateProductSizeVolumeVariants
 } = require('../controllers/adminController');
 const {
   getAllOrdersAdmin,
@@ -230,14 +224,6 @@ router.put('/products/:id',
 );
 router.delete('/products/:id', deleteProduct);
 router.post('/products/bulk-upload', uploadSingle('file'), bulkUploadProducts);
-
-// Product Size/Volume Variants (must come before /products/:id routes if needed)
-router.get('/products/:productId/size-volume-variants', getProductSizeVolumeVariants);
-router.get('/products/:productId/size-volume-variants/:variantId', getProductSizeVolumeVariant);
-router.post('/products/:productId/size-volume-variants', createProductSizeVolumeVariant);
-router.put('/products/:productId/size-volume-variants/:variantId', updateProductSizeVolumeVariant);
-router.delete('/products/:productId/size-volume-variants/:variantId', deleteProductSizeVolumeVariant);
-router.put('/products/:productId/size-volume-variants/bulk', bulkUpdateProductSizeVolumeVariants);
 
 // Frame Sizes
 router.get('/frame-sizes', getAllFrameSizes);
