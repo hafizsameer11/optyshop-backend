@@ -5,20 +5,96 @@ const { uploadToS3, deleteFromS3 } = require('../config/aws');
 
 // ==================== BANNERS ====================
 
-// Public version - only active banners
+// Public version - only active banners with filtering
 exports.getBanners = asyncHandler(async (req, res) => {
+    const { page_type, category_id, sub_category_id } = req.query;
+    
+    const where = { is_active: true };
+    
+    // Filter by page type
+    if (page_type) {
+        where.page_type = page_type;
+    }
+    
+    // Filter by category (for category, subcategory, or sub_subcategory pages)
+    if (category_id) {
+        where.category_id = parseInt(category_id);
+    }
+    
+    // Filter by subcategory (for subcategory or sub_subcategory pages)
+    if (sub_category_id) {
+        where.sub_category_id = parseInt(sub_category_id);
+    }
+    
     const banners = await prisma.banner.findMany({
-        where: { is_active: true },
+        where,
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            subCategory: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    category_id: true
+                }
+            }
+        },
         orderBy: { sort_order: 'asc' }
     });
+    
     return success(res, 'Banners retrieved', { banners });
 });
 
-// Admin version - all banners
+// Admin version - all banners with filtering
 exports.getBannersAdmin = asyncHandler(async (req, res) => {
+    const { page_type, category_id, sub_category_id } = req.query;
+    
+    const where = {};
+    
+    // Filter by page type
+    if (page_type) {
+        where.page_type = page_type;
+    }
+    
+    // Filter by category
+    if (category_id) {
+        where.category_id = parseInt(category_id);
+    }
+    
+    // Filter by subcategory
+    if (sub_category_id) {
+        where.sub_category_id = parseInt(sub_category_id);
+    }
+    
     const banners = await prisma.banner.findMany({
+        where,
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            subCategory: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    category_id: true,
+                    parent_id: true
+                }
+            }
+        },
         orderBy: { sort_order: 'asc' }
     });
+    
     return success(res, 'Banners retrieved', { banners });
 });
 
@@ -27,6 +103,56 @@ exports.createBanner = asyncHandler(async (req, res) => {
 
     const url = await uploadToS3(req.file, 'cms/banners');
     const data = { ...req.body };
+    
+    // Set default page_type if not provided
+    if (!data.page_type) {
+        data.page_type = 'home';
+    }
+    
+    // Validate page_type
+    const validPageTypes = ['home', 'category', 'subcategory', 'sub_subcategory'];
+    if (!validPageTypes.includes(data.page_type)) {
+        return error(res, `Invalid page_type. Must be one of: ${validPageTypes.join(', ')}`, 400);
+    }
+    
+    // Validate category_id requirement
+    if (data.page_type === 'category' || data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+        if (!data.category_id) {
+            return error(res, 'category_id is required for category, subcategory, and sub_subcategory page types', 400);
+        }
+        data.category_id = parseInt(data.category_id);
+        
+        // Validate that category exists
+        const category = await prisma.category.findUnique({ where: { id: data.category_id } });
+        if (!category) {
+            return error(res, 'Category not found', 404);
+        }
+    }
+    
+    // Validate sub_category_id requirement
+    if (data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+        if (!data.sub_category_id) {
+            return error(res, 'sub_category_id is required for subcategory and sub_subcategory page types', 400);
+        }
+        data.sub_category_id = parseInt(data.sub_category_id);
+        
+        // Validate that subcategory exists
+        const subCategory = await prisma.subCategory.findUnique({ where: { id: data.sub_category_id } });
+        if (!subCategory) {
+            return error(res, 'SubCategory not found', 404);
+        }
+        
+        // Validate that subcategory belongs to the specified category
+        if (subCategory.category_id !== data.category_id) {
+            return error(res, 'SubCategory does not belong to the specified category', 400);
+        }
+    }
+    
+    // For home page type, ensure category_id and sub_category_id are null
+    if (data.page_type === 'home') {
+        data.category_id = null;
+        data.sub_category_id = null;
+    }
     
     // Convert string booleans to actual booleans
     if (data.is_active !== undefined) {
@@ -40,6 +166,24 @@ exports.createBanner = asyncHandler(async (req, res) => {
         data: {
             ...data,
             image_url: url
+        },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            subCategory: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    category_id: true,
+                    parent_id: true
+                }
+            }
         }
     });
 
@@ -55,6 +199,64 @@ exports.updateBanner = asyncHandler(async (req, res) => {
         data.image_url = url;
     }
     
+    // Validate page_type if provided
+    if (data.page_type) {
+        const validPageTypes = ['home', 'category', 'subcategory', 'sub_subcategory'];
+        if (!validPageTypes.includes(data.page_type)) {
+            return error(res, `Invalid page_type. Must be one of: ${validPageTypes.join(', ')}`, 400);
+        }
+    }
+    
+    // If page_type is being updated, validate related fields
+    if (data.page_type === 'category' || data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+        if (data.category_id) {
+            data.category_id = parseInt(data.category_id);
+            
+            // Validate that category exists
+            const category = await prisma.category.findUnique({ where: { id: data.category_id } });
+            if (!category) {
+                return error(res, 'Category not found', 404);
+            }
+        } else {
+            // Get existing banner to check if category_id was already set
+            const existingBanner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
+            if (!existingBanner || !existingBanner.category_id) {
+                return error(res, 'category_id is required for category, subcategory, and sub_subcategory page types', 400);
+            }
+            data.category_id = existingBanner.category_id;
+        }
+        
+        if (data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+            if (data.sub_category_id) {
+                data.sub_category_id = parseInt(data.sub_category_id);
+                
+                // Validate that subcategory exists
+                const subCategory = await prisma.subCategory.findUnique({ where: { id: data.sub_category_id } });
+                if (!subCategory) {
+                    return error(res, 'SubCategory not found', 404);
+                }
+                
+                // Validate that subcategory belongs to the specified category
+                if (subCategory.category_id !== data.category_id) {
+                    return error(res, 'SubCategory does not belong to the specified category', 400);
+                }
+            } else {
+                // Get existing banner to check if sub_category_id was already set
+                const existingBanner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
+                if (!existingBanner || !existingBanner.sub_category_id) {
+                    return error(res, 'sub_category_id is required for subcategory and sub_subcategory page types', 400);
+                }
+                data.sub_category_id = existingBanner.sub_category_id;
+            }
+        }
+    }
+    
+    // For home page type, ensure category_id and sub_category_id are null
+    if (data.page_type === 'home') {
+        data.category_id = null;
+        data.sub_category_id = null;
+    }
+    
     // Convert string booleans to actual booleans
     if (data.is_active !== undefined) {
         data.is_active = data.is_active === 'true' || data.is_active === true;
@@ -62,10 +264,36 @@ exports.updateBanner = asyncHandler(async (req, res) => {
     if (data.sort_order !== undefined) {
         data.sort_order = parseInt(data.sort_order || 0);
     }
+    
+    // Handle category_id and sub_category_id updates
+    if (data.category_id !== undefined) {
+        data.category_id = data.category_id ? parseInt(data.category_id) : null;
+    }
+    if (data.sub_category_id !== undefined) {
+        data.sub_category_id = data.sub_category_id ? parseInt(data.sub_category_id) : null;
+    }
 
     const banner = await prisma.banner.update({
         where: { id: parseInt(id) },
-        data
+        data,
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                }
+            },
+            subCategory: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    category_id: true,
+                    parent_id: true
+                }
+            }
+        }
     });
 
     return success(res, 'Banner updated', { banner });

@@ -2476,7 +2476,7 @@
           "name": "Banners (Public)",
           "item": [
             {
-              "name": "Get Banners",
+              "name": "Get Banners (All)",
               "request": {
                 "method": "GET",
                 "header": [],
@@ -2489,7 +2489,129 @@
                     "api",
                     "banners"
                   ]
-                }
+                },
+                "description": "Get all active banners. Can be filtered by page_type, category_id, and sub_category_id.\n\n**Query Parameters:**\n- `page_type` (optional): Filter by page type - `home`, `category`, `subcategory`, or `sub_subcategory`\n- `category_id` (optional): Filter by category ID\n- `sub_category_id` (optional): Filter by subcategory ID\n\n**Example Queries:**\n- Get home page banners: `{{base_url}}/api/banners?page_type=home`\n- Get category banners: `{{base_url}}/api/banners?page_type=category&category_id=1`\n- Get subcategory banners: `{{base_url}}/api/banners?page_type=subcategory&category_id=1&sub_category_id=2`\n\n**Response:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Banners retrieved\",\n  \"data\": {\n    \"banners\": [\n      {\n        \"id\": 1,\n        \"title\": \"Welcome Banner\",\n        \"image_url\": \"https://...\",\n        \"link_url\": \"https://example.com\",\n        \"position\": \"header\",\n        \"page_type\": \"home\",\n        \"category_id\": null,\n        \"sub_category_id\": null,\n        \"sort_order\": 0,\n        \"is_active\": true,\n        \"category\": null,\n        \"subCategory\": null\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Category Banner\",\n        \"page_type\": \"category\",\n        \"category_id\": 1,\n        \"sub_category_id\": null,\n        \"category\": {\n          \"id\": 1,\n          \"name\": \"Eyeglasses\",\n          \"slug\": \"eyeglasses\"\n        },\n        \"subCategory\": null\n      }\n    ]\n  }\n}\n```"
+              }
+            },
+            {
+              "name": "Get Banners - Home Page",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/banners?page_type=home",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "banners"
+                  ],
+                  "query": [
+                    {
+                      "key": "page_type",
+                      "value": "home"
+                    }
+                  ]
+                },
+                "description": "Get all active banners for the home page."
+              }
+            },
+            {
+              "name": "Get Banners - By Category",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/banners?page_type=category&category_id=1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "banners"
+                  ],
+                  "query": [
+                    {
+                      "key": "page_type",
+                      "value": "category"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "description": "Category ID"
+                    }
+                  ]
+                },
+                "description": "Get all active banners for a specific category page."
+              }
+            },
+            {
+              "name": "Get Banners - By Subcategory",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/banners?page_type=subcategory&category_id=1&sub_category_id=2",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "banners"
+                  ],
+                  "query": [
+                    {
+                      "key": "page_type",
+                      "value": "subcategory"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "description": "Category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "2",
+                      "description": "Subcategory ID"
+                    }
+                  ]
+                },
+                "description": "Get all active banners for a specific subcategory page."
+              }
+            },
+            {
+              "name": "Get Banners - By Sub-subcategory",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/banners?page_type=sub_subcategory&category_id=1&sub_category_id=2",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "banners"
+                  ],
+                  "query": [
+                    {
+                      "key": "page_type",
+                      "value": "sub_subcategory"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "description": "Category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "2",
+                      "description": "Sub-subcategory ID"
+                    }
+                  ]
+                },
+                "description": "Get all active banners for a specific sub-subcategory page."
               }
             }
           ]
@@ -6890,11 +7012,12 @@
                     "admin",
                     "banners"
                   ]
-                }
+                },
+                "description": "Get all banners (active and inactive). Can be filtered by page_type, category_id, and sub_category_id using query parameters."
               }
             },
             {
-              "name": "Create Banner (Admin)",
+              "name": "Create Banner - Home Page",
               "request": {
                 "method": "POST",
                 "header": [
@@ -6917,8 +7040,29 @@
                       "type": "text"
                     },
                     {
+                      "key": "page_type",
+                      "value": "home",
+                      "type": "text",
+                      "description": "Must be: home, category, subcategory, or sub_subcategory"
+                    },
+                    {
+                      "key": "link_url",
+                      "value": "https://example.com",
+                      "type": "text"
+                    },
+                    {
+                      "key": "position",
+                      "value": "header",
+                      "type": "text"
+                    },
+                    {
                       "key": "sort_order",
                       "value": "0",
+                      "type": "text"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
                       "type": "text"
                     }
                   ]
@@ -6933,7 +7077,215 @@
                     "admin",
                     "banners"
                   ]
-                }
+                },
+                "description": "Create a banner for the home page. For home page, category_id and sub_category_id are automatically set to null."
+              }
+            },
+            {
+              "name": "Create Banner - Category Page",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "title",
+                      "value": "Category Banner",
+                      "type": "text"
+                    },
+                    {
+                      "key": "page_type",
+                      "value": "category",
+                      "type": "text"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Required for category, subcategory, and sub_subcategory page types"
+                    },
+                    {
+                      "key": "link_url",
+                      "value": "https://example.com/category",
+                      "type": "text"
+                    },
+                    {
+                      "key": "sort_order",
+                      "value": "0",
+                      "type": "text"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/banners",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "banners"
+                  ]
+                },
+                "description": "Create a banner for a specific category page. category_id is required."
+              }
+            },
+            {
+              "name": "Create Banner - Subcategory Page",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "title",
+                      "value": "Subcategory Banner",
+                      "type": "text"
+                    },
+                    {
+                      "key": "page_type",
+                      "value": "subcategory",
+                      "type": "text"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Required - Parent category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "2",
+                      "type": "text",
+                      "description": "Required for subcategory and sub_subcategory page types"
+                    },
+                    {
+                      "key": "link_url",
+                      "value": "https://example.com/subcategory",
+                      "type": "text"
+                    },
+                    {
+                      "key": "sort_order",
+                      "value": "0",
+                      "type": "text"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/banners",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "banners"
+                  ]
+                },
+                "description": "Create a banner for a specific subcategory page. Both category_id and sub_category_id are required. The subcategory must belong to the specified category."
+              }
+            },
+            {
+              "name": "Create Banner - Sub-subcategory Page",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "title",
+                      "value": "Sub-subcategory Banner",
+                      "type": "text"
+                    },
+                    {
+                      "key": "page_type",
+                      "value": "sub_subcategory",
+                      "type": "text"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Required - Parent category ID"
+                    },
+                    {
+                      "key": "sub_category_id",
+                      "value": "3",
+                      "type": "text",
+                      "description": "Required - The sub-subcategory ID (which is a subcategory with a parent_id)"
+                    },
+                    {
+                      "key": "link_url",
+                      "value": "https://example.com/sub-subcategory",
+                      "type": "text"
+                    },
+                    {
+                      "key": "sort_order",
+                      "value": "0",
+                      "type": "text"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/banners",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "banners"
+                  ]
+                },
+                "description": "Create a banner for a specific sub-subcategory page. Both category_id and sub_category_id are required. The sub-subcategory must belong to the specified category."
               }
             },
             {
@@ -6953,6 +7305,21 @@
                       "key": "title",
                       "value": "Updated Banner",
                       "type": "text"
+                    },
+                    {
+                      "key": "page_type",
+                      "value": "category",
+                      "type": "text"
+                    },
+                    {
+                      "key": "category_id",
+                      "value": "1",
+                      "type": "text"
+                    },
+                    {
+                      "key": "is_active",
+                      "value": "true",
+                      "type": "text"
                     }
                   ]
                 },
@@ -6967,7 +7334,8 @@
                     "banners",
                     "1"
                   ]
-                }
+                },
+                "description": "Update a banner. You can update any field including page_type, category_id, and sub_category_id. Image is optional - only include if you want to update it."
               }
             },
             {
@@ -6991,7 +7359,8 @@
                     "banners",
                     "1"
                   ]
-                }
+                },
+                "description": "Delete a banner. This action cannot be undone and will also delete the associated image from S3."
               }
             }
           ]

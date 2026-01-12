@@ -49,6 +49,7 @@ model Category {
   products           Product[]
   sphericalConfigs   SphericalConfiguration[]
   subcategories      SubCategory[]
+  banners            Banner[]
 
   @@map("categories")
 }
@@ -72,6 +73,7 @@ model SubCategory {
   category                  Category                   @relation(fields: [category_id], references: [id], onDelete: Cascade)
   parent                    SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id])
   children                  SubCategory[]              @relation("SubCategoryHierarchy")
+  banners                   Banner[]
 
   @@unique([name, parent_id])
   @@index([category_id])
@@ -762,18 +764,27 @@ model Brand {
 }
 
 model Banner {
-  id         Int      @id @default(autoincrement())
-  title      String   @db.VarChar(150)
-  image_url  String   @db.VarChar(500)
-  link_url   String?  @db.VarChar(500)
-  position   String?  @db.VarChar(50)
-  sort_order Int      @default(0)
-  is_active  Boolean  @default(true)
-  meta       String?  @db.LongText
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id             Int            @id @default(autoincrement())
+  title          String         @db.VarChar(150)
+  image_url      String         @db.VarChar(500)
+  link_url       String?        @db.VarChar(500)
+  position       String?        @db.VarChar(50)
+  page_type      BannerPageType @default(home)
+  category_id    Int?
+  sub_category_id Int?
+  sort_order     Int            @default(0)
+  is_active      Boolean        @default(true)
+  meta           String?        @db.LongText
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  category       Category?      @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  subCategory    SubCategory?   @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
 
   @@index([position])
+  @@index([page_type])
+  @@index([category_id])
+  @@index([sub_category_id])
+  @@index([page_type, category_id, sub_category_id])
   @@map("banners")
 }
 
@@ -1453,4 +1464,11 @@ enum PrescriptionFormType {
   progressive
   near_vision
   distance_vision
+}
+
+enum BannerPageType {
+  home
+  category
+  subcategory
+  sub_subcategory
 }
