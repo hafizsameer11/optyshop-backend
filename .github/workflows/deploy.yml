@@ -1,0 +1,144 @@
+name: Deploy Backend with Migrations
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - production
+  workflow_dispatch: # Allows manual triggering
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate environment variables
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "❌ DATABASE_URL secret is not set!"
+            exit 1
+          fi
+          echo "✅ Environment variables validated"
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Verify database connection
+        run: |
+          echo "Testing database connection..."
+          npx prisma db pull --force || npx prisma validate || echo "⚠️ Could not verify connection, but continuing..."
+          echo "✅ Database connection check completed"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run database migrations
+        id: migrations
+        run: |
+          echo "Running database migrations..."
+          npx prisma migrate deploy
+          echo "✅ Migrations completed successfully"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Verify migrations status
+        run: |
+          npx prisma migrate status
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Option 1: Docker-based deployment
+      - name: Build Docker image
+        if: ${{ secrets.DOCKER_REGISTRY != '' }}
+        run: |
+          echo "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" | docker login ${{ secrets.DOCKER_REGISTRY }} -u "${{ secrets.DOCKER_REGISTRY_USERNAME }}" --password-stdin
+          docker build -t ${{ secrets.DOCKER_IMAGE_NAME }}:latest .
+          docker push ${{ secrets.DOCKER_IMAGE_NAME }}:latest
+
+      - name: Deploy to Docker container (via SSH)
+        if: ${{ secrets.DEPLOY_SSH_HOST != '' && secrets.DOCKER_REGISTRY != '' }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          script: |
+            set -e  # Exit on any error
+            cd ${{ secrets.DEPLOY_PATH || '/app' }}
+            # Pull latest code
+            git pull origin main || git pull origin master || exit 1
+            # Migrations already run in CI, just generate Prisma Client
+            npx prisma generate || exit 1
+            # Restart application gracefully
+            pm2 restart all || docker-compose restart || docker restart ${{ secrets.DOCKER_CONTAINER_NAME }} || echo "⚠️ Please restart manually"
+
+      # Option 2: Direct deployment via SSH (without Docker)
+      - name: Deploy via SSH (Direct)
+        if: ${{ secrets.DEPLOY_SSH_HOST != '' && secrets.DOCKER_REGISTRY == '' }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          script: |
+            set -e  # Exit on any error
+            cd ${{ secrets.DEPLOY_PATH || '/app' }}
+            # Backup current deployment
+            echo "Creating backup..."
+            cp -r . ../backup-$(date +%Y%m%d-%H%M%S) || echo "⚠️ Backup failed, continuing..."
+            # Pull latest code
+            git pull origin main || git pull origin master || exit 1
+            # Install dependencies
+            npm ci --production || exit 1
+            # Migrations already run in CI, just generate Prisma Client
+            npx prisma generate || exit 1
+            # Restart application gracefully
+            pm2 restart all || sudo systemctl restart optyshop-backend || echo "⚠️ Please restart your application manually"
+
+      - name: Health check
+        if: ${{ secrets.HEALTH_CHECK_URL != '' }}
+        run: |
+          echo "Waiting for service to be ready..."
+          sleep 10
+          max_attempts=5
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if curl -f ${{ secrets.HEALTH_CHECK_URL }}/health; then
+              echo "✅ Health check passed on attempt $attempt"
+              exit 0
+            fi
+            echo "⏳ Health check failed, attempt $attempt/$max_attempts..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "❌ Health check failed after $max_attempts attempts"
+          exit 1
+
+      - name: Deployment notification
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+          fi

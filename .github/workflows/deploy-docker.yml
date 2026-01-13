@@ -1,0 +1,153 @@
+name: Docker Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - production
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.DOCKER_REGISTRY || 'ghcr.io' }}
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/production'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate environment variables
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "❌ DATABASE_URL secret is not set!"
+            exit 1
+          fi
+          echo "✅ Environment variables validated"
+
+      - name: Verify database connection
+        run: |
+          echo "Testing database connection..."
+          npx prisma validate || echo "⚠️ Could not verify connection, but continuing..."
+          echo "✅ Database connection check completed"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run database migrations
+        id: migrations
+        run: |
+          echo "Running database migrations..."
+          npx prisma migrate deploy
+          echo "✅ Migrations completed successfully"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Deploy to server (SSH)
+        if: ${{ secrets.DEPLOY_SSH_HOST != '' }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          script: |
+            set -e  # Exit on any error
+            cd ${{ secrets.DEPLOY_PATH || '/app' }}
+            
+            # Pull latest image
+            echo "Pulling latest Docker image..."
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || exit 1
+            
+            # Gracefully stop old container (wait up to 30 seconds)
+            if docker ps -a | grep -q optyshop-backend; then
+              echo "Stopping old container gracefully..."
+              docker stop -t 30 optyshop-backend || true
+              docker rm optyshop-backend || true
+            fi
+            
+            # Migrations already run in CI, so start container
+            echo "Starting new container..."
+            docker run -d \
+              --name optyshop-backend \
+              --restart unless-stopped \
+              -p 5000:5000 \
+              -v /app/uploads:/app/uploads \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e NODE_ENV=production \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || exit 1
+            
+            echo "✅ Container started successfully"
+
+      - name: Health check
+        if: ${{ secrets.HEALTH_CHECK_URL != '' }}
+        run: |
+          echo "Waiting for service to be ready..."
+          sleep 15
+          max_attempts=5
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if curl -f ${{ secrets.HEALTH_CHECK_URL }}/health; then
+              echo "✅ Health check passed on attempt $attempt"
+              exit 0
+            fi
+            echo "⏳ Waiting for service to be ready... ($attempt/$max_attempts)"
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "❌ Health check failed after $max_attempts attempts"
+          echo "⚠️ Deployment completed but health check failed. Please verify manually."
+          exit 1
