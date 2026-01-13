@@ -15,7 +15,11 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js",
     "setup-prescription-types": "node scripts/setup-prescription-lens-types.js",
-    "update-db-url": "node update-database-url.js"
+    "update-db-url": "node update-database-url.js",
+    "fix-banner-columns": "node scripts/fix_banner_production.js",
+    "verify-banner-fix": "node scripts/verify_banner_fix.js",
+    "deploy-banner-migration": "node scripts/deploy_banner_migration.js",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "keywords": [
     "eyewear",
@@ -58,8 +62,5 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
   }
 }

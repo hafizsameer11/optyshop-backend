@@ -5,8 +5,8 @@ async function applyBannerMigration() {
   try {
     console.log('🔄 Applying banner migration...');
 
-    // Check if columns already exist
-    const columns = await prisma.$queryRaw`
+    // Check which columns already exist
+    const existingColumns = await prisma.$queryRaw`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
       WHERE TABLE_SCHEMA = DATABASE() 
@@ -14,35 +14,128 @@ async function applyBannerMigration() {
       AND COLUMN_NAME IN ('page_type', 'category_id', 'sub_category_id')
     `;
 
-    if (columns.length === 3) {
-      console.log('✅ Banner columns already exist');
-    } else {
-      // Apply the migration
+    const columnNames = existingColumns.map(col => col.COLUMN_NAME);
+    console.log(`📊 Existing columns: ${columnNames.length > 0 ? columnNames.join(', ') : 'none'}`);
+
+    // Check and add page_type column
+    if (!columnNames.includes('page_type')) {
       console.log('📝 Adding page_type column...');
-      await prisma.$executeRaw`
-        ALTER TABLE \`banners\` 
-        ADD COLUMN \`page_type\` ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home'
-      `;
+      try {
+        await prisma.$executeRaw`
+          ALTER TABLE \`banners\` 
+          ADD COLUMN \`page_type\` ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home'
+        `;
+        console.log('✅ page_type column added');
+      } catch (e) {
+        if (e.message.includes('Duplicate column name')) {
+          console.log('⚠️  page_type column already exists');
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      console.log('✅ page_type column already exists');
+    }
 
+    // Check and add category_id column
+    if (!columnNames.includes('category_id')) {
       console.log('📝 Adding category_id column...');
-      await prisma.$executeRaw`
-        ALTER TABLE \`banners\` 
-        ADD COLUMN \`category_id\` INTEGER NULL
-      `;
+      try {
+        await prisma.$executeRaw`
+          ALTER TABLE \`banners\` 
+          ADD COLUMN \`category_id\` INTEGER NULL
+        `;
+        console.log('✅ category_id column added');
+      } catch (e) {
+        if (e.message.includes('Duplicate column name')) {
+          console.log('⚠️  category_id column already exists');
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      console.log('✅ category_id column already exists');
+    }
 
+    // Check and add sub_category_id column
+    if (!columnNames.includes('sub_category_id')) {
       console.log('📝 Adding sub_category_id column...');
-      await prisma.$executeRaw`
-        ALTER TABLE \`banners\` 
-        ADD COLUMN \`sub_category_id\` INTEGER NULL
-      `;
+      try {
+        await prisma.$executeRaw`
+          ALTER TABLE \`banners\` 
+          ADD COLUMN \`sub_category_id\` INTEGER NULL
+        `;
+        console.log('✅ sub_category_id column added');
+      } catch (e) {
+        if (e.message.includes('Duplicate column name')) {
+          console.log('⚠️  sub_category_id column already exists');
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      console.log('✅ sub_category_id column already exists');
+    }
 
-      console.log('📝 Creating indexes...');
-      await prisma.$executeRaw`CREATE INDEX \`banners_page_type_idx\` ON \`banners\`(\`page_type\`)`;
-      await prisma.$executeRaw`CREATE INDEX \`banners_category_id_idx\` ON \`banners\`(\`category_id\`)`;
-      await prisma.$executeRaw`CREATE INDEX \`banners_sub_category_id_idx\` ON \`banners\`(\`sub_category_id\`)`;
-      await prisma.$executeRaw`CREATE INDEX \`banners_page_type_category_id_sub_category_id_idx\` ON \`banners\`(\`page_type\`, \`category_id\`, \`sub_category_id\`)`;
+    // Create indexes (check if they exist first)
+    console.log('📝 Creating/verifying indexes...');
+    const existingIndexes = await prisma.$queryRaw`
+      SELECT INDEX_NAME 
+      FROM INFORMATION_SCHEMA.STATISTICS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'banners' 
+      AND INDEX_NAME IN ('banners_page_type_idx', 'banners_category_id_idx', 'banners_sub_category_id_idx', 'banners_page_type_category_id_sub_category_id_idx')
+    `;
+    const indexNames = existingIndexes.map(idx => idx.INDEX_NAME);
 
-      console.log('📝 Adding foreign keys...');
+    if (!indexNames.includes('banners_page_type_idx')) {
+      try {
+        await prisma.$executeRaw`CREATE INDEX \`banners_page_type_idx\` ON \`banners\`(\`page_type\`)`;
+        console.log('✅ Created banners_page_type_idx');
+      } catch (e) {
+        console.log(`⚠️  Could not create banners_page_type_idx: ${e.message}`);
+      }
+    }
+
+    if (!indexNames.includes('banners_category_id_idx')) {
+      try {
+        await prisma.$executeRaw`CREATE INDEX \`banners_category_id_idx\` ON \`banners\`(\`category_id\`)`;
+        console.log('✅ Created banners_category_id_idx');
+      } catch (e) {
+        console.log(`⚠️  Could not create banners_category_id_idx: ${e.message}`);
+      }
+    }
+
+    if (!indexNames.includes('banners_sub_category_id_idx')) {
+      try {
+        await prisma.$executeRaw`CREATE INDEX \`banners_sub_category_id_idx\` ON \`banners\`(\`sub_category_id\`)`;
+        console.log('✅ Created banners_sub_category_id_idx');
+      } catch (e) {
+        console.log(`⚠️  Could not create banners_sub_category_id_idx: ${e.message}`);
+      }
+    }
+
+    if (!indexNames.includes('banners_page_type_category_id_sub_category_id_idx')) {
+      try {
+        await prisma.$executeRaw`CREATE INDEX \`banners_page_type_category_id_sub_category_id_idx\` ON \`banners\`(\`page_type\`, \`category_id\`, \`sub_category_id\`)`;
+        console.log('✅ Created banners_page_type_category_id_sub_category_id_idx');
+      } catch (e) {
+        console.log(`⚠️  Could not create composite index: ${e.message}`);
+      }
+    }
+
+    // Add foreign keys
+    console.log('📝 Adding/verifying foreign keys...');
+    const existingForeignKeys = await prisma.$queryRaw`
+      SELECT CONSTRAINT_NAME 
+      FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'banners' 
+      AND CONSTRAINT_NAME IN ('banners_category_id_fkey', 'banners_sub_category_id_fkey')
+    `;
+    const fkNames = existingForeignKeys.map(fk => fk.CONSTRAINT_NAME);
+
+    if (!fkNames.includes('banners_category_id_fkey')) {
       try {
         await prisma.$executeRaw`
           ALTER TABLE \`banners\` 
@@ -50,13 +143,19 @@ async function applyBannerMigration() {
           FOREIGN KEY (\`category_id\`) REFERENCES \`categories\`(\`id\`) 
           ON DELETE CASCADE ON UPDATE CASCADE
         `;
+        console.log('✅ Created banners_category_id_fkey');
       } catch (e) {
-        if (!e.message.includes('Duplicate key name')) {
-          throw e;
+        if (e.message.includes('Duplicate key name') || e.message.includes('already exists')) {
+          console.log('⚠️  Foreign key banners_category_id_fkey already exists');
+        } else {
+          console.log(`⚠️  Could not create banners_category_id_fkey: ${e.message}`);
         }
-        console.log('⚠️  Foreign key banners_category_id_fkey already exists');
       }
+    } else {
+      console.log('✅ banners_category_id_fkey already exists');
+    }
 
+    if (!fkNames.includes('banners_sub_category_id_fkey')) {
       try {
         await prisma.$executeRaw`
           ALTER TABLE \`banners\` 
@@ -64,15 +163,19 @@ async function applyBannerMigration() {
           FOREIGN KEY (\`sub_category_id\`) REFERENCES \`subcategories\`(\`id\`) 
           ON DELETE CASCADE ON UPDATE CASCADE
         `;
+        console.log('✅ Created banners_sub_category_id_fkey');
       } catch (e) {
-        if (!e.message.includes('Duplicate key name')) {
-          throw e;
+        if (e.message.includes('Duplicate key name') || e.message.includes('already exists')) {
+          console.log('⚠️  Foreign key banners_sub_category_id_fkey already exists');
+        } else {
+          console.log(`⚠️  Could not create banners_sub_category_id_fkey: ${e.message}`);
         }
-        console.log('⚠️  Foreign key banners_sub_category_id_fkey already exists');
       }
-
-      console.log('✅ Migration applied successfully!');
+    } else {
+      console.log('✅ banners_sub_category_id_fkey already exists');
     }
+
+    console.log('✅ Column migration completed!');
 
     // Register migration in _prisma_migrations table
     const migrationExists = await prisma.$queryRaw`

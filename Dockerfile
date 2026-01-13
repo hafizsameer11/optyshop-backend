@@ -69,6 +69,13 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
+# Copy start script and make executable
+COPY --chown=nodejs:nodejs scripts/start-with-migrations.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Alternative CMD (simpler, use if start.sh has issues):
+# CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migrations skipped' && npx prisma generate && node server.js"]
+
 # Start script: run migrations then start server
 # Migrations will fail gracefully if already applied
-CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migrations skipped or already applied' && node server.js"]
+CMD ["/app/start.sh"]
