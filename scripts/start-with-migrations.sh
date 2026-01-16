@@ -22,13 +22,13 @@ if [ -n "$DB_WAIT_TIMEOUT" ]; then
   echo "✅ Database is ready"
 fi
 
-# Run migrations
-echo "📦 Running database migrations..."
-if npx prisma migrate deploy; then
-  echo "✅ Migrations completed successfully"
+# Run database deployment
+echo "📦 Running database deployment..."
+if ./scripts/deploy-database.sh; then
+  echo "✅ Database deployment completed successfully"
 else
-  echo "⚠️  Migration failed or already applied"
-  # Don't exit - some migrations might already be applied
+  echo "❌ Database deployment failed"
+  exit 1
 fi
 
 # Regenerate Prisma Client (in case schema changed)

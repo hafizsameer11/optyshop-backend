@@ -90,9 +90,10 @@ jobs:
       - name: Run database migrations
         id: migrations
         run: |
-          echo "Running database migrations..."
-          npx prisma migrate deploy
-          echo "✅ Migrations completed successfully"
+          echo "Running database deployment..."
+          chmod +x scripts/deploy-database.sh
+          ./scripts/deploy-database.sh
+          echo "✅ Database deployment completed successfully"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
