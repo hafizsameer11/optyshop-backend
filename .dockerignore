@@ -46,6 +46,8 @@ docker-compose*.yml
 
 # Misc
 *.postman_collection.json
-*.sql
+
+# Allow specific SQL files needed for deployment
+!fix-banner-columns.sql
 
 
