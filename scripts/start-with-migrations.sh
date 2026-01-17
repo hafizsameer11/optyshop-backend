@@ -32,6 +32,10 @@ EOF 2>/dev/null || echo "✅ Banner columns already exist"
 
 echo "✅ Banner columns check completed"
 
+# FORCE Prisma Client regeneration after schema changes
+echo "🔄 FORCE: Regenerating Prisma Client after banner columns..."
+npx prisma generate --force
+
 # Run database deployment
 echo "📦 Running database deployment..."
 if ./scripts/deploy-database.sh; then
@@ -41,8 +45,8 @@ else
   exit 1
 fi
 
-# Regenerate Prisma Client (critical - ensures client is up to date)
-echo "🔄 Regenerating Prisma Client..."
+# FORCE Prisma Client regeneration again after all migrations
+echo "🔄 FINAL FORCE: Regenerating Prisma Client after all migrations..."
 npx prisma generate --force
 
 # Start the application
