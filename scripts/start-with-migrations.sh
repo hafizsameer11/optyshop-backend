@@ -31,9 +31,9 @@ else
   exit 1
 fi
 
-# Regenerate Prisma Client (in case schema changed)
+# Regenerate Prisma Client (critical - ensures client is up to date)
 echo "🔄 Regenerating Prisma Client..."
-npx prisma generate
+npx prisma generate --force
 
 # Start the application
 echo "🎯 Starting server..."

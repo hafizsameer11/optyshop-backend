@@ -33,10 +33,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Install production dependencies
+# Install production dependencies AND Prisma CLI
 RUN npm install --only=production && npm cache clean --force
-
-# Install Prisma CLI (needed for migrations) before switching user
 RUN npm install prisma@6.19.0 --no-save && npm cache clean --force
 
 # Copy Prisma schema and generated client from builder
@@ -73,8 +71,8 @@ ENTRYPOINT ["dumb-init", "--"]
 COPY --chown=nodejs:nodejs scripts/start-with-migrations.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Alternative CMD (simpler, use if start.sh has issues):
-# CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migrations skipped' && npx prisma generate && node server.js"]
+# Alternative CMD (fallback if start.sh has issues):
+# CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migrations skipped' && npx prisma generate --force && node server.js"]
 
 # Start script: run migrations then start server
 # Migrations will fail gracefully if already applied

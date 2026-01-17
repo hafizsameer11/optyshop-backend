@@ -94,6 +94,10 @@ jobs:
           chmod +x scripts/deploy-database.sh
           ./scripts/deploy-database.sh
           echo "✅ Database deployment completed successfully"
+          
+          echo "Regenerating Prisma Client..."
+          npx prisma generate --force
+          echo "✅ Prisma Client regenerated successfully"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
