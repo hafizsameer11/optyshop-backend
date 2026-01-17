@@ -11,9 +11,16 @@ exports.getBanners = asyncHandler(async (req, res) => {
     
     const where = { is_active: true };
     
-    // Filter by page type
+    // Filter by page type (using position as fallback since page_type column doesn't exist)
     if (page_type) {
-        where.page_type = page_type;
+        // Map page_type to position for backward compatibility
+        const positionMap = {
+            'home': 'home',
+            'category': 'category',
+            'subcategory': 'subcategory',
+            'sub_subcategory': 'sub_subcategory'
+        };
+        where.position = positionMap[page_type] || page_type;
     }
     
     // Filter by category (for category, subcategory, or sub_subcategory pages)
@@ -57,9 +64,16 @@ exports.getBannersAdmin = asyncHandler(async (req, res) => {
     
     const where = {};
     
-    // Filter by page type
+    // Filter by page type (using position as fallback since page_type column doesn't exist)
     if (page_type) {
-        where.page_type = page_type;
+        // Map page_type to position for backward compatibility
+        const positionMap = {
+            'home': 'home',
+            'category': 'category',
+            'subcategory': 'subcategory',
+            'sub_subcategory': 'sub_subcategory'
+        };
+        where.position = positionMap[page_type] || page_type;
     }
     
     // Filter by category
@@ -104,21 +118,21 @@ exports.createBanner = asyncHandler(async (req, res) => {
     const url = await uploadToS3(req.file, 'cms/banners');
     const data = { ...req.body };
     
-    // Set default page_type if not provided
-    if (!data.page_type) {
-        data.page_type = 'home';
+    // Set default position if not provided (using position instead of page_type)
+    if (!data.position) {
+        data.position = 'home';
     }
     
-    // Validate page_type
-    const validPageTypes = ['home', 'category', 'subcategory', 'sub_subcategory'];
-    if (!validPageTypes.includes(data.page_type)) {
-        return error(res, `Invalid page_type. Must be one of: ${validPageTypes.join(', ')}`, 400);
+    // Validate position (using position instead of page_type)
+    const validPositions = ['home', 'category', 'subcategory', 'sub_subcategory'];
+    if (!validPositions.includes(data.position)) {
+        return error(res, `Invalid position. Must be one of: ${validPositions.join(', ')}`, 400);
     }
     
     // Validate category_id requirement
-    if (data.page_type === 'category' || data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+    if (data.position === 'category' || data.position === 'subcategory' || data.position === 'sub_subcategory') {
         if (!data.category_id) {
-            return error(res, 'category_id is required for category, subcategory, and sub_subcategory page types', 400);
+            return error(res, 'category_id is required for category, subcategory, and sub_subcategory positions', 400);
         }
         data.category_id = parseInt(data.category_id);
         
@@ -130,9 +144,9 @@ exports.createBanner = asyncHandler(async (req, res) => {
     }
     
     // Validate sub_category_id requirement
-    if (data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+    if (data.position === 'subcategory' || data.position === 'sub_subcategory') {
         if (!data.sub_category_id) {
-            return error(res, 'sub_category_id is required for subcategory and sub_subcategory page types', 400);
+            return error(res, 'sub_category_id is required for subcategory and sub_subcategory positions', 400);
         }
         data.sub_category_id = parseInt(data.sub_category_id);
         
@@ -149,7 +163,7 @@ exports.createBanner = asyncHandler(async (req, res) => {
     }
     
     // For home page type, ensure category_id and sub_category_id are null
-    if (data.page_type === 'home') {
+    if (data.position === 'home') {
         data.category_id = null;
         data.sub_category_id = null;
     }
@@ -199,16 +213,16 @@ exports.updateBanner = asyncHandler(async (req, res) => {
         data.image_url = url;
     }
     
-    // Validate page_type if provided
-    if (data.page_type) {
-        const validPageTypes = ['home', 'category', 'subcategory', 'sub_subcategory'];
-        if (!validPageTypes.includes(data.page_type)) {
-            return error(res, `Invalid page_type. Must be one of: ${validPageTypes.join(', ')}`, 400);
+    // Validate position if provided (using position instead of page_type)
+    if (data.position) {
+        const validPositions = ['home', 'category', 'subcategory', 'sub_subcategory'];
+        if (!validPositions.includes(data.position)) {
+            return error(res, `Invalid position. Must be one of: ${validPositions.join(', ')}`, 400);
         }
     }
     
-    // If page_type is being updated, validate related fields
-    if (data.page_type === 'category' || data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+    // If position is being updated, validate related fields
+    if (data.position === 'category' || data.position === 'subcategory' || data.position === 'sub_subcategory') {
         if (data.category_id) {
             data.category_id = parseInt(data.category_id);
             
@@ -221,12 +235,12 @@ exports.updateBanner = asyncHandler(async (req, res) => {
             // Get existing banner to check if category_id was already set
             const existingBanner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
             if (!existingBanner || !existingBanner.category_id) {
-                return error(res, 'category_id is required for category, subcategory, and sub_subcategory page types', 400);
+                return error(res, 'category_id is required for category, subcategory, and sub_subcategory positions', 400);
             }
             data.category_id = existingBanner.category_id;
         }
         
-        if (data.page_type === 'subcategory' || data.page_type === 'sub_subcategory') {
+        if (data.position === 'subcategory' || data.position === 'sub_subcategory') {
             if (data.sub_category_id) {
                 data.sub_category_id = parseInt(data.sub_category_id);
                 
@@ -244,15 +258,15 @@ exports.updateBanner = asyncHandler(async (req, res) => {
                 // Get existing banner to check if sub_category_id was already set
                 const existingBanner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
                 if (!existingBanner || !existingBanner.sub_category_id) {
-                    return error(res, 'sub_category_id is required for subcategory and sub_subcategory page types', 400);
+                    return error(res, 'sub_category_id is required for subcategory and sub_subcategory positions', 400);
                 }
                 data.sub_category_id = existingBanner.sub_category_id;
             }
         }
     }
     
-    // For home page type, ensure category_id and sub_category_id are null
-    if (data.page_type === 'home') {
+    // For home position, ensure category_id and sub_category_id are null
+    if (data.position === 'home') {
         data.category_id = null;
         data.sub_category_id = null;
     }
