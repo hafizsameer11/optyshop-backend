@@ -95,11 +95,13 @@ jobs:
           ./scripts/deploy-database.sh
           echo "✅ Database deployment completed successfully"
           
-          echo "Ensuring banner page_type migration is applied..."
-          npx prisma migrate deploy --name 20260113015558_add_banner_page_type_and_category_associations || echo "Migration already applied or not needed"
+          echo "Running production database fix for banner columns..."
+          chmod +x production-db-fix.sh
+          ./production-db-fix.sh
+          echo "✅ Production database fix completed"
           
           echo "Regenerating Prisma Client..."
-          npx prisma generate --force
+          npx prisma generate
           echo "✅ Prisma Client regenerated successfully"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
