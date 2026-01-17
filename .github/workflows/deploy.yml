@@ -53,9 +53,24 @@ jobs:
       - name: Run database migrations
         id: migrations
         run: |
-          echo "Running database migrations..."
+          echo "🚨 CRITICAL: Running banner column fix FIRST..."
+          
+          # Apply banner column fix
+          npx prisma db execute --stdin << 'EOF'
+ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
+ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
+ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
+EOF 2>/dev/null || echo "✅ Banner columns already exist"
+          
+          echo "✅ Banner columns fix completed"
+          
+          # Force regenerate Prisma Client after schema changes
+          echo "🔄 Regenerating Prisma Client..."
+          npx prisma generate --force
+          
+          echo "Running standard database migrations..."
           npx prisma migrate deploy
-          echo "✅ Migrations completed successfully"
+          echo "✅ All migrations completed successfully"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -67,14 +82,14 @@ jobs:
 
       # Option 1: Docker-based deployment
       - name: Build Docker image
-        if: ${{ secrets.DOCKER_REGISTRY != '' }}
+        if: ${{ secrets.DOCKER_REGISTRY }}
         run: |
           echo "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" | docker login ${{ secrets.DOCKER_REGISTRY }} -u "${{ secrets.DOCKER_REGISTRY_USERNAME }}" --password-stdin
           docker build -t ${{ secrets.DOCKER_IMAGE_NAME }}:latest .
           docker push ${{ secrets.DOCKER_IMAGE_NAME }}:latest
 
       - name: Deploy to Docker container (via SSH)
-        if: ${{ secrets.DEPLOY_SSH_HOST != '' && secrets.DOCKER_REGISTRY != '' }}
+        if: ${{ secrets.DEPLOY_SSH_HOST && secrets.DOCKER_REGISTRY }}
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
@@ -93,7 +108,7 @@ jobs:
 
       # Option 2: Direct deployment via SSH (without Docker)
       - name: Deploy via SSH (Direct)
-        if: ${{ secrets.DEPLOY_SSH_HOST != '' && secrets.DOCKER_REGISTRY == '' }}
+        if: ${{ secrets.DEPLOY_SSH_HOST && !secrets.DOCKER_REGISTRY }}
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
@@ -116,7 +131,7 @@ jobs:
             pm2 restart all || sudo systemctl restart optyshop-backend || echo "⚠️ Please restart your application manually"
 
       - name: Health check
-        if: ${{ secrets.HEALTH_CHECK_URL != '' }}
+        if: ${{ secrets.HEALTH_CHECK_URL }}
         run: |
           echo "Waiting for service to be ready..."
           sleep 10
