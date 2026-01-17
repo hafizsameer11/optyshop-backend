@@ -86,7 +86,7 @@ jobs:
       - name: Validate environment
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ DATABASE_URL missing"
+            echo "DATABASE_URL missing"
             exit 1
           fi
 
