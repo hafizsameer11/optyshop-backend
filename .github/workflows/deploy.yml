@@ -57,10 +57,10 @@ jobs:
           
           # Apply banner column fix
           npx prisma db execute --stdin << 'EOF'
-ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
-ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
-ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
-EOF 2>/dev/null || echo "✅ Banner columns already exist"
+          ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
+          ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
+          ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
+          EOF 2>/dev/null || echo "✅ Banner columns already exist"
           
           echo "✅ Banner columns fix completed"
           
