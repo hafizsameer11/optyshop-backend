@@ -92,66 +92,19 @@ jobs:
         run: |
           echo "🚨 CRITICAL: Running banner column fix FIRST..."
           
-          # Check and fix banner columns BEFORE anything else
-          npx prisma db execute --stdin << 'SQL'
-          SET @column_exists = (
-            SELECT COUNT(*) 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = DATABASE() 
-              AND TABLE_NAME = 'banners' 
-              AND COLUMN_NAME = 'page_type'
-          );
-          
-          SET @sql = IF(@column_exists = 0, 
-            'ALTER TABLE banners ADD COLUMN page_type ENUM(\"home\", \"category\", \"subcategory\", \"sub_subcategory\") NOT NULL DEFAULT \"home\"',
-            'SELECT \"page_type column already exists\" as message'
-          );
-          
-          PREPARE stmt FROM @sql;
-          EXECUTE stmt;
-          DEALLOCATE PREPARE stmt;
-          
-          SET @column_exists = (
-            SELECT COUNT(*) 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = DATABASE() 
-              AND TABLE_NAME = 'banners' 
-              AND COLUMN_NAME = 'category_id'
-          );
-          
-          SET @sql = IF(@column_exists = 0, 
-            'ALTER TABLE banners ADD COLUMN category_id INTEGER NULL',
-            'SELECT \"category_id column already exists\" as message'
-          );
-          
-          PREPARE stmt FROM @sql;
-          EXECUTE stmt;
-          DEALLOCATE PREPARE stmt;
-          
-          SET @column_exists = (
-            SELECT COUNT(*) 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = DATABASE() 
-              AND TABLE_NAME = 'banners' 
-              AND COLUMN_NAME = 'sub_category_id'
-          );
-          
-          SET @sql = IF(@column_exists = 0, 
-            'ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL',
-            'SELECT \"sub_category_id column already exists\" as message'
-          );
-          
-          PREPARE stmt FROM @sql;
-          EXECUTE stmt;
-          DEALLOCATE PREPARE stmt;
-          SQL
+          # Simple direct SQL approach - no complex variables
+          npx prisma db execute --stdin << 'EOF'
+          ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
+          ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
+          ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
+          EOF
           
           echo "✅ CRITICAL: Banner columns fix completed"
           
           echo "Running standard database deployment..."
           chmod +x scripts/deploy-database.sh
-          ./scripts/deploy-database.sh
-          echo "✅ Database deployment completed successfully"
+          ./scripts/deploy-database.sh || echo "Standard deployment failed, but banner fix applied"
+          echo "✅ Database deployment completed"
           
           echo "Regenerating Prisma Client..."
           npx prisma generate

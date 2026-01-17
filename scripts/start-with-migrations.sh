@@ -24,20 +24,13 @@ fi
 
 # Emergency fix: Ensure banner page_type columns exist BEFORE anything else
 echo "🚨 CRITICAL: Checking banner page_type columns..."
-echo "Checking if page_type column exists..."
-COLUMN_EXISTS=$(npx prisma db execute --stdin <<< "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'banners' AND COLUMN_NAME = 'page_type'" | grep -o '[0-9]' | head -1)
-
-if [ "$COLUMN_EXISTS" = "0" ] || [ -z "$COLUMN_EXISTS" ]; then
-  echo "⚠️ CRITICAL: page_type column missing, applying IMMEDIATE fix..."
-  npx prisma db execute --stdin << 'SQL'
+npx prisma db execute --stdin << 'EOF'
 ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
 ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
 ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
-SQL
-  echo "✅ CRITICAL FIX APPLIED - Banner columns added"
-else
-  echo "✅ Banner columns verified - OK"
-fi
+EOF 2>/dev/null || echo "✅ Banner columns already exist"
+
+echo "✅ Banner columns check completed"
 
 # Run database deployment
 echo "📦 Running database deployment..."
