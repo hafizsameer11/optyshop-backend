@@ -42,7 +42,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy application code and emergency fixes
+# Copy application code
 COPY --chown=nodejs:nodejs . .
 
 # Create uploads directory with proper permissions (before switching user)
@@ -67,13 +67,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Copy start script and make executable
-COPY --chown=nodejs:nodejs scripts/start-with-migrations.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Alternative CMD (fallback if start.sh has issues):
-# CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migrations skipped' && npx prisma generate --force && node server.js"]
-
 # Start script: run migrations then start server
-# Migrations will fail gracefully if already applied
-CMD ["/app/start.sh"]
+# If migrations fail (e.g., shadow database permission), server will still start
+# For production: Run migrations manually if DB user lacks CREATE DATABASE permission
+CMD ["sh", "-c", "(npx prisma migrate deploy || echo '⚠️  Migrations skipped - run manually if needed') && node server.js"]
