@@ -94,12 +94,16 @@ jobs:
           
           # Simple direct SQL approach - no complex variables
           npx prisma db execute --stdin << 'EOF'
-          ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
-          ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
-          ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
-          EOF
+ALTER TABLE banners ADD COLUMN page_type ENUM('home', 'category', 'subcategory', 'sub_subcategory') NOT NULL DEFAULT 'home';
+ALTER TABLE banners ADD COLUMN category_id INTEGER NULL;
+ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL;
+EOF
           
           echo "✅ CRITICAL: Banner columns fix completed"
+          
+          # Force regenerate Prisma Client after schema changes
+          echo "🔄 Regenerating Prisma Client..."
+          npx prisma generate --force
           
           echo "Running standard database deployment..."
           chmod +x scripts/deploy-database.sh
