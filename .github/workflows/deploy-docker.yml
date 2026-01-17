@@ -90,15 +90,68 @@ jobs:
       - name: Run database migrations
         id: migrations
         run: |
-          echo "Running database deployment..."
+          echo "🚨 CRITICAL: Running banner column fix FIRST..."
+          
+          # Check and fix banner columns BEFORE anything else
+          npx prisma db execute --stdin << 'SQL'
+          SET @column_exists = (
+            SELECT COUNT(*) 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+              AND TABLE_NAME = 'banners' 
+              AND COLUMN_NAME = 'page_type'
+          );
+          
+          SET @sql = IF(@column_exists = 0, 
+            'ALTER TABLE banners ADD COLUMN page_type ENUM(\"home\", \"category\", \"subcategory\", \"sub_subcategory\") NOT NULL DEFAULT \"home\"',
+            'SELECT \"page_type column already exists\" as message'
+          );
+          
+          PREPARE stmt FROM @sql;
+          EXECUTE stmt;
+          DEALLOCATE PREPARE stmt;
+          
+          SET @column_exists = (
+            SELECT COUNT(*) 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+              AND TABLE_NAME = 'banners' 
+              AND COLUMN_NAME = 'category_id'
+          );
+          
+          SET @sql = IF(@column_exists = 0, 
+            'ALTER TABLE banners ADD COLUMN category_id INTEGER NULL',
+            'SELECT \"category_id column already exists\" as message'
+          );
+          
+          PREPARE stmt FROM @sql;
+          EXECUTE stmt;
+          DEALLOCATE PREPARE stmt;
+          
+          SET @column_exists = (
+            SELECT COUNT(*) 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+              AND TABLE_NAME = 'banners' 
+              AND COLUMN_NAME = 'sub_category_id'
+          );
+          
+          SET @sql = IF(@column_exists = 0, 
+            'ALTER TABLE banners ADD COLUMN sub_category_id INTEGER NULL',
+            'SELECT \"sub_category_id column already exists\" as message'
+          );
+          
+          PREPARE stmt FROM @sql;
+          EXECUTE stmt;
+          DEALLOCATE PREPARE stmt;
+          SQL
+          
+          echo "✅ CRITICAL: Banner columns fix completed"
+          
+          echo "Running standard database deployment..."
           chmod +x scripts/deploy-database.sh
           ./scripts/deploy-database.sh
           echo "✅ Database deployment completed successfully"
-          
-          echo "Running production database fix for banner columns..."
-          chmod +x production-db-fix.sh
-          ./production-db-fix.sh
-          echo "✅ Production database fix completed"
           
           echo "Regenerating Prisma Client..."
           npx prisma generate
