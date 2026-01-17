@@ -82,14 +82,14 @@ jobs:
 
       # Option 1: Docker-based deployment
       - name: Build Docker image
-        if: secrets.DOCKER_REGISTRY
+        if: ${{ secrets.DOCKER_REGISTRY != '' }}
         run: |
           echo "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" | docker login ${{ secrets.DOCKER_REGISTRY }} -u "${{ secrets.DOCKER_REGISTRY_USERNAME }}" --password-stdin
           docker build -t ${{ secrets.DOCKER_IMAGE_NAME }}:latest .
           docker push ${{ secrets.DOCKER_IMAGE_NAME }}:latest
 
       - name: Deploy to Docker container (via SSH)
-        if: secrets.DEPLOY_SSH_HOST && secrets.DOCKER_REGISTRY
+        if: ${{ secrets.DEPLOY_SSH_HOST != '' && secrets.DOCKER_REGISTRY != '' }}
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
@@ -108,7 +108,7 @@ jobs:
 
       # Option 2: Direct deployment via SSH (without Docker)
       - name: Deploy via SSH (Direct)
-        if: secrets.DEPLOY_SSH_HOST && !secrets.DOCKER_REGISTRY
+        if: ${{ secrets.DEPLOY_SSH_HOST != '' && secrets.DOCKER_REGISTRY == '' }}
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
@@ -131,7 +131,7 @@ jobs:
             pm2 restart all || sudo systemctl restart optyshop-backend || echo "⚠️ Please restart your application manually"
 
       - name: Health check
-        if: secrets.HEALTH_CHECK_URL
+        if: ${{ secrets.HEALTH_CHECK_URL != '' }}
         run: |
           echo "Waiting for service to be ready..."
           sleep 10
