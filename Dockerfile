@@ -37,10 +37,12 @@ COPY --chown=nodejs:nodejs package*.json ./
 RUN npm install --only=production && npm cache clean --force
 RUN npm install prisma@6.19.0 --no-save && npm cache clean --force
 
-# Copy Prisma schema and generated client from builder
+# Copy Prisma schema from builder
 COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Generate Prisma Client in production stage (before switching user to avoid permission issues)
+# This ensures the client matches the actual database schema
+RUN npx prisma generate
 
 # Copy application code
 COPY --chown=nodejs:nodejs . .
@@ -49,6 +51,12 @@ COPY --chown=nodejs:nodejs . .
 RUN mkdir -p /app/uploads && \
     chown -R nodejs:nodejs /app/uploads && \
     chmod -R 755 /app/uploads
+
+# Create node_modules/.prisma directory with write permissions for nodejs user
+# This allows Prisma Client to be regenerated at runtime
+RUN mkdir -p /app/node_modules/.prisma && \
+    chown -R nodejs:nodejs /app/node_modules && \
+    chmod -R 755 /app/node_modules
 
 # Declare volume for uploads persistence (must be configured in Dokploy)
 # This directory should be mounted as a volume to persist files across container rebuilds
@@ -67,7 +75,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start script: run migrations then start server
-# If migrations fail (e.g., shadow database permission), server will still start
-# For production: Run migrations manually if DB user lacks CREATE DATABASE permission
-CMD ["sh", "-c", "(npx prisma migrate deploy || echo '⚠️  Migrations skipped - run manually if needed') && node server.js"]
+# Start script: regenerate Prisma Client to sync with actual DB, then start server
+# This ensures Prisma Client matches the database schema (nodejs user can now write to node_modules)
+CMD ["sh", "-c", "npx prisma generate && node server.js"]
