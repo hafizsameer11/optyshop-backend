@@ -62,8 +62,11 @@ jobs:
       # -----------------------------
       - name: Validate environment variables
         run: |
+          echo "Checking environment variables..."
+          echo "DATABASE_URL length: ${#DATABASE_URL}"
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ DATABASE_URL missing"
+            echo "❌ DATABASE_URL missing or empty"
+            echo "Please ensure DATABASE_URL secret is set in GitHub repository settings"
             exit 1
           fi
           echo "✅ Environment validated"
