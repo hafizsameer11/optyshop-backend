@@ -151,6 +151,11 @@ jobs:
               --restart unless-stopped \
               -p 5000:5000 \
               -e DATABASE_URL="$DATABASE_URL" \
+              -e DB_HOST="localhost" \
+              -e DB_PORT="3306" \
+              -e DB_NAME="optyshop" \
+              -e DB_USER="root" \
+              -e DB_PASSWORD="" \
               -e NODE_ENV=production \
               $REGISTRY/$IMAGE_NAME:latest
 
