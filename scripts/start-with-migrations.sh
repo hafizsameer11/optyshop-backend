@@ -31,6 +31,19 @@ else
   exit 1
 fi
 
+# Emergency fix: Ensure banner page_type columns exist
+echo "🚨 Applying emergency banner columns fix..."
+echo "Checking if page_type column exists..."
+COLUMN_EXISTS=$(npx prisma db execute --stdin <<< "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'banners' AND COLUMN_NAME = 'page_type'" | grep -o '[0-9]' | head -1)
+
+if [ "$COLUMN_EXISTS" = "0" ]; then
+  echo "⚠️ page_type column missing, applying fix..."
+  npx prisma db execute --stdin < fix-banner-columns.sql
+  echo "✅ Banner columns fix applied"
+else
+  echo "✅ Banner columns already exist"
+fi
+
 # Regenerate Prisma Client (critical - ensures client is up to date)
 echo "🔄 Regenerating Prisma Client..."
 npx prisma generate --force

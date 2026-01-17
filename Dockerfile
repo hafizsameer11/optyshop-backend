@@ -42,8 +42,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy application code
+# Copy application code and emergency fixes
 COPY --chown=nodejs:nodejs . .
+COPY --chown=nodejs:nodejs fix-banner-columns.sql /app/fix-banner-columns.sql
 
 # Create uploads directory with proper permissions (before switching user)
 RUN mkdir -p /app/uploads && \
