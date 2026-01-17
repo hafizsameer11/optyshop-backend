@@ -60,7 +60,6 @@ jobs:
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/production'
 
-    # ✅ ALL ENV NEEDED BY THIS JOB
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
@@ -97,16 +96,24 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Run migrations
-        run: |
-          npx prisma db execute --stdin << 'EOF'
-ALTER TABLE banners ADD COLUMN IF NOT EXISTS page_type ENUM('home','category','subcategory','sub_subcategory') NOT NULL DEFAULT 'home';
-ALTER TABLE banners ADD COLUMN IF NOT EXISTS category_id INT NULL;
-ALTER TABLE banners ADD COLUMN IF NOT EXISTS sub_category_id INT NULL;
-EOF
-          npx prisma generate
-          npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          # ✅ Run banner columns safely without heredoc
+          npx prisma db execute --stdin <<< "
+          ALTER TABLE banners 
+            ADD COLUMN IF NOT EXISTS page_type ENUM('home','category','subcategory','sub_subcategory') NOT NULL DEFAULT 'home';
+          ALTER TABLE banners 
+            ADD COLUMN IF NOT EXISTS category_id INT NULL;
+          ALTER TABLE banners 
+            ADD COLUMN IF NOT EXISTS sub_category_id INT NULL;
+          "
+
+          # Regenerate Prisma Client
+          npx prisma generate
+
+          # Run standard migrations
+          npx prisma migrate deploy
 
       # ===============================
       # SSH DEPLOY (DOCKER)
@@ -123,14 +130,18 @@ EOF
             set -e
             cd ${DEPLOY_PATH:-/app}
 
+            # Login to GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
               -u ${{ github.actor }} --password-stdin
 
+            # Pull latest image
             docker pull $REGISTRY/$IMAGE_NAME:latest
 
+            # Stop & remove old container
             docker stop optyshop-backend || true
             docker rm optyshop-backend || true
 
+            # Run new container
             docker run -d \
               --name optyshop-backend \
               --restart unless-stopped \
@@ -150,4 +161,5 @@ EOF
             curl -fsS $HEALTH_CHECK_URL/health && exit 0
             sleep 5
           done
+          echo "❌ Health check failed after 5 attempts"
           exit 1
