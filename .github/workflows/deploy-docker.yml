@@ -5,26 +5,29 @@ on:
     branches: [main, master, production]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
+  # =====================================================
+  # BUILD & PUSH IMAGE
+  # =====================================================
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Login to registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -32,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=branch
             type=sha
@@ -46,6 +49,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  # =====================================================
+  # DEPLOY
+  # =====================================================
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -54,8 +60,11 @@ jobs:
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/production'
 
-    # ✅ MAP SECRETS → ENV
+    # ✅ ALL ENV NEEDED BY THIS JOB
     env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
       DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
@@ -67,15 +76,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      # ✅ SAFE INSTALL (no lock file required)
       - name: Install dependencies
         run: npm install
 
-      - name: Validate env
+      - name: Validate environment
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "❌ DATABASE_URL missing"
@@ -99,7 +108,9 @@ EOF
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
-      # ✅ SSH DEPLOY (VALID)
+      # ===============================
+      # SSH DEPLOY (DOCKER)
+      # ===============================
       - name: Deploy via SSH
         if: env.DEPLOY_SSH_HOST != ''
         uses: appleboy/ssh-action@v1.0.0
@@ -112,7 +123,10 @@ EOF
             set -e
             cd ${DEPLOY_PATH:-/app}
 
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+              -u ${{ github.actor }} --password-stdin
+
+            docker pull $REGISTRY/$IMAGE_NAME:latest
 
             docker stop optyshop-backend || true
             docker rm optyshop-backend || true
@@ -123,8 +137,11 @@ EOF
               -p 5000:5000 \
               -e DATABASE_URL="$DATABASE_URL" \
               -e NODE_ENV=production \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+              $REGISTRY/$IMAGE_NAME:latest
 
+      # ===============================
+      # HEALTH CHECK
+      # ===============================
       - name: Health check
         if: env.HEALTH_CHECK_URL != ''
         run: |
