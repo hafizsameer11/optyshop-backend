@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const productGiftController = require('../controllers/productGiftController');
-const { protect, admin } = require('../middleware/auth');
+const { protect, authorizeAdmin } = require('../middleware/auth');
 
 // Public routes
 router.get('/', productGiftController.getProductGifts);
 router.get('/product/:productId', productGiftController.getGiftsForProduct);
 
 // Admin routes
-router.get('/admin', protect, admin, productGiftController.getProductGiftsAdmin);
-router.get('/admin/:id', protect, admin, productGiftController.getProductGiftById);
-router.post('/admin', protect, admin, productGiftController.createProductGift);
-router.put('/admin/:id', protect, admin, productGiftController.updateProductGift);
-router.delete('/admin/:id', protect, admin, productGiftController.deleteProductGift);
+router.get('/admin', protect, authorizeAdmin(), productGiftController.getProductGiftsAdmin);
+router.get('/admin/:id', protect, authorizeAdmin(), productGiftController.getProductGiftById);
+router.post('/admin', protect, authorizeAdmin(), productGiftController.createProductGift);
+router.put('/admin/:id', protect, authorizeAdmin(), productGiftController.updateProductGift);
+router.delete('/admin/:id', protect, authorizeAdmin(), productGiftController.deleteProductGift);
 
 module.exports = router;

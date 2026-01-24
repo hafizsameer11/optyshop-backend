@@ -11733,7 +11733,33 @@
                     "admin",
                     "flash-offers"
                   ]
-                }
+                },
+                "description": "Get all flash offers (Admin view with all details including inactive offers)"
+              }
+            },
+            {
+              "name": "Get Flash Offer by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/flash-offers/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "flash-offers",
+                    "1"
+                  ]
+                },
+                "description": "Get a specific flash offer by ID (Admin only)"
               }
             },
             {
@@ -11752,7 +11778,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"title\": \"Flash Sale!\",\n  \"description\": \"Limited time offer\",\n  \"product_ids\": [\n    1,\n    2\n  ],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-25T12:00:00Z\",\n  \"is_active\": true\n}"
+                  "raw": "{\n  \"title\": \"Flash Sale!\",\n  \"description\": \"Limited time offer on selected products\",\n  \"product_ids\": [1, 2, 3],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-25T12:00:00Z\",\n  \"is_active\": true,\n  \"link_url\": \"https://example.com/flash-sale\",\n  \"discount_percentage\": 25\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/flash-offers",
@@ -11764,7 +11790,66 @@
                     "admin",
                     "flash-offers"
                   ]
-                }
+                },
+                "description": "Create a new flash offer (Admin only). Use multipart/form-data if uploading an image."
+              }
+            },
+            {
+              "name": "Update Flash Offer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Updated Flash Sale!\",\n  \"description\": \"Updated limited time offer\",\n  \"product_ids\": [1, 2, 3, 4],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-26T12:00:00Z\",\n  \"is_active\": true,\n  \"link_url\": \"https://example.com/updated-flash-sale\",\n  \"discount_percentage\": 30\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/flash-offers/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "flash-offers",
+                    "1"
+                  ]
+                },
+                "description": "Update an existing flash offer by ID (Admin only). Use multipart/form-data if uploading an image."
+              }
+            },
+            {
+              "name": "Delete Flash Offer",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/flash-offers/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "flash-offers",
+                    "1"
+                  ]
+                },
+                "description": "Delete a flash offer by ID (Admin only)"
               }
             }
           ]
@@ -11792,7 +11877,33 @@
                     "admin",
                     "product-gifts"
                   ]
-                }
+                },
+                "description": "Get all product gifts (Admin view with all details including inactive gifts)"
+              }
+            },
+            {
+              "name": "Get Product Gift by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/product-gifts/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product-gifts",
+                    "1"
+                  ]
+                },
+                "description": "Get a specific product gift by ID (Admin only)"
               }
             },
             {
@@ -11811,7 +11922,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"product_id\": 1,\n  \"gift_product_id\": 2,\n  \"min_quantity\": 1,\n  \"is_active\": true,\n  \"description\": \"Free gift with purchase\"\n}"
+                  "raw": "{\n  \"product_id\": 1,\n  \"gift_product_id\": 2,\n  \"min_quantity\": 1,\n  \"is_active\": true,\n  \"description\": \"Free gift with purchase of selected products\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/product-gifts",
@@ -11823,7 +11934,66 @@
                     "admin",
                     "product-gifts"
                   ]
-                }
+                },
+                "description": "Create a new product gift rule (Admin only)"
+              }
+            },
+            {
+              "name": "Update Product Gift",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"product_id\": 1,\n  \"gift_product_id\": 3,\n  \"min_quantity\": 2,\n  \"is_active\": true,\n  \"description\": \"Updated free gift with purchase\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/product-gifts/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product-gifts",
+                    "1"
+                  ]
+                },
+                "description": "Update an existing product gift rule by ID (Admin only)"
+              }
+            },
+            {
+              "name": "Delete Product Gift",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/product-gifts/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product-gifts",
+                    "1"
+                  ]
+                },
+                "description": "Delete a product gift rule by ID (Admin only)"
               }
             }
           ]

@@ -86,7 +86,15 @@ exports.authorize = (...roles) => {
 
 // Admin or staff authorization helper
 exports.authorizeAdmin = () => {
-  return authorize('admin', 'staff');
+  return (req, res, next) => {
+    if (!req.user || !['admin', 'staff'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `User role '${req.user ? req.user.role : 'undefined'}' is not authorized to access this route`
+      });
+    }
+    next();
+  };
 };
 
 // Optional auth - doesn't fail if no token
