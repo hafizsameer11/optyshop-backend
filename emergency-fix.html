@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptyShop - Emergency Database Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #e74c3c;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #e74c3c;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #c0392b;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #cce5ff;
+            border: 1px solid #b8daff;
+            color: #004085;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 Emergency Database Fix</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Emergency Use Only!</strong><br>
+            This tool fixes database schema issues that prevent the admin products API from working.
+            Only use this when you're getting "brand_id does not exist" errors.
+        </div>
+
+        <div class="instructions">
+            <strong>📋 Instructions:</strong><br>
+            1. Enter the emergency secret key<br>
+            2. Click "Fix Database"<br>
+            3. Wait for the process to complete<br>
+            4. Restart your application server<br>
+            5. Test the admin products endpoint
+        </div>
+
+        <form id="fixForm">
+            <div class="form-group">
+                <label for="secretKey">Emergency Secret Key:</label>
+                <input type="text" id="secretKey" name="secretKey" placeholder="Enter emergency secret key" required>
+            </div>
+            <button type="submit" id="fixButton">🔧 Fix Database</button>
+        </form>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('fixForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const secretKey = document.getElementById('secretKey').value;
+            const resultDiv = document.getElementById('result');
+            const fixButton = document.getElementById('fixButton');
+            
+            // Disable button and show loading
+            fixButton.disabled = true;
+            fixButton.textContent = '⏳ Fixing Database...';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Applying database fixes... This may take a few minutes.';
+            
+            try {
+                const response = await fetch('/api/emergency/fix-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        secret_key: secretKey
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS!\n\n${JSON.stringify(data, null, 2)}\n\nNext steps:\n1. Restart your application server (pm2 restart all)\n2. Test the admin products endpoint\n3. Check if frontend is working`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ ERROR!\n\nStatus: ${response.status}\nMessage: ${data.message || 'Unknown error'}\n\nPlease check your secret key and try again.`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ NETWORK ERROR!\n\n${error.message}\n\nPlease check your connection and try again.`;
+            } finally {
+                fixButton.disabled = false;
+                fixButton.textContent = '🔧 Fix Database';
+            }
+        });
+    </script>
+</body>
+</html>
