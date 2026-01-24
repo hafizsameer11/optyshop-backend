@@ -45,11 +45,11 @@ model Category {
   created_at         DateTime                   @default(now())
   updated_at         DateTime                   @updatedAt
   astigmatismConfigs AstigmatismConfiguration[]
+  banners            Banner[]
   contactLensConfigs ContactLensConfiguration[]
   products           Product[]
   sphericalConfigs   SphericalConfiguration[]
   subcategories      SubCategory[]
-  banners            Banner[]
 
   @@map("categories")
 }
@@ -67,13 +67,13 @@ model SubCategory {
   updated_at                DateTime                   @updatedAt
   parent_id                 Int?
   astigmatismConfigurations AstigmatismConfiguration[]
+  banners                   Banner[]
   contactLensConfigs        ContactLensConfiguration[]
   products                  Product[]
   sphericalConfigurations   SphericalConfiguration[]
   category                  Category                   @relation(fields: [category_id], references: [id], onDelete: Cascade)
   parent                    SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id])
   children                  SubCategory[]              @relation("SubCategoryHierarchy")
-  banners                   Banner[]
 
   @@unique([name, parent_id])
   @@index([category_id])
@@ -138,17 +138,17 @@ model Product {
   contactLensConfigs    ContactLensConfiguration[]
   frameSizes            FrameSize[]
   orderItems            OrderItem[]
+  giftProducts          ProductGift[]              @relation("GiftProducts")
+  productGifts          ProductGift[]              @relation("ProductGifts")
   lensCoatings          ProductLensCoating[]
   lensTypes             ProductLensType[]
-  variants              ProductVariant[]
   sizeVolumeVariants    ProductSizeVolume[]
+  variants              ProductVariant[]
+  brand                 Brand?                     @relation(fields: [brand_id], references: [id])
   category              Category                   @relation(fields: [category_id], references: [id])
   subCategory           SubCategory?               @relation(fields: [sub_category_id], references: [id])
-  brand                 Brand?                     @relation(fields: [brand_id], references: [id])
   reviews               Review[]
   sphericalConfigs      SphericalConfiguration[]
-  productGifts          ProductGift[]              @relation("ProductGifts")
-  giftProducts          ProductGift[]              @relation("GiftProducts")
 
   @@index([category_id])
   @@index([sub_category_id])
@@ -782,8 +782,8 @@ model ProductGift {
   description     String?  @db.Text
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-  product         Product  @relation("ProductGifts", fields: [product_id], references: [id], onDelete: Cascade)
   giftProduct     Product  @relation("GiftProducts", fields: [gift_product_id], references: [id], onDelete: Cascade)
+  product         Product  @relation("ProductGifts", fields: [product_id], references: [id], onDelete: Cascade)
 
   @@unique([product_id, gift_product_id])
   @@index([product_id])
@@ -793,16 +793,16 @@ model ProductGift {
 }
 
 model Brand {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(150)
-  slug        String   @unique @db.VarChar(150)
-  description String?  @db.Text
-  logo_url    String?  @db.VarChar(500)
-  website_url String?  @db.VarChar(500)
-  sort_order  Int      @default(0)
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(150)
+  slug        String    @unique @db.VarChar(150)
+  description String?   @db.Text
+  logo_url    String?   @db.VarChar(500)
+  website_url String?   @db.VarChar(500)
+  sort_order  Int       @default(0)
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
   products    Product[]
 
   @@index([slug])
