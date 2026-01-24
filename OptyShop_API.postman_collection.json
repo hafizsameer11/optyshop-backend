@@ -66,7 +66,7 @@
                     "register"
                   ]
                 },
-                "description": "\u26a0\ufe0f WARNING: Admin registration only works if ALLOW_ADMIN_REGISTRATION=true in .env file. For production, use POST /api/admin/users instead. This endpoint will return 403 error if admin registration is disabled."
+                "description": "⚠️ WARNING: Admin registration only works if ALLOW_ADMIN_REGISTRATION=true in .env file. For production, use POST /api/admin/users instead. This endpoint will return 403 error if admin registration is disabled."
               }
             },
             {
@@ -198,7 +198,7 @@
                     }
                   ]
                 },
-                "description": "Get all active products with pagination and filters.\n\n**Response includes for each product:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Variant name (e.g., \"Black Classic\", \"Gold Premium\")\n  - `display_name`: Display name shown to customers (e.g., \"Black Classic Premium\")\n  - `price`: Variant-specific price (null if using base product price)\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display\n- `selectedColor`: Default selected color value (first color or null)\n- `currentVariantPrice`: Current variant price (or base product price if variant has no price)\n- Standard product fields (name, price, description, category, etc.)\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 12)\n- `category`: Filter by category slug\n- `subCategory`: Filter by subcategory slug\n- `frameShape`: Filter by frame shape\n- `frameMaterial`: Filter by frame material\n- `lensType`: Filter by lens type\n- `gender`: Filter by gender\n- `minPrice`, `maxPrice`: Price range filter\n- `search`: Search in name, description, SKU\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)\n- `isFeatured`: Filter featured products (true/false)\n\n**Example Product in Response:**\n```json\n{\n  \"id\": 1,\n  \"name\": \"Classic Round Frame\",\n  \"images\": [\"main1.jpg\"],\n  \"image\": \"black1.jpg\",\n  \"colors\": [\n    {\n      \"name\": \"Black Classic\",\n      \"display_name\": \"Black Classic Premium\",\n      \"price\": 99.99,\n      \"value\": \"black\",\n      \"images\": [\"black1.jpg\"],\n      \"primaryImage\": \"black1.jpg\",\n      \"hexCode\": \"#000000\"\n    },\n    {\n      \"name\": \"Gold Premium\",\n      \"display_name\": \"Gold Premium Edition\",\n      \"price\": 129.99,\n      \"value\": \"gold\",\n      \"images\": [\"gold1.jpg\"],\n      \"primaryImage\": \"gold1.jpg\",\n      \"hexCode\": \"#FFD700\"\n    }\n  ],\n  \"selectedColor\": \"black\",\n  \"currentVariantPrice\": 99.99,\n  \"model_3d_url\": \"https://s3.../model.glb\",\n  \"price\": 25.99\n}\n```\n\n**Note:** When a customer selects a color variant, use `colors[selectedIndex].display_name` for the product name and `colors[selectedIndex].price` (or `currentVariantPrice`) for the price."
+                "description": "Get all active products with pagination and filters.\n\n**Response includes for each product:**\n- `images`: Array of main product image URLs\n- `image`: First image URL of selected color (or main images if no colors)\n- `model_3d_url`: URL to 3D model file (null if not available)\n- `color_images`: Raw array of color-specific images from database\n- `colors`: **Formatted array for color swatches** - Each object contains:\n  - `name`: Variant name (e.g., \"Black Classic\", \"Gold Premium\")\n  - `display_name`: Display name shown to customers (e.g., \"Black Classic Premium\")\n  - `price`: Variant-specific price (null if using base product price)\n  - `value`: Color value (lowercase, for matching)\n  - `images`: Array of images for this color\n  - `primaryImage`: First image URL for this color\n  - `hexCode`: Hex color code for swatch display\n- `selectedColor`: Default selected color value (first color or null)\n- `currentVariantPrice`: Current variant price (or base product price if variant has no price)\n- Standard product fields (name, price, description, category, etc.)\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 12)\n- `category`: Filter by category slug\n- `brand`: Filter by brand slug\n- `subCategory`: Filter by subcategory slug\n- `frameShape`: Filter by frame shape\n- `frameMaterial`: Filter by frame material\n- `lensType`: Filter by lens type\n- `gender`: Filter by gender\n- `minPrice`, `maxPrice`: Price range filter\n- `search`: Search in name, description, SKU\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)\n- `isFeatured`: Filter featured products (true/false)\n\n**Example Product in Response:**\n```json\n{\n  \"id\": 1,\n  \"name\": \"Classic Round Frame\",\n  \"images\": [\"main1.jpg\"],\n  \"image\": \"black1.jpg\",\n  \"colors\": [\n    {\n      \"name\": \"Black Classic\",\n      \"display_name\": \"Black Classic Premium\",\n      \"price\": 99.99,\n      \"value\": \"black\",\n      \"images\": [\"black1.jpg\"],\n      \"primaryImage\": \"black1.jpg\",\n      \"hexCode\": \"#000000\"\n    },\n    {\n      \"name\": \"Gold Premium\",\n      \"display_name\": \"Gold Premium Edition\",\n      \"price\": 129.99,\n      \"value\": \"gold\",\n      \"images\": [\"gold1.jpg\"],\n      \"primaryImage\": \"gold1.jpg\",\n      \"hexCode\": \"#FFD700\"\n    }\n  ],\n  \"selectedColor\": \"black\",\n  \"currentVariantPrice\": 99.99,\n  \"model_3d_url\": \"https://s3.../model.glb\",\n  \"price\": 25.99\n}\n```\n\n**Note:** When a customer selects a color variant, use `colors[selectedIndex].display_name` for the product name and `colors[selectedIndex].price` (or `currentVariantPrice`) for the price."
               }
             },
             {
@@ -679,7 +679,7 @@
                     }
                   ]
                 },
-                "description": "Get all active subcategories with pagination support.\n\n**3-Level Structure:**\nCategory \u2192 Subcategory \u2192 Sub-subcategory\n\n**Response Structure:**\n- `subcategories`: All subcategories with parent/children info\n- `topLevelSubcategories`: Subcategories (parent_id = null)\n- `nestedSubcategories`: Sub-subcategories (parent_id != null)\n- `pagination`: Pagination metadata\n\n**Features:**\n- Paginated results\n- Filter by category_id\n- Search by name\n- Includes category, parent, and children information"
+                "description": "Get all active subcategories with pagination support.\n\n**3-Level Structure:**\nCategory → Subcategory → Sub-subcategory\n\n**Response Structure:**\n- `subcategories`: All subcategories with parent/children info\n- `topLevelSubcategories`: Subcategories (parent_id = null)\n- `nestedSubcategories`: Sub-subcategories (parent_id != null)\n- `pagination`: Pagination metadata\n\n**Features:**\n- Paginated results\n- Filter by category_id\n- Search by name\n- Includes category, parent, and children information"
               }
             },
             {
@@ -746,7 +746,7 @@
                     "1"
                   ]
                 },
-                "description": "Get all active subcategories for a specific category with their sub-subcategories.\n\n**Returns:**\n- Subcategories (parent_id = null) for the category\n- Each subcategory includes its sub-subcategories in `children` array\n\n**Example Structure:**\n```\nCategory: Contact Lenses\n  \u251c\u2500 Subcategory: Giornaliere (parent_id: null)\n  \u2502   \u251c\u2500 Sub-subcategory: Sferiche (parent_id: Giornaliere.id)\n  \u2502   \u2514\u2500 Sub-subcategory: Astigmatismo (parent_id: Giornaliere.id)\n  \u2514\u2500 Subcategory: Settimanale (parent_id: null)\n```\n\n**Use Cases:**\n- Populate category/subcategory dropdown menus\n- Display navigation\n- Filter products by subcategory"
+                "description": "Get all active subcategories for a specific category with their sub-subcategories.\n\n**Returns:**\n- Subcategories (parent_id = null) for the category\n- Each subcategory includes its sub-subcategories in `children` array\n\n**Example Structure:**\n```\nCategory: Contact Lenses\n  ├─ Subcategory: Giornaliere (parent_id: null)\n  │   ├─ Sub-subcategory: Sferiche (parent_id: Giornaliere.id)\n  │   └─ Sub-subcategory: Astigmatismo (parent_id: Giornaliere.id)\n  └─ Subcategory: Settimanale (parent_id: null)\n```\n\n**Use Cases:**\n- Populate category/subcategory dropdown menus\n- Display navigation\n- Filter products by subcategory"
               }
             },
             {
@@ -830,7 +830,7 @@
                   ],
                   "query": []
                 },
-                "description": "Get aggregated contact lens options (power, base curve, diameter) for Spherical or Astigmatism/Toric sub-subcategories.\n\n**Supported Sub-SubCategory Types:**\n- **Spherical**: Sub-subcategories with names containing \"spherical\", \"sferiche\", or \"sferica\"\n- **Astigmatism/Toric**: Sub-subcategories with names containing \"astigmatism\", \"astigmatismo\", \"toric\", or \"torica\"\n\n**Response for Spherical Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", \"-9.50\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, 8.90, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"productCount\": 15,\n    \"type\": \"spherical\"\n  }\n}\n```\n\n**Response for Astigmatism/Toric Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"cylinderOptions\": [-0.25, -0.50, -0.75, ..., -6.00],\n    \"axisOptions\": [0, 1, 2, ..., 180],\n    \"productCount\": 15,\n    \"type\": \"astigmatism\"\n  }\n}\n```\n\n**Features:**\n- Automatically detects if sub-subcategory is Spherical or Astigmatism/Toric\n- Aggregates all unique options from all products in the sub-subcategory\n- Returns sorted arrays ready for dropdown menus\n- For Astigmatism: Includes standard cylinder (-0.25 to -6.00) and axis (0-180\u00b0) options\n\n**Use Cases:**\n- Populate contact lens parameter forms\n- Build dropdown menus for power, base curve, diameter, cylinder, and axis\n- Validate available options before adding to cart\n\n**Error Cases:**\n- Returns 404 if subcategory not found\n- Returns 400 if subcategory is not a sub-subcategory (no parent_id)\n- Returns 400 if subcategory is not Spherical or Astigmatism/Toric type"
+                "description": "Get aggregated contact lens options (power, base curve, diameter) for Spherical or Astigmatism/Toric sub-subcategories.\n\n**Supported Sub-SubCategory Types:**\n- **Spherical**: Sub-subcategories with names containing \"spherical\", \"sferiche\", or \"sferica\"\n- **Astigmatism/Toric**: Sub-subcategories with names containing \"astigmatism\", \"astigmatismo\", \"toric\", or \"torica\"\n\n**Response for Spherical Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", \"-9.50\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, 8.90, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"productCount\": 15,\n    \"type\": \"spherical\"\n  }\n}\n```\n\n**Response for Astigmatism/Toric Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"cylinderOptions\": [-0.25, -0.50, -0.75, ..., -6.00],\n    \"axisOptions\": [0, 1, 2, ..., 180],\n    \"productCount\": 15,\n    \"type\": \"astigmatism\"\n  }\n}\n```\n\n**Features:**\n- Automatically detects if sub-subcategory is Spherical or Astigmatism/Toric\n- Aggregates all unique options from all products in the sub-subcategory\n- Returns sorted arrays ready for dropdown menus\n- For Astigmatism: Includes standard cylinder (-0.25 to -6.00) and axis (0-180°) options\n\n**Use Cases:**\n- Populate contact lens parameter forms\n- Build dropdown menus for power, base curve, diameter, cylinder, and axis\n- Validate available options before adding to cart\n\n**Error Cases:**\n- Returns 404 if subcategory not found\n- Returns 400 if subcategory is not a sub-subcategory (no parent_id)\n- Returns 400 if subcategory is not Spherical or Astigmatism/Toric type"
               }
             },
             {
@@ -852,7 +852,7 @@
                   ],
                   "query": []
                 },
-                "description": "Get aggregated contact lens options (power, base curve, diameter) for Spherical or Astigmatism/Toric sub-subcategories by slug.\n\n**Supported Sub-SubCategory Types:**\n- **Spherical**: Sub-subcategories with names containing \"spherical\", \"sferiche\", or \"sferica\"\n- **Astigmatism/Toric**: Sub-subcategories with names containing \"astigmatism\", \"astigmatismo\", \"toric\", or \"torica\"\n\n**Response for Spherical Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", \"-9.50\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, 8.90, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"productCount\": 15,\n    \"type\": \"spherical\"\n  }\n}\n```\n\n**Response for Astigmatism/Toric Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"cylinderOptions\": [-0.25, -0.50, -0.75, ..., -6.00],\n    \"axisOptions\": [0, 1, 2, ..., 180],\n    \"productCount\": 15,\n    \"type\": \"astigmatism\"\n  }\n}\n```\n\n**Features:**\n- Same as ID endpoint but uses slug instead of ID\n- Automatically detects if sub-subcategory is Spherical or Astigmatism/Toric\n- Aggregates all unique options from all products in the sub-subcategory\n- Returns sorted arrays ready for dropdown menus\n- For Astigmatism: Includes standard cylinder (-0.25 to -6.00) and axis (0-180\u00b0) options\n\n**Use Cases:**\n- Populate contact lens parameter forms using URL-friendly slugs\n- Build dropdown menus for power, base curve, diameter, cylinder, and axis\n- Validate available options before adding to cart\n\n**Error Cases:**\n- Returns 404 if subcategory not found\n- Returns 400 if subcategory is not a sub-subcategory (no parent_id)\n- Returns 400 if subcategory is not Spherical or Astigmatism/Toric type"
+                "description": "Get aggregated contact lens options (power, base curve, diameter) for Spherical or Astigmatism/Toric sub-subcategories by slug.\n\n**Supported Sub-SubCategory Types:**\n- **Spherical**: Sub-subcategories with names containing \"spherical\", \"sferiche\", or \"sferica\"\n- **Astigmatism/Toric**: Sub-subcategories with names containing \"astigmatism\", \"astigmatismo\", \"toric\", or \"torica\"\n\n**Response for Spherical Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", \"-9.50\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, 8.90, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"productCount\": 15,\n    \"type\": \"spherical\"\n  }\n}\n```\n\n**Response for Astigmatism/Toric Sub-SubCategories:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"subcategory\": { id, name, slug, parent, category },\n    \"powerOptions\": [\"-10.00\", \"-9.75\", ...],\n    \"baseCurveOptions\": [8.70, 8.80, ...],\n    \"diameterOptions\": [14.00, 14.20, ...],\n    \"cylinderOptions\": [-0.25, -0.50, -0.75, ..., -6.00],\n    \"axisOptions\": [0, 1, 2, ..., 180],\n    \"productCount\": 15,\n    \"type\": \"astigmatism\"\n  }\n}\n```\n\n**Features:**\n- Same as ID endpoint but uses slug instead of ID\n- Automatically detects if sub-subcategory is Spherical or Astigmatism/Toric\n- Aggregates all unique options from all products in the sub-subcategory\n- Returns sorted arrays ready for dropdown menus\n- For Astigmatism: Includes standard cylinder (-0.25 to -6.00) and axis (0-180°) options\n\n**Use Cases:**\n- Populate contact lens parameter forms using URL-friendly slugs\n- Build dropdown menus for power, base curve, diameter, cylinder, and axis\n- Validate available options before adding to cart\n\n**Error Cases:**\n- Returns 404 if subcategory not found\n- Returns 400 if subcategory is not a sub-subcategory (no parent_id)\n- Returns 400 if subcategory is not Spherical or Astigmatism/Toric type"
               }
             },
             {
@@ -1909,7 +1909,7 @@
                     "prescription-sun-lenses"
                   ]
                 },
-                "description": "Get all prescription sun lenses organized by category (Polarized, Classic, Blokz\u00ae Sunglasses). Returns structured data with finishes (Classic, Mirror, Gradient, Fashion) and colors for each option. Public endpoint for website display."
+                "description": "Get all prescription sun lenses organized by category (Polarized, Classic, Blokz® Sunglasses). Returns structured data with finishes (Classic, Mirror, Gradient, Fashion) and colors for each option. Public endpoint for website display."
               }
             },
             {
@@ -1946,7 +1946,7 @@
                     "photochromic-lenses"
                   ]
                 },
-                "description": "Get all photochromic lenses organized by type (EyeQLenz\u2122 with Zenni ID Guard\u2122, EyeQLenz\u2122, Transitions\u00ae GEN S\u2122, Standard, Blokz Photochromic). Returns structured data with colors for each option. Public endpoint for website display."
+                "description": "Get all photochromic lenses organized by type (EyeQLenz™ with Zenni ID Guard™, EyeQLenz™, Transitions® GEN S™, Standard, Blokz Photochromic). Returns structured data with colors for each option. Public endpoint for website display."
               }
             },
             {
@@ -2778,6 +2778,96 @@
                     "api"
                   ]
                 }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Flash Offers (Public)",
+          "item": [
+            {
+              "name": "Get All Flash Offers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/flash-offers?activeOnly=true",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "flash-offers"
+                  ],
+                  "query": [
+                    {
+                      "key": "activeOnly",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "description": "Get all flash offers. Use activeOnly=true to get only currently active offers."
+              }
+            },
+            {
+              "name": "Get Active Flash Offer",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/flash-offers/active",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "flash-offers",
+                    "active"
+                  ]
+                },
+                "description": "Get the currently active flash offer with countdown timer (hours, minutes, seconds)."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Product Gifts (Public)",
+          "item": [
+            {
+              "name": "Get All Product Gifts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/product-gifts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "product-gifts"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Gifts for Product",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/product-gifts/product/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "product-gifts",
+                    "product",
+                    "1"
+                  ]
+                },
+                "description": "Get free gift rules for a specific product ID."
               }
             }
           ]
@@ -3765,6 +3855,12 @@
                       "type": "text"
                     },
                     {
+                      "key": "brand_id",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Optional: Brand ID. Use GET /api/brands to get all brands."
+                    },
+                    {
                       "key": "sub_category_id",
                       "value": "",
                       "type": "text",
@@ -3891,7 +3987,7 @@
                     }
                   ]
                 },
-                "description": "Create a new product with images, 3D model, images with color codes, and size/volume variants.\n\n**Size/Volume Variants (for Eye Hygiene products):**\nUse the `sizeVolumeVariants` field to add multiple volume options with individual prices. This is especially useful for Eye Hygiene products that come in different sizes (e.g., 5ml, 10ml, 30ml).\n\n**Format:**\n```json\n[\n  {\n    \"size_volume\": \"5ml\",\n    \"pack_type\": \"Single\",\n    \"price\": 8.00,\n    \"compare_at_price\": 10.00,\n    \"cost_price\": 5.00,\n    \"stock_quantity\": 50,\n    \"stock_status\": \"in_stock\",\n    \"sku\": \"SKU-5ML\",\n    \"expiry_date\": \"2025-12-31\",\n    \"is_active\": true,\n    \"sort_order\": 1\n  },\n  {\n    \"size_volume\": \"10ml\",\n    \"pack_type\": \"Single\",\n    \"price\": 14.00,\n    \"stock_quantity\": 75\n  }\n]\n```\n\n**Fields:**\n- `size_volume` (required): Volume/size (e.g., \"5ml\", \"10ml\", \"30ml\")\n- `price` (required): Price for this variant\n- `pack_type` (optional): Pack type (e.g., \"Single\", \"Pack of 2\")\n- `compare_at_price` (optional): Compare at price\n- `cost_price` (optional): Cost price\n- `stock_quantity` (optional): Stock quantity (default: 0)\n- `stock_status` (optional): in_stock, out_of_stock, backorder (default: in_stock)\n- `sku` (optional): SKU for this variant\n- `expiry_date` (optional): Expiry date (YYYY-MM-DD format)\n- `is_active` (optional): true/false (default: true)\n- `sort_order` (optional): Sort order (default: 0)\n\n**Note:** Variants are automatically created when the product is created. You can also manage them separately using the Size/Volume Variants endpoints.\n\n**Response includes:**\n- Created product with all fields\n- Formatted images and color_images\n\n**Product Information:**\n- `name` (required): Product name\n- `sku` (required): Unique SKU\n- `category_id` (required): Category ID\n- `sub_category_id` (optional): Subcategory ID (can be top-level or sub-subcategory)\n- `price` (required): Product price\n- `description` (optional): Full product description\n- `short_description` (optional): Short description (max 500 chars)\n- `stock_quantity` (optional): Stock quantity (default: 0)\n- `stock_status` (optional): in_stock, out_of_stock, backorder, preorder (default: in_stock)\n\n**Frame Properties:**\n- `frame_shape` (optional): round, square, rectangle, oval, cat_eye, aviator, wayfarer, browline, geometric\n- `frame_material` (optional): plastic, metal, acetate, titanium, wood, mixed\n- `frame_color` (optional): Frame color (e.g., Black, Gold, Brown)\n- `gender` (optional): men, women, unisex, kids (default: unisex)\n\n**Lens Type:** Optional field for lens type. Valid values:\n- `prescription` - Prescription lenses\n- `sunglasses` - Sunglasses\n- `reading` - Reading glasses\n- `computer` - Computer glasses\n- `photochromic` - Photochromic lenses\n- `plastic` - Plastic lenses\n- `glass` - Glass lenses\n- `polycarbonate` - Polycarbonate lenses\n- `trivex` - Trivex lenses\n- `high_index` - High index lenses\n\n**3D Model:** Upload a 3D model file using the `model_3d` field.\n\n**Images with Color Codes:** Upload multiple images, each associated with a hex color code. Three methods:\n\n1. **Method 1 - Parallel Arrays (Recommended):**\n   - Upload multiple images in the `images` field\n   - Provide `image_colors` as JSON array: `[\"#000000\", \"#FFD700\", \"#8B4513\"]`\n   - Each hex code maps to the image at the same index\n   - Example: `images[0]` → `image_colors[0]` = `\"#000000\"`\n   - Images without a color code will be added to general product images\n\n2. **Method 2 - Individual Color Fields:**\n   - Upload images with field names: `image_#000000`, `image_#FFD700`, etc.\n   - Format: `image_#RRGGBB` (e.g., `image_#000000` for black, `image_#8B4513` for brown)\n   - Multiple files per color are supported\n   - Example: `image_#000000` → Upload 3 files for black color\n\n3. **Method 3 - JSON with URLs:**\n   - Send `images_with_colors` as JSON array:\n   ```json\n   [{\n     \"hexCode\": \"#000000\",\n     \"imageUrl\": \"https://example.com/image1.jpg\",\n     \"name\": \"Black\",\n     \"price\": 99.99\n   }]\n   ```\n\n**General Images:**\n- Upload images in the `images` field without providing `image_colors`\n- These will be used as default product images (not color-specific)\n\n**Example:**\n- Upload 5 images in `images` field\n- Provide `image_colors`: `[\"#000000\", \"#000000\", \"#FFD700\", \"#FFD700\", \"#8B4513\"]`\n- Result: 2 black images, 2 gold images, 1 brown image\n- When customer selects a color by hex code, the associated images will be shown",
+                "description": "Create a new product with images, 3D model, images with color codes, and size/volume variants.\n\n**Size/Volume Variants (for Eye Hygiene products):**\nUse the `sizeVolumeVariants` field to add multiple volume options with individual prices. This is especially useful for Eye Hygiene products that come in different sizes (e.g., 5ml, 10ml, 30ml).\n\n**Format:**\n```json\n[\n  {\n    \"size_volume\": \"5ml\",\n    \"pack_type\": \"Single\",\n    \"price\": 8.00,\n    \"compare_at_price\": 10.00,\n    \"cost_price\": 5.00,\n    \"stock_quantity\": 50,\n    \"stock_status\": \"in_stock\",\n    \"sku\": \"SKU-5ML\",\n    \"expiry_date\": \"2025-12-31\",\n    \"is_active\": true,\n    \"sort_order\": 1\n  },\n  {\n    \"size_volume\": \"10ml\",\n    \"pack_type\": \"Single\",\n    \"price\": 14.00,\n    \"stock_quantity\": 75\n  }\n]\n```\n\n**Fields:**\n- `size_volume` (required): Volume/size (e.g., \"5ml\", \"10ml\", \"30ml\")\n- `price` (required): Price for this variant\n- `pack_type` (optional): Pack type (e.g., \"Single\", \"Pack of 2\")\n- `compare_at_price` (optional): Compare at price\n- `cost_price` (optional): Cost price\n- `stock_quantity` (optional): Stock quantity (default: 0)\n- `stock_status` (optional): in_stock, out_of_stock, backorder (default: in_stock)\n- `sku` (optional): SKU for this variant\n- `expiry_date` (optional): Expiry date (YYYY-MM-DD format)\n- `is_active` (optional): true/false (default: true)\n- `sort_order` (optional): Sort order (default: 0)\n\n**Note:** Variants are automatically created when the product is created. You can also manage them separately using the Size/Volume Variants endpoints.\n\n**Response includes:**\n- Created product with all fields\n- Formatted images and color_images\n\n**Product Information:**\n- `name` (required): Product name\n- `sku` (required): Unique SKU\n- `category_id` (required): Category ID\n- `brand_id` (optional): Brand ID\n- `sub_category_id` (optional): Subcategory ID (can be top-level or sub-subcategory)\n- `price` (required): Product price\n- `description` (optional): Full product description\n- `short_description` (optional): Short description (max 500 chars)\n- `stock_quantity` (optional): Stock quantity (default: 0)\n- `stock_status` (optional): in_stock, out_of_stock, backorder, preorder (default: in_stock)\n\n**Frame Properties:**\n- `frame_shape` (optional): round, square, rectangle, oval, cat_eye, aviator, wayfarer, browline, geometric\n- `frame_material` (optional): plastic, metal, acetate, titanium, wood, mixed\n- `frame_color` (optional): Frame color (e.g., Black, Gold, Brown)\n- `gender` (optional): men, women, unisex, kids (default: unisex)\n\n**Lens Type:** Optional field for lens type. Valid values:\n- `prescription` - Prescription lenses\n- `sunglasses` - Sunglasses\n- `reading` - Reading glasses\n- `computer` - Computer glasses\n- `photochromic` - Photochromic lenses\n- `plastic` - Plastic lenses\n- `glass` - Glass lenses\n- `polycarbonate` - Polycarbonate lenses\n- `trivex` - Trivex lenses\n- `high_index` - High index lenses\n\n**3D Model:** Upload a 3D model file using the `model_3d` field.\n\n**Images with Color Codes:** Upload multiple images, each associated with a hex color code. Three methods:\n\n1. **Method 1 - Parallel Arrays (Recommended):**\n   - Upload multiple images in the `images` field\n   - Provide `image_colors` as JSON array: `[\"#000000\", \"#FFD700\", \"#8B4513\"]`\n   - Each hex code maps to the image at the same index\n   - Example: `images[0]` → `image_colors[0]` = `\"#000000\"`\n   - Images without a color code will be added to general product images\n\n2. **Method 2 - Individual Color Fields:**\n   - Upload images with field names: `image_#000000`, `image_#FFD700`, etc.\n   - Format: `image_#RRGGBB` (e.g., `image_#000000` for black, `image_#8B4513` for brown)\n   - Multiple files per color are supported\n   - Example: `image_#000000` → Upload 3 files for black color\n\n3. **Method 3 - JSON with URLs:**\n   - Send `images_with_colors` as JSON array:\n   ```json\n   [{\n     \"hexCode\": \"#000000\",\n     \"imageUrl\": \"https://example.com/image1.jpg\",\n     \"name\": \"Black\",\n     \"price\": 99.99\n   }]\n   ```\n\n**General Images:**\n- Upload images in the `images` field without providing `image_colors`\n- These will be used as default product images (not color-specific)\n\n**Example:**\n- Upload 5 images in `images` field\n- Provide `image_colors`: `[\"#000000\", \"#000000\", \"#FFD700\", \"#FFD700\", \"#8B4513\"]`\n- Result: 2 black images, 2 gold images, 1 brown image\n- When customer selects a color by hex code, the associated images will be shown",
                 "url": {
                   "raw": "{{base_url}}/api/admin/products",
                   "host": [
@@ -3922,6 +4018,12 @@
                       "key": "name",
                       "value": "Updated Product Name",
                       "type": "text"
+                    },
+                    {
+                      "key": "brand_id",
+                      "value": "1",
+                      "type": "text",
+                      "description": "Optional: Brand ID. Use GET /api/brands to get all brands."
                     },
                     {
                       "key": "price",
@@ -4173,6 +4275,11 @@
                       "description": "Optional: Filter by category ID"
                     },
                     {
+                      "key": "brand_id",
+                      "value": "",
+                      "description": "Optional: Filter by brand ID"
+                    },
+                    {
                       "key": "sub_category_id",
                       "value": "",
                       "description": "Optional: Filter by subcategory ID"
@@ -4194,7 +4301,7 @@
                     }
                   ]
                 },
-                "description": "Get all products with pagination and filters. Admin only.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `product_type`: Filter by product type - frame, sunglasses, contact_lens, eye_hygiene\n- `search`: Search in name, description, SKU\n- `category_id`: Filter by category ID\n- `sub_category_id`: Filter by subcategory ID\n- `is_active`: Filter by active status (true/false)\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)\n\n**Response includes:**\n- Products with formatted images and color_images\n- Category and subcategory information\n- Pagination metadata"
+                "description": "Get all products with pagination and filters. Admin only.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 50)\n- `product_type`: Filter by product type - frame, sunglasses, contact_lens, eye_hygiene\n- `search`: Search in name, description, SKU\n- `category_id`: Filter by category ID\n- `brand_id`: Filter by brand ID\n- `sub_category_id`: Filter by subcategory ID\n- `is_active`: Filter by active status (true/false)\n- `sortBy`: Sort field (default: created_at)\n- `sortOrder`: Sort direction (asc/desc, default: desc)\n\n**Response includes:**\n- Products with formatted images and color_images\n- Category and subcategory information\n- Pagination metadata"
               }
             },
             {
@@ -4237,6 +4344,11 @@
                       "key": "category_id",
                       "value": "",
                       "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "brand_id",
+                      "value": "",
+                      "description": "Optional: Filter by brand ID"
                     },
                     {
                       "key": "sub_category_id",
@@ -4295,6 +4407,11 @@
                       "description": "Optional: Filter by category ID"
                     },
                     {
+                      "key": "brand_id",
+                      "value": "",
+                      "description": "Optional: Filter by brand ID"
+                    },
+                    {
                       "key": "sub_category_id",
                       "value": "",
                       "description": "Optional: Filter by subcategory ID"
@@ -4351,6 +4468,11 @@
                       "description": "Optional: Filter by category ID"
                     },
                     {
+                      "key": "brand_id",
+                      "value": "",
+                      "description": "Optional: Filter by brand ID"
+                    },
+                    {
                       "key": "sub_category_id",
                       "value": "",
                       "description": "Optional: Filter by subcategory ID"
@@ -4405,6 +4527,11 @@
                       "key": "category_id",
                       "value": "",
                       "description": "Optional: Filter by category ID"
+                    },
+                    {
+                      "key": "brand_id",
+                      "value": "",
+                      "description": "Optional: Filter by brand ID"
                     },
                     {
                       "key": "sub_category_id",
@@ -10056,7 +10183,7 @@
                         }
                       ]
                     },
-                    "description": "Get all prescription sun lenses (Polarized, Classic, Blokz\u00ae Sunglasses) with pagination and filters. Admin can view, add, update, and delete prescription sun lens options. Admin only."
+                    "description": "Get all prescription sun lenses (Polarized, Classic, Blokz® Sunglasses) with pagination and filters. Admin can view, add, update, and delete prescription sun lens options. Admin only."
                   }
                 },
                 {
@@ -10088,7 +10215,7 @@
                         "prescription-sun-lenses"
                       ]
                     },
-                    "description": "Create a new prescription sun lens option (Polarized, Classic, or Blokz\u00ae Sunglasses). After creating, use lens-finishes and lens-colors endpoints to add finishes and colors. Admin only."
+                    "description": "Create a new prescription sun lens option (Polarized, Classic, or Blokz® Sunglasses). After creating, use lens-finishes and lens-colors endpoints to add finishes and colors. Admin only."
                   }
                 },
                 {
@@ -10191,7 +10318,7 @@
                         }
                       ]
                     },
-                    "description": "Get all photochromic lenses (EyeQLenz\u2122 with Zenni ID Guard\u2122, EyeQLenz\u2122, Transitions\u00ae GEN S\u2122, Standard, Blokz Photochromic) with pagination and filters. Admin can view, add, update, and delete photochromic lens options. Admin only."
+                    "description": "Get all photochromic lenses (EyeQLenz™ with Zenni ID Guard™, EyeQLenz™, Transitions® GEN S™, Standard, Blokz Photochromic) with pagination and filters. Admin can view, add, update, and delete photochromic lens options. Admin only."
                   }
                 },
                 {
@@ -10210,7 +10337,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"name\": \"EyeQLenz\u2122 with Zenni ID Guard\u2122\",\n  \"slug\": \"eyeqlenz-with-zenni-id-guard\",\n  \"description\": \"4-in-1 lens that reflects infrared light to disrupt unwanted tracking technology, filters blue light & blocks 100% UV. Stays clear indoors and darkens outdoors, with a subtle pink sheen.\",\n  \"base_price\": 0,\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+                      "raw": "{\n  \"name\": \"EyeQLenz™ with Zenni ID Guard™\",\n  \"slug\": \"eyeqlenz-with-zenni-id-guard\",\n  \"description\": \"4-in-1 lens that reflects infrared light to disrupt unwanted tracking technology, filters blue light & blocks 100% UV. Stays clear indoors and darkens outdoors, with a subtle pink sheen.\",\n  \"base_price\": 0,\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/api/admin/photochromic-lenses",
@@ -10242,7 +10369,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"name\": \"EyeQLenz\u2122 with Zenni ID Guard\u2122\",\n  \"base_price\": 10.00,\n  \"is_active\": true\n}"
+                      "raw": "{\n  \"name\": \"EyeQLenz™ with Zenni ID Guard™\",\n  \"base_price\": 10.00,\n  \"is_active\": true\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/api/admin/photochromic-lenses/1",
@@ -11577,6 +11704,124 @@
                   "path": [
                     "api",
                     "overview"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Flash Offers (Admin)",
+          "item": [
+            {
+              "name": "Get All Flash Offers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/flash-offers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "flash-offers"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Flash Offer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Flash Sale!\",\n  \"description\": \"Limited time offer\",\n  \"product_ids\": [\n    1,\n    2\n  ],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-25T12:00:00Z\",\n  \"is_active\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/flash-offers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "flash-offers"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Product Gifts (Admin)",
+          "item": [
+            {
+              "name": "Get All Product Gifts",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/product-gifts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product-gifts"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Product Gift",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"product_id\": 1,\n  \"gift_product_id\": 2,\n  \"min_quantity\": 1,\n  \"is_active\": true,\n  \"description\": \"Free gift with purchase\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/product-gifts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product-gifts"
                   ]
                 }
               }

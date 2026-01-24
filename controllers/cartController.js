@@ -703,6 +703,71 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   });
 
+  // Check for free gifts and add them automatically
+  const applicableGifts = await prisma.productGift.findMany({
+    where: {
+      product_id: product_id,
+      is_active: true,
+      min_quantity: { lte: quantity },
+      OR: [
+        { max_quantity: null },
+        { max_quantity: { gte: quantity } }
+      ]
+    },
+    include: {
+      giftProduct: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          images: true,
+          stock_status: true,
+          is_active: true
+        }
+      }
+    }
+  });
+
+  const addedGifts = [];
+  for (const gift of applicableGifts) {
+    // Check if gift product is active and in stock
+    if (!gift.giftProduct.is_active || gift.giftProduct.stock_status !== 'in_stock') {
+      continue;
+    }
+
+    // Check if gift is already in cart
+    const existingGiftItem = await prisma.cartItem.findFirst({
+      where: {
+        cart_id: cart.id,
+        product_id: gift.gift_product_id,
+        // Check if it's marked as a gift (we'll use a custom field or check by price = 0)
+        unit_price: 0
+      }
+    });
+
+    if (!existingGiftItem) {
+      // Add gift to cart with price 0
+      const giftItem = await prisma.cartItem.create({
+        data: {
+          cart_id: cart.id,
+          product_id: gift.gift_product_id,
+          quantity: 1, // Always add 1 gift item
+          unit_price: 0, // Free gift
+          customization: JSON.stringify({
+            is_gift: true,
+            gift_from_product_id: product_id,
+            gift_rule_id: gift.id
+          })
+        }
+      });
+      addedGifts.push({
+        ...giftItem,
+        gift_product: gift.giftProduct
+      });
+    }
+  }
+
   // Parse JSON strings for response
   const parsedItem = {
     ...cartItem,
@@ -840,7 +905,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
 
   return success(res, 'Item added to cart', { 
     item: parsedItem,
-    coupon: couponInfo 
+    coupon: couponInfo,
+    gifts: addedGifts.length > 0 ? addedGifts : undefined
   }, 201);
 });
 

@@ -46,6 +46,8 @@ const photochromicLensRoutes = require('./routes/photochromicLenses');
 const prescriptionLensTypesRoutes = require('./routes/prescriptionLensTypes');
 const contactLensFormRoutes = require('./routes/contactLensForms');
 const prescriptionFormRoutes = require('./routes/prescriptionForms');
+const flashOfferRoutes = require('./routes/flashOffers');
+const productGiftRoutes = require('./routes/productGifts');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -223,6 +225,8 @@ app.use('/api/photochromic-lenses', photochromicLensRoutes); // Standard route
 app.use('/api/prescription-sun-lenses', prescriptionSunLensRoutes); // Standard route
 app.use('/api/prescription-lens-types', prescriptionLensTypesRoutes); // Standard route
 app.use('/api/lens', lensRoutes); // Standard route - includes prescription-lens-types, prescription-sun-colors, etc.
+app.use('/api/flash-offers', flashOfferRoutes);
+app.use('/api/product-gifts', productGiftRoutes);
 app.use('/api/api/shipping-methods', shippingRoutes); // Keep for backward compatibility
 app.use('/api/api/lens', lensRoutes); // Keep for backward compatibility
 app.use('/api/api/contact-lens-forms', contactLensFormRoutes); // Keep for backward compatibility

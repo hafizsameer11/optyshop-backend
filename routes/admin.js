@@ -71,6 +71,20 @@ const {
   deleteBrand
 } = require('../controllers/marketingController');
 const {
+  getFlashOffersAdmin,
+  getFlashOfferById,
+  createFlashOffer,
+  updateFlashOffer,
+  deleteFlashOffer
+} = require('../controllers/flashOfferController');
+const {
+  getProductGiftsAdmin,
+  getProductGiftById,
+  createProductGift,
+  updateProductGift,
+  deleteProductGift
+} = require('../controllers/productGiftController');
+const {
   getBannersAdmin,
   createBanner,
   updateBanner,
@@ -298,6 +312,20 @@ router.get('/campaigns', getCampaignsAdmin);
 router.post('/campaigns', uploadSingle('image'), createCampaign);
 router.put('/campaigns/:id', uploadSingle('image'), updateCampaign);
 router.delete('/campaigns/:id', deleteCampaign);
+
+// Flash Offers
+router.get('/flash-offers', getFlashOffersAdmin);
+router.get('/flash-offers/:id', getFlashOfferById);
+router.post('/flash-offers', uploadSingle('image'), createFlashOffer);
+router.put('/flash-offers/:id', uploadSingle('image'), updateFlashOffer);
+router.delete('/flash-offers/:id', deleteFlashOffer);
+
+// Product Gifts
+router.get('/product-gifts', getProductGiftsAdmin);
+router.get('/product-gifts/:id', getProductGiftById);
+router.post('/product-gifts', createProductGift);
+router.put('/product-gifts/:id', updateProductGift);
+router.delete('/product-gifts/:id', deleteProductGift);
 
 // Brands
 router.get('/brands', getBrandsAdmin);

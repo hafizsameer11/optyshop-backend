@@ -390,6 +390,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
     page = 1,
     limit = 12,
     category,
+    brand,
     frameShape,
     frameMaterial,
     lensType,
@@ -411,6 +412,14 @@ exports.getProducts = asyncHandler(async (req, res) => {
     const categoryRecord = await prisma.category.findUnique({ where: { slug: category } });
     if (categoryRecord) {
       where.category_id = categoryRecord.id;
+    }
+  }
+
+  // Apply brand filter
+  if (brand) {
+    const brandRecord = await prisma.brand.findUnique({ where: { slug: brand } });
+    if (brandRecord) {
+      where.brand_id = brandRecord.id;
     }
   }
 
@@ -490,6 +499,14 @@ exports.getProducts = asyncHandler(async (req, res) => {
             slug: true
           }
         }
+      }
+    },
+    brand: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logo_url: true
       }
     }
   };
@@ -624,6 +641,14 @@ exports.getProduct = asyncHandler(async (req, res) => {
         id: true,
         name: true,
         slug: true
+      }
+    },
+    brand: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logo_url: true
       }
     },
     frameSizes: {

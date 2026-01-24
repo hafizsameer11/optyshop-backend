@@ -1398,6 +1398,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     search,
     category_id,
     sub_category_id,
+    brand_id,
     is_active,
     product_type,
     sortBy = 'created_at',
@@ -1425,6 +1426,10 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
 
   if (sub_category_id) {
     where.sub_category_id = parseInt(sub_category_id);
+  }
+
+  if (brand_id) {
+    where.brand_id = parseInt(brand_id);
   }
 
   if (product_type) {
@@ -1464,6 +1469,14 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         id: true,
         name: true,
         slug: true
+      }
+    },
+    brand: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logo_url: true
       }
     },
     sizeVolumeVariants: {
@@ -1673,6 +1686,7 @@ exports.getProduct = asyncHandler(async (req, res) => {
   const includeObject = {
     category: true,
     subCategory: true,
+    brand: true,
     variants: true,
     sizeVolumeVariants: {
       orderBy: [
@@ -2260,7 +2274,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
       'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',
       'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
       'is_featured', 'is_active', 'meta_title', 'meta_description', 'meta_keywords',
-      'product_type', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+      'product_type', 'brand_id', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
       'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
       'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter',
       'size_volume', 'pack_type', 'expiry_date' // Eye Hygiene fields
@@ -2271,7 +2285,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
       'description', 'short_description', 'frame_material', 'frame_color',
       'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
       'meta_title', 'meta_description', 'meta_keywords',
-      'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+      'brand_id', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
       'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
       'base_curve_options', 'diameter_options', 'images', 'color_images',
       'size_volume', 'pack_type' // Eye Hygiene string fields
@@ -2328,6 +2342,18 @@ exports.createProduct = asyncHandler(async (req, res) => {
       price: cleanedProductData.price !== undefined
     });
 
+    // Handle brand_id normalization
+    if (cleanedProductData.brand_id !== undefined) {
+      if (cleanedProductData.brand_id === '' || cleanedProductData.brand_id === 'null' || cleanedProductData.brand_id === null) {
+        cleanedProductData.brand_id = null;
+      } else {
+        cleanedProductData.brand_id = parseInt(cleanedProductData.brand_id, 10);
+        if (isNaN(cleanedProductData.brand_id)) {
+          delete cleanedProductData.brand_id;
+        }
+      }
+    }
+
     // Create the product first
     let product;
     try {
@@ -2345,12 +2371,19 @@ exports.createProduct = asyncHandler(async (req, res) => {
             select: {
               id: true,
               name: true,
-              slug: true
-            }
-          }
+          slug: true
         }
-      });
-    } catch (prismaError) {
+      },
+      brand: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
+  });
+} catch (prismaError) {
       console.error('❌ Prisma validation error:', {
         name: prismaError.name,
         message: prismaError.message,
@@ -3278,7 +3311,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',
     'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
     'is_featured', 'is_active', 'meta_title', 'meta_description', 'meta_keywords',
-    'product_type', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+    'product_type', 'brand_id', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
     'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
     'base_curve_options', 'diameter_options', 'can_sleep_with', 'is_medical_device', 'has_uv_filter',
     'size_volume', 'pack_type', 'expiry_date' // Eye Hygiene fields
@@ -3308,7 +3341,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     'description', 'short_description', 'frame_material', 'frame_color',
     'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
     'meta_title', 'meta_description', 'meta_keywords',
-    'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
+    'brand_id', 'contact_lens_brand', 'contact_lens_material', 'contact_lens_color',
     'contact_lens_type', 'replacement_frequency', 'water_content', 'powers_range',
     'base_curve_options', 'diameter_options', 'images', 'color_images',
     'size_volume', 'pack_type' // Eye Hygiene string fields
@@ -3340,6 +3373,18 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Handle brand_id normalization
+  if (cleanedProductData.brand_id !== undefined) {
+    if (cleanedProductData.brand_id === '' || cleanedProductData.brand_id === 'null' || cleanedProductData.brand_id === null) {
+      cleanedProductData.brand_id = null;
+    } else {
+      cleanedProductData.brand_id = parseInt(cleanedProductData.brand_id, 10);
+      if (isNaN(cleanedProductData.brand_id)) {
+        delete cleanedProductData.brand_id;
+      }
+    }
+  }
+
   // Convert category_id and sub_category_id to Prisma relation syntax if they exist
   const updateData = { ...cleanedProductData };
 
@@ -3354,18 +3399,32 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Handle subCategory relation
   if (updateData.sub_category_id !== undefined) {
     if (updateData.sub_category_id === null || updateData.sub_category_id === 'null' || updateData.sub_category_id === '') {
-      updateData.subCategory = {
-        disconnect: true
-      };
-    } else {
-      updateData.subCategory = {
-        connect: { id: updateData.sub_category_id }
-      };
-    }
-    delete updateData.sub_category_id;
+    updateData.subCategory = {
+      disconnect: true
+    };
+  } else {
+    updateData.subCategory = {
+      connect: { id: updateData.sub_category_id }
+    };
   }
+  delete updateData.sub_category_id;
+}
 
-  const updatedProduct = await prisma.product.update({
+// Handle brand relation
+if (updateData.brand_id !== undefined) {
+  if (updateData.brand_id === null || updateData.brand_id === 'null' || updateData.brand_id === '') {
+    updateData.brand = {
+      disconnect: true
+    };
+  } else {
+    updateData.brand = {
+      connect: { id: updateData.brand_id }
+    };
+  }
+  delete updateData.brand_id;
+}
+
+const updatedProduct = await prisma.product.update({
     where: { id: productId },
     data: updateData,
     include: {
@@ -3377,6 +3436,13 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         }
       },
       subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
+      brand: {
         select: {
           id: true,
           name: true,
