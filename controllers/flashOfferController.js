@@ -133,9 +133,25 @@ exports.getFlashOfferById = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/flash-offers
 // @access  Private/Admin
 exports.createFlashOffer = asyncHandler(async (req, res) => {
-    const { product_ids, starts_at, ends_at, ...rest } = req.body;
+    const { product_ids, starts_at, ends_at, discount_type, discount_value, ...rest } = req.body;
     
     const offerData = { ...rest };
+    
+    // Handle discount fields
+    if (discount_type !== undefined) {
+        if (!['percentage', 'fixed_amount', 'free_shipping'].includes(discount_type)) {
+            return error(res, 'Invalid discount_type. Must be one of: percentage, fixed_amount, free_shipping', 400);
+        }
+        offerData.discount_type = discount_type;
+    }
+    if (discount_value !== undefined) {
+        // Convert to Decimal for Prisma
+        const numericValue = parseFloat(discount_value);
+        if (isNaN(numericValue) || numericValue < 0) {
+            return error(res, 'discount_value must be a positive number', 400);
+        }
+        offerData.discount_value = numericValue;
+    }
     
     // Handle product_ids - convert array to JSON string
     if (product_ids) {
@@ -201,9 +217,25 @@ exports.createFlashOffer = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.updateFlashOffer = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { product_ids, starts_at, ends_at, ...rest } = req.body;
+    const { product_ids, starts_at, ends_at, discount_type, discount_value, ...rest } = req.body;
 
     const updateData = { ...rest };
+
+    // Handle discount fields
+    if (discount_type !== undefined) {
+        if (!['percentage', 'fixed_amount', 'free_shipping'].includes(discount_type)) {
+            return error(res, 'Invalid discount_type. Must be one of: percentage, fixed_amount, free_shipping', 400);
+        }
+        updateData.discount_type = discount_type;
+    }
+    if (discount_value !== undefined) {
+        // Convert to Decimal for Prisma
+        const numericValue = parseFloat(discount_value);
+        if (isNaN(numericValue) || numericValue < 0) {
+            return error(res, 'discount_value must be a positive number', 400);
+        }
+        updateData.discount_value = numericValue;
+    }
 
     // Handle product_ids - convert array to JSON string
     if (product_ids !== undefined) {

@@ -11778,7 +11778,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"title\": \"Flash Sale!\",\n  \"description\": \"Limited time offer on selected products\",\n  \"product_ids\": [1, 2, 3],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-25T12:00:00Z\",\n  \"is_active\": true,\n  \"link_url\": \"https://example.com/flash-sale\",\n  \"discount_percentage\": 25\n}"
+                  "raw": "{\n  \"title\": \"Flash Sale!\",\n  \"description\": \"Limited time offer on selected products\",\n  \"product_ids\": [1, 2, 3],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-25T12:00:00Z\",\n  \"is_active\": true,\n  \"link_url\": \"https://example.com/flash-sale\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 25\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/flash-offers",
@@ -11810,7 +11810,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"title\": \"Updated Flash Sale!\",\n  \"description\": \"Updated limited time offer\",\n  \"product_ids\": [1, 2, 3, 4],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-26T12:00:00Z\",\n  \"is_active\": true,\n  \"link_url\": \"https://example.com/updated-flash-sale\",\n  \"discount_percentage\": 30\n}"
+                  "raw": "{\n  \"title\": \"Updated Flash Sale!\",\n  \"description\": \"Updated limited time offer\",\n  \"product_ids\": [1, 2, 3, 4],\n  \"starts_at\": \"2026-01-24T12:00:00Z\",\n  \"ends_at\": \"2026-01-26T12:00:00Z\",\n  \"is_active\": true,\n  \"link_url\": \"https://example.com/updated-flash-sale\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 30\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/flash-offers/1",
