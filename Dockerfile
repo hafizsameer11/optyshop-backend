@@ -75,6 +75,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start script: regenerate Prisma Client to sync with actual DB, then start server
-# This ensures Prisma Client matches the database schema (nodejs user can now write to node_modules)
-CMD ["sh", "-c", "npx prisma generate && node server.js"]
+# Start script: run migrations, regenerate Prisma Client, then start server
+# This ensures database schema is up to date before application starts
+CMD ["sh", "-c", "sh ./scripts/migrate-and-start.sh && node server.js"]
