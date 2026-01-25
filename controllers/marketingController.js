@@ -689,7 +689,7 @@ exports.createBrand = asyncHandler(async (req, res) => {
     // Handle logo upload if provided
     if (req.file) {
         const logoUrl = await uploadToS3(req.file, 'brands');
-        brandData.logo_url = logoUrl;
+        brandData.logo_image = logoUrl;
     }
 
     // Handle website_url (can be provided directly in body)
@@ -742,7 +742,7 @@ exports.updateBrand = asyncHandler(async (req, res) => {
     // Handle logo upload if provided
     if (req.file) {
         const logoUrl = await uploadToS3(req.file, 'brands');
-        updateData.logo_url = logoUrl;
+        updateData.logo_image = logoUrl;
     }
 
     // Handle website_url (can be provided directly in body)
