@@ -500,14 +500,6 @@ exports.getProducts = asyncHandler(async (req, res) => {
           }
         }
       }
-    },
-    brand: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        logo_url: true
-      }
     }
   };
 
