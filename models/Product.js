@@ -128,6 +128,12 @@ const Product = sequelize.define('Product', {
   view_count: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  mm_calibers: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Array of mm caliber objects with mm value and image_url'
   }
 }, {
   tableName: 'products',

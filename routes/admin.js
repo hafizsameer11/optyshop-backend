@@ -56,6 +56,15 @@ const {
   getAdminOrderDetail
 } = require('../controllers/orderController');
 const {
+  addProductCaliber,
+  updateProductCaliber,
+  deleteProductCaliber,
+  createEyeHygieneVariant,
+  updateEyeHygieneVariant,
+  deleteEyeHygieneVariant,
+  getEyeHygieneVariants
+} = require('../controllers/productVariantController');
+const {
   getCoupons,
   createCoupon,
   updateCoupon,
@@ -488,6 +497,15 @@ router.get('/vto-settings', getVtoConfigs);
 router.post('/vto-settings', createVtoConfig);
 router.put('/vto-settings/:id', updateVtoConfig);
 router.delete('/vto-settings/:id', deleteVtoConfig);
+
+// Product Variants (MM Calibers and Eye Hygiene)
+router.post('/products/:productId/calibers', addProductCaliber);
+router.put('/products/:productId/calibers/:mm', updateProductCaliber);
+router.delete('/products/:productId/calibers/:mm', deleteProductCaliber);
+router.post('/eye-hygiene-variants', createEyeHygieneVariant);
+router.put('/eye-hygiene-variants/:id', updateEyeHygieneVariant);
+router.delete('/eye-hygiene-variants/:id', deleteEyeHygieneVariant);
+router.get('/products/:productId/eye-hygiene-variants', getEyeHygieneVariants);
 
 module.exports = router;
 

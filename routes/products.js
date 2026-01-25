@@ -13,6 +13,10 @@ const {
   getProductFormOptions
 } = require('../controllers/productController');
 const {
+  getProductWithCalibers,
+  getProductsByCategory
+} = require('../controllers/productVariantController');
+const {
   getProductConfiguration,
   getLensTypes
 } = require('../controllers/productConfigurationController');
@@ -35,6 +39,7 @@ router.get('/slug/:slug', getProductBySlug);
 router.get('/:id', validateProductId, getProduct);
 router.get('/:id/related', validateProductId, getRelatedProducts);
 router.get('/:id/configuration', validateProductId, getProductConfiguration);
+router.get('/:id/calibers', validateProductId, getProductWithCalibers);
 
 module.exports = router;
 

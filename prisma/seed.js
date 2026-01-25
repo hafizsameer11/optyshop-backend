@@ -31,7 +31,6 @@ async function main() {
   await prisma.caseStudy.deleteMany();
   await prisma.blogArticle.deleteMany();
   await prisma.job.deleteMany();
-  await prisma.brand.deleteMany();
 
   // Create Admin User
   console.log('👤 Creating admin user...');
@@ -159,41 +158,6 @@ async function main() {
       name: 'Reading Glasses',
       slug: 'reading-glasses',
       description: 'Reading glasses for close-up work',
-      is_active: true,
-      sort_order: 3
-    }
-  });
-
-  // Create Brands
-  console.log('🏷️ Creating brands...');
-  const brandRayBan = await prisma.brand.create({
-    data: {
-      name: 'Ray Ban',
-      slug: 'ray-ban',
-      description: 'Iconic eyewear since 1937',
-      logo_url: 'https://example.com/logos/rayban.png',
-      is_active: true,
-      sort_order: 1
-    }
-  });
-
-  const brandOakley = await prisma.brand.create({
-    data: {
-      name: 'Oakley',
-      slug: 'oakley',
-      description: 'High-performance sports eyewear',
-      logo_url: 'https://example.com/logos/oakley.png',
-      is_active: true,
-      sort_order: 2
-    }
-  });
-
-  const brandPersol = await prisma.brand.create({
-    data: {
-      name: 'Persol',
-      slug: 'persol',
-      description: 'Italian luxury eyewear',
-      logo_url: 'https://example.com/logos/persol.png',
       is_active: true,
       sort_order: 3
     }
@@ -386,7 +350,6 @@ async function main() {
       description: 'Timeless round frame design perfect for any face shape. Made with premium acetate material.',
       short_description: 'Classic round frame with premium quality',
       category_id: category1.id,
-      brand_id: brandRayBan.id,
       price: 129.99,
       compare_at_price: 159.99,
       stock_quantity: 50,
@@ -417,7 +380,6 @@ async function main() {
       description: 'Classic aviator style sunglasses with UV protection. Perfect for outdoor activities.',
       short_description: 'Classic aviator sunglasses',
       category_id: category2.id,
-      brand_id: brandRayBan.id,
       price: 89.99,
       compare_at_price: 119.99,
       stock_quantity: 30,
@@ -446,7 +408,6 @@ async function main() {
       description: 'Comfortable square reading glasses with blue light filter. Ideal for computer work.',
       short_description: 'Square reading glasses with blue light protection',
       category_id: category3.id,
-      brand_id: brandPersol.id,
       price: 49.99,
       stock_quantity: 75,
       stock_status: 'in_stock',
@@ -474,7 +435,6 @@ async function main() {
       description: 'Stylish cat-eye frame for a retro look. Perfect for fashion-forward individuals.',
       short_description: 'Fashionable cat-eye frame',
       category_id: category1.id,
-      brand_id: brandOakley.id,
       price: 149.99,
       compare_at_price: 179.99,
       stock_quantity: 25,

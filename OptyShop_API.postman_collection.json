@@ -535,6 +535,26 @@
                 },
                 "description": "Get all prescription lens types (Distance Vision, Near Vision, Progressive) with their variants and colors."
               }
+            },
+            {
+              "name": "Get Product with MM Calibers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/products/1/calibers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "1",
+                    "calibers"
+                  ]
+                },
+                "description": "Get product details including MM calibers and eye hygiene variants.\n\n**Response includes:**\n- All standard product fields\n- `mm_calibers`: Array of caliber objects with `mm` value and `image_url`\n- `eyeHygieneVariants`: Array of eye hygiene variant objects with `name`, `description`, `price`, `image_url`\n\n**MM Calibers Structure:**\n```json\n{\n  \"mm_calibers\": [\n    {\n      \"mm\": \"58\",\n      \"image_url\": \"https://example.com/image-58mm.jpg\"\n    },\n    {\n      \"mm\": \"62\", \n      \"image_url\": \"https://example.com/image-62mm.jpg\"\n    }\n  ]\n}\n```\n\n**Eye Hygiene Variants Structure:**\n```json\n{\n  \"eyeHygieneVariants\": [\n    {\n      \"id\": 1,\n      \"name\": \"Premium Cleaning Solution\",\n      \"description\": \"Advanced cleaning formula\",\n      \"price\": 15.99,\n      \"image_url\": \"https://example.com/cleaner.jpg\",\n      \"sort_order\": 0\n    }\n  ]\n}\n```"
+              }
             }
           ]
         },
@@ -543,6 +563,36 @@
           "item": [
             {
               "name": "Get All Categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/categories?includeProducts=true",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "categories"
+                  ],
+                  "query": [
+                    {
+                      "key": "includeProducts",
+                      "value": "true",
+                      "description": "Include sample products (up to 5) for each category"
+                    },
+                    {
+                      "key": "includeSubcategories",
+                      "value": "true",
+                      "description": "Include subcategories in response"
+                    }
+                  ]
+                },
+                "description": "Get all active categories with optional products and subcategories.\n\n**3-Level Structure:**\n- Category (e.g., \"Contact lenses\")\n  - Subcategory (e.g., \"Giornaliere\") - `parent_id: null`\n    - Sub-subcategory (e.g., \"Sferiche\") - `parent_id: [Subcategory.id]`\n\n**Query Parameters:**\n- `includeProducts`: When true, includes up to 5 sample products per category\n- `includeSubcategories`: When true, includes subcategories with their sub-subcategories\n\n**Use Cases:**\n- Build navigation menus\n- Display category listings\n- Populate category/subcategory dropdowns"
+              }
+            },
+            {
+              "name": "Get Category by ID",
               "request": {
                 "method": "GET",
                 "header": [],
@@ -634,6 +684,48 @@
                   ]
                 },
                 "description": "Get categories that have similar subcategories to the given category.\n\n**How it works:**\n- Finds all subcategories in the given category (subcategories and sub-subcategories)\n- Searches other categories for subcategories with matching or similar names\n- Scores categories based on number of matching subcategories\n- Returns top results sorted by relevance score\n\n**Response includes:**\n- Related categories with matching subcategories\n- Relevance score for each category\n- List of matching subcategories"
+              }
+            },
+            {
+              "name": "Get Products by Category (with MM Calibers)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/categories/1/products?page=1&limit=12&sortBy=created_at&sortOrder=desc",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "categories",
+                    "1",
+                    "products"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number for pagination"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "12",
+                      "description": "Number of products per page"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "created_at",
+                      "description": "Sort field (created_at, name, price, rating)"
+                    },
+                    {
+                      "key": "sortOrder",
+                      "value": "desc",
+                      "description": "Sort order (asc, desc)"
+                    }
+                  ]
+                },
+                "description": "Get products by category ID including MM calibers and eye hygiene variants.\n\n**Response includes:**\n- `products`: Array of products with full details\n- `pagination`: Pagination metadata\n- Each product includes:\n  - All standard product fields\n  - `mm_calibers`: Array of caliber objects with `mm` value and `image_url`\n  - `eyeHygieneVariants`: Array of eye hygiene variant objects\n\n**Use Cases:**\n- Display category product listings\n- Filter products by category with caliber options\n- Show eye hygiene variants for relevant products"
               }
             }
           ]
@@ -5055,6 +5147,218 @@
                     "1"
                   ]
                 }
+              }
+            },
+            {
+              "name": "Add MM Caliber to Product",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"mm\": \"58\",\n  \"image_url\": \"https://example.com/images/ray-ban-58mm.jpg\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/calibers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "calibers"
+                  ]
+                },
+                "description": "Add a new MM caliber to a product with associated image.\n\n**Request Body:**\n- `mm`: Caliber size (e.g., \"58\", \"62\")\n- `image_url`: URL to the image for this caliber\n\n**Use Cases:**\n- Add different frame sizes for glasses\n- Associate specific images with each caliber option\n- Manage frame size variations"
+              }
+            },
+            {
+              "name": "Update MM Caliber",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"image_url\": \"https://example.com/images/ray-ban-58mm-updated.jpg\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/calibers/58",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "calibers",
+                    "58"
+                  ]
+                },
+                "description": "Update the image URL for a specific MM caliber.\n\n**Request Body:**\n- `image_url`: New URL for the caliber image\n\n**Use Cases:**\n- Update caliber images\n- Change frame size visuals\n- Maintain accurate product imagery"
+              }
+            },
+            {
+              "name": "Delete MM Caliber",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/calibers/58",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "calibers",
+                    "58"
+                  ]
+                },
+                "description": "Remove a MM caliber from a product.\n\n**Use Cases:**\n- Discontinue certain frame sizes\n- Remove unavailable caliber options\n- Clean up product variations"
+              }
+            },
+            {
+              "name": "Create Eye Hygiene Variant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"product_id\": 1,\n  \"name\": \"Premium Cleaning Solution\",\n  \"description\": \"Advanced cleaning formula for all lens types\",\n  \"price\": 15.99,\n  \"image_url\": \"https://example.com/images/cleaner.jpg\",\n  \"sort_order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/eye-hygiene-variants",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "eye-hygiene-variants"
+                  ]
+                },
+                "description": "Create a new eye hygiene variant for a product.\n\n**Request Body:**\n- `product_id`: ID of the parent product\n- `name`: Variant name (e.g., \"Premium Cleaning Solution\")\n- `description`: Variant description\n- `price`: Variant price\n- `image_url`: Variant image URL\n- `sort_order`: Display order (optional, default: 0)\n\n**Use Cases:**\n- Add cleaning solutions to glasses\n- Create lens care product variants\n- Manage eye hygiene accessories"
+              }
+            },
+            {
+              "name": "Update Eye Hygiene Variant",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Premium Cleaning Solution Pro\",\n  \"price\": 18.99,\n  \"image_url\": \"https://example.com/images/cleaner-pro.jpg\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/eye-hygiene-variants/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "eye-hygiene-variants",
+                    "1"
+                  ]
+                },
+                "description": "Update an existing eye hygiene variant.\n\n**Request Body:**\n- All fields are optional\n- `name`: Update variant name\n- `description`: Update description\n- `price`: Update price\n- `image_url`: Update image\n- `is_active`: Enable/disable variant\n- `sort_order`: Update display order\n\n**Use Cases:**\n- Update variant information\n- Change pricing\n- Manage variant availability"
+              }
+            },
+            {
+              "name": "Delete Eye Hygiene Variant",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/eye-hygiene-variants/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "eye-hygiene-variants",
+                    "1"
+                  ]
+                },
+                "description": "Delete an eye hygiene variant.\n\n**Use Cases:**\n- Remove discontinued variants\n- Clean up product options\n- Manage inventory"
+              }
+            },
+            {
+              "name": "Get Eye Hygiene Variants for Product",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/products/1/eye-hygiene-variants",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "products",
+                    "1",
+                    "eye-hygiene-variants"
+                  ]
+                },
+                "description": "Get all active eye hygiene variants for a specific product.\n\n**Response includes:**\n- Array of eye hygiene variant objects\n- Sorted by sort_order\n- Only active variants returned\n\n**Use Cases:**\n- View product variants\n- Manage variant listings\n- Check variant availability"
               }
             },
             {

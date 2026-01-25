@@ -116,7 +116,6 @@ model Product {
   meta_keywords         String?                    @db.VarChar(255)
   product_type          ProductType                @default(frame)
   sub_category_id       Int?
-  brand_id              Int?
   base_curve_options    String?                    @db.LongText
   can_sleep_with        Boolean?                   @default(false)
   contact_lens_brand    String?                    @db.VarChar(100)
@@ -133,6 +132,7 @@ model Product {
   expiry_date           DateTime?
   pack_type             String?                    @db.VarChar(50)
   size_volume           String?                    @db.VarChar(50)
+  mm_calibers           String?                    @db.LongText
   astigmatismConfigs    AstigmatismConfiguration[]
   cartItems             CartItem[]
   contactLensConfigs    ContactLensConfiguration[]
@@ -144,7 +144,7 @@ model Product {
   lensTypes             ProductLensType[]
   sizeVolumeVariants    ProductSizeVolume[]
   variants              ProductVariant[]
-  brand                 Brand?                     @relation(fields: [brand_id], references: [id])
+  eyeHygieneVariants    EyeHygieneVariant[]
   category              Category                   @relation(fields: [category_id], references: [id])
   subCategory           SubCategory?               @relation(fields: [sub_category_id], references: [id])
   reviews               Review[]
@@ -152,7 +152,6 @@ model Product {
 
   @@index([category_id])
   @@index([sub_category_id])
-  @@index([brand_id])
   @@index([slug])
   @@index([sku])
   @@index([frame_shape])
@@ -792,23 +791,6 @@ model ProductGift {
   @@map("product_gifts")
 }
 
-model Brand {
-  id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(150)
-  slug        String    @unique @db.VarChar(150)
-  description String?   @db.Text
-  logo_url    String?   @db.VarChar(500)
-  website_url String?   @db.VarChar(500)
-  sort_order  Int       @default(0)
-  is_active   Boolean   @default(true)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  products    Product[]
-
-  @@index([slug])
-  @@index([is_active])
-  @@map("brands")
-}
 
 model Banner {
   id              Int            @id @default(autoincrement())
@@ -833,6 +815,24 @@ model Banner {
   @@index([sub_category_id])
   @@index([page_type, category_id, sub_category_id])
   @@map("banners")
+}
+
+model EyeHygieneVariant {
+  id           Int      @id @default(autoincrement())
+  product_id   Int
+  name         String   @db.VarChar(255)
+  description  String?  @db.Text
+  price        Decimal  @db.Decimal(10, 2)
+  image_url    String?  @db.VarChar(500)
+  is_active    Boolean  @default(true)
+  sort_order   Int      @default(0)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  product      Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@index([is_active])
+  @@map("eye_hygiene_variants")
 }
 
 model BlogPost {
