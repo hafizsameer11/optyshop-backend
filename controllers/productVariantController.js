@@ -104,6 +104,32 @@ exports.deleteProductCaliber = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getProductCalibers = asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: parseInt(productId) },
+      select: {
+        id: true,
+        name: true,
+        mm_calibers: true
+      }
+    });
+
+    if (!product) {
+      return error(res, 'Product not found', 404);
+    }
+
+    const calibers = product.mm_calibers ? JSON.parse(product.mm_calibers) : [];
+
+    return success(res, 'Product calibers retrieved successfully', calibers);
+  } catch (err) {
+    console.error('Get product calibers error:', err);
+    return error(res, 'Error retrieving product calibers', 500);
+  }
+});
+
 // Eye Hygiene Variant Management
 exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { product_id, name, description, price, image_url, sort_order } = req.body;

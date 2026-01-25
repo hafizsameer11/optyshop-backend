@@ -4,6 +4,7 @@ const {
   addProductCaliber,
   updateProductCaliber,
   deleteProductCaliber,
+  getProductCalibers,
   createEyeHygieneVariant,
   updateEyeHygieneVariant,
   deleteEyeHygieneVariant,
@@ -13,6 +14,7 @@ const { protect, authorize } = require('../../middleware/auth');
 
 // MM Caliber Management Routes
 router.post('/products/:productId/calibers', protect, authorize('admin'), addProductCaliber);
+router.get('/products/:productId/calibers', protect, authorize('admin'), getProductCalibers);
 router.put('/products/:productId/calibers/:mm', protect, authorize('admin'), updateProductCaliber);
 router.delete('/products/:productId/calibers/:mm', protect, authorize('admin'), deleteProductCaliber);
 
