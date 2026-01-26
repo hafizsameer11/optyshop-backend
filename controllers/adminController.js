@@ -3889,6 +3889,7 @@ exports.createSizeVolumeVariant = asyncHandler(async (req, res) => {
     stock_status: variantData.stock_status || 'in_stock',
     sku: variantData.sku || null,
     expiry_date: variantData.expiry_date ? new Date(variantData.expiry_date) : null,
+    image_url: variantData.image_url || null,
     is_active: variantData.is_active !== undefined ? (variantData.is_active === true || variantData.is_active === 'true' || variantData.is_active === '1' || variantData.is_active === 1) : true,
     sort_order: variantData.sort_order ? parseInt(variantData.sort_order, 10) : 0
   };
@@ -3950,6 +3951,7 @@ exports.updateSizeVolumeVariant = asyncHandler(async (req, res) => {
     if (variantData.stock_status !== undefined) updateData.stock_status = variantData.stock_status;
     if (variantData.sku !== undefined) updateData.sku = variantData.sku || null;
     if (variantData.expiry_date !== undefined) updateData.expiry_date = variantData.expiry_date ? new Date(variantData.expiry_date) : null;
+    if (variantData.image_url !== undefined) updateData.image_url = variantData.image_url || null;
     if (variantData.is_active !== undefined) updateData.is_active = variantData.is_active === true || variantData.is_active === 'true' || variantData.is_active === '1' || variantData.is_active === 1;
     if (variantData.sort_order !== undefined) updateData.sort_order = parseInt(variantData.sort_order, 10);
 

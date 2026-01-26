@@ -675,6 +675,7 @@ model ProductSizeVolume {
   stock_status     StockStatus @default(in_stock)
   sku              String?     @db.VarChar(100)
   expiry_date      DateTime?
+  image_url        String?     @db.VarChar(500)
   is_active        Boolean     @default(true)
   sort_order       Int         @default(0)
   created_at       DateTime    @default(now())
