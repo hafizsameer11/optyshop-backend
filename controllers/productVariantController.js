@@ -249,7 +249,6 @@ exports.getProductWithCalibers = asyncHandler(async (req, res) => {
       },
       include: {
         category: true,
-        brand: true,
         eyeHygieneVariants: {
           where: { is_active: true },
           orderBy: { sort_order: 'asc' }
@@ -288,7 +287,6 @@ exports.getProductsByCategory = asyncHandler(async (req, res) => {
       },
       include: {
         category: true,
-        brand: true,
         eyeHygieneVariants: {
           where: { is_active: true },
           orderBy: { sort_order: 'asc' }

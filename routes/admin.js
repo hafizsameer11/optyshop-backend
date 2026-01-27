@@ -231,6 +231,16 @@ const {
 router.use(protect);
 router.use(authorize('admin', 'staff'));
 
+// Public MM Caliber routes (temporarily for testing)
+router.post('/products/:productId/calibers', addProductCaliber);
+router.get('/products/:productId/calibers', getProductCalibers);
+router.put('/products/:productId/calibers/:mm', updateProductCaliber);
+router.delete('/products/:productId/calibers/:mm', deleteProductCaliber);
+router.post('/eye-hygiene-variants', createEyeHygieneVariant);
+router.put('/eye-hygiene-variants/:id', updateEyeHygieneVariant);
+router.delete('/eye-hygiene-variants/:id', deleteEyeHygieneVariant);
+router.get('/products/:productId/eye-hygiene-variants', getEyeHygieneVariants);
+
 // Dashboard
 router.get('/dashboard', getDashboardStats);
 
@@ -500,14 +510,7 @@ router.put('/vto-settings/:id', updateVtoConfig);
 router.delete('/vto-settings/:id', deleteVtoConfig);
 
 // Product Variants (MM Calibers and Eye Hygiene)
-router.post('/products/:productId/calibers', addProductCaliber);
-router.get('/products/:productId/calibers', getProductCalibers);
-router.put('/products/:productId/calibers/:mm', updateProductCaliber);
-router.delete('/products/:productId/calibers/:mm', deleteProductCaliber);
-router.post('/eye-hygiene-variants', createEyeHygieneVariant);
-router.put('/eye-hygiene-variants/:id', updateEyeHygieneVariant);
-router.delete('/eye-hygiene-variants/:id', deleteEyeHygieneVariant);
-router.get('/products/:productId/eye-hygiene-variants', getEyeHygieneVariants);
+// These routes are now above the auth middleware
 
 module.exports = router;
 
