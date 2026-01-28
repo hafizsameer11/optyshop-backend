@@ -176,9 +176,15 @@ exports.createBanner = asyncHandler(async (req, res) => {
         data.sort_order = parseInt(data.sort_order || 0);
     }
     
+    // Clean the data object to ensure no invalid syntax
+    const cleanData = { ...data };
+    
+    // Remove any potential invalid properties
+    delete cleanData.include;
+    
     const banner = await prisma.banner.create({
         data: {
-            ...data,
+            ...cleanData,
             image_url: url
         },
         include: {
@@ -287,9 +293,15 @@ exports.updateBanner = asyncHandler(async (req, res) => {
         data.sub_category_id = data.sub_category_id ? parseInt(data.sub_category_id) : null;
     }
 
+    // Clean the data object to ensure no invalid syntax
+    const updateData = { ...data };
+    
+    // Remove any potential invalid properties
+    delete updateData.include;
+    
     const banner = await prisma.banner.update({
         where: { id: parseInt(id) },
-        data,
+        data: updateData,
         include: {
             category: {
                 select: {
