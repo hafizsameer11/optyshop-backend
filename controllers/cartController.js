@@ -7,6 +7,8 @@ const { sendCartNotificationToAdmin } = require('../utils/email');
 const getCartItemDisplayImages = (item, product) => {
   // Get selected color images from customization
   let selectedColorImages = null;
+  let caliberImage = null;
+  let variantImage = null;
   let customization = item.customization;
   if (typeof customization === 'string') {
     try {
@@ -14,6 +16,26 @@ const getCartItemDisplayImages = (item, product) => {
     } catch (e) {
       customization = null;
     }
+  }
+  
+  // Check for variant image first (new variant system)
+  if (customization && customization.variant_image_url) {
+    variantImage = customization.variant_image_url;
+  }
+  
+  // Check for caliber image (legacy)
+  if (customization && customization.caliber_image_url) {
+    caliberImage = customization.caliber_image_url;
+  }
+  
+  // Check for eye hygiene variant image
+  if (customization && customization.eye_hygiene_image_url) {
+    variantImage = customization.eye_hygiene_image_url;
+  }
+  
+  // Check for size volume variant image
+  if (customization && customization.size_volume_image_url) {
+    variantImage = customization.size_volume_image_url;
   }
   
   if (customization && customization.variant_images) {
@@ -59,10 +81,17 @@ const getCartItemDisplayImages = (item, product) => {
     productImages = [];
   }
   
-  // Use selected color images if available, otherwise use product images
-  const displayImages = selectedColorImages && selectedColorImages.length > 0 
-    ? selectedColorImages 
-    : productImages;
+  // Priority: variant image > caliber image > selected color images > product images
+  let displayImages = [];
+  if (variantImage) {
+    displayImages = [variantImage];
+  } else if (caliberImage) {
+    displayImages = [caliberImage];
+  } else if (selectedColorImages && selectedColorImages.length > 0) {
+    displayImages = selectedColorImages;
+  } else {
+    displayImages = productImages;
+  }
   
   return {
     display_images: displayImages,
@@ -141,6 +170,7 @@ exports.getCart = asyncHandler(async (req, res) => {
               price: true,
               images: true,
               color_images: true,
+              mm_calibers: true,
               stock_quantity: true,
               stock_status: true
             }
@@ -171,6 +201,8 @@ exports.getCart = asyncHandler(async (req, res) => {
                 slug: true,
                 price: true,
                 images: true,
+                color_images: true,
+                mm_calibers: true,
                 stock_quantity: true,
                 stock_status: true
               }
@@ -238,6 +270,11 @@ exports.addToCart = asyncHandler(async (req, res) => {
     prescription_id,
     // Color/Variant selection
     selected_color, // Color value (e.g., "black", "brown") from product colors array
+    // MM Caliber selection
+    selected_mm_caliber, // Selected MM caliber (e.g., "78")
+    // Variant selection (new)
+    selected_variant_id, // Selected variant ID (e.g., "caliber_78", "eye_hygiene_1", "size_volume_2")
+    variant_type, // Variant type: "mm_caliber", "eye_hygiene", "size_volume"
     // Lens configuration fields
     lens_type, // 'distance_vision', 'near_vision', 'progressive'
     prescription_data, // JSON object with PD, OD (SPH, CYL, AXIS), OS (SPH, CYL, AXIS)
@@ -292,6 +329,186 @@ exports.addToCart = asyncHandler(async (req, res) => {
   let variantPrice = null;
   let customizationData = null;
 
+  // Handle new variant selection (takes priority over other selections)
+  if (selected_variant_id && variant_type) {
+    try {
+      // Get product with all variant data
+      const productWithVariants = await prisma.product.findUnique({
+        where: { id: product_id },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          mm_calibers: true,
+          eyeHygieneVariants: {
+            where: { is_active: true },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              image_url: true,
+              sort_order: true
+            }
+          },
+          sizeVolumeVariants: {
+            where: { is_active: true },
+            select: {
+              id: true,
+              size_volume: true,
+              pack_type: true,
+              price: true,
+              compare_at_price: true,
+              stock_quantity: true,
+              stock_status: true,
+              sku: true,
+              image_url: true,
+              sort_order: true
+            }
+          }
+        }
+      });
+
+      if (productWithVariants) {
+        // Parse mm_calibers if needed
+        let mmCalibers = [];
+        if (productWithVariants.mm_calibers) {
+          try {
+            mmCalibers = typeof productWithVariants.mm_calibers === 'string' 
+              ? JSON.parse(productWithVariants.mm_calibers) 
+              : productWithVariants.mm_calibers;
+          } catch (e) {
+            mmCalibers = [];
+          }
+        }
+
+        let foundVariant = null;
+
+        if (variant_type === 'mm_caliber' && selected_variant_id.startsWith('caliber_')) {
+          const mm = selected_variant_id.replace('caliber_', '');
+          const caliberData = mmCalibers.find(c => c.mm === mm);
+          
+          if (caliberData) {
+            foundVariant = {
+              type: 'mm_caliber',
+              name: `${mm}mm`,
+              display_name: `${mm}mm Caliber`,
+              price: parseFloat(productWithVariants.price),
+              image_url: caliberData.image_url,
+              metadata: {
+                mm: mm,
+                image_url: caliberData.image_url
+              }
+            };
+          }
+        } else if (variant_type === 'eye_hygiene' && selected_variant_id.startsWith('eye_hygiene_')) {
+          const variantIdNum = parseInt(selected_variant_id.replace('eye_hygiene_', ''));
+          const eyeHygieneVariant = productWithVariants.eyeHygieneVariants.find(v => v.id === variantIdNum);
+          
+          if (eyeHygieneVariant) {
+            foundVariant = {
+              type: 'eye_hygiene',
+              name: eyeHygieneVariant.name,
+              display_name: eyeHygieneVariant.name,
+              description: eyeHygieneVariant.description,
+              price: parseFloat(eyeHygieneVariant.price),
+              image_url: eyeHygieneVariant.image_url,
+              metadata: {
+                variant_id: eyeHygieneVariant.id,
+                image_url: eyeHygieneVariant.image_url
+              }
+            };
+          }
+        } else if (variant_type === 'size_volume' && selected_variant_id.startsWith('size_volume_')) {
+          const variantIdNum = parseInt(selected_variant_id.replace('size_volume_', ''));
+          const sizeVolumeVariant = productWithVariants.sizeVolumeVariants.find(v => v.id === variantIdNum);
+          
+          if (sizeVolumeVariant) {
+            foundVariant = {
+              type: 'size_volume',
+              name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+              display_name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+              price: parseFloat(sizeVolumeVariant.price),
+              compare_at_price: sizeVolumeVariant.compare_at_price ? parseFloat(sizeVolumeVariant.compare_at_price) : null,
+              image_url: sizeVolumeVariant.image_url,
+              stock_quantity: sizeVolumeVariant.stock_quantity,
+              stock_status: sizeVolumeVariant.stock_status,
+              sku: sizeVolumeVariant.sku,
+              metadata: {
+                variant_id: sizeVolumeVariant.id,
+                size_volume: sizeVolumeVariant.size_volume,
+                pack_type: sizeVolumeVariant.pack_type,
+                sku: sizeVolumeVariant.sku,
+                image_url: sizeVolumeVariant.image_url
+              }
+            };
+          }
+        }
+
+        if (foundVariant) {
+          variantPrice = foundVariant.price;
+          customizationData = {
+            selected_variant_id: selected_variant_id,
+            variant_type: variant_type,
+            variant_name: foundVariant.name,
+            variant_display_name: foundVariant.display_name,
+            variant_price: foundVariant.price,
+            variant_image_url: foundVariant.image_url,
+            variant_metadata: foundVariant.metadata
+          };
+
+          // Add variant-specific data to customization
+          if (foundVariant.type === 'mm_caliber') {
+            customizationData.selected_mm_caliber = foundVariant.metadata.mm;
+            customizationData.caliber_image_url = foundVariant.metadata.image_url;
+          } else if (foundVariant.type === 'eye_hygiene') {
+            customizationData.eye_hygiene_variant_id = foundVariant.metadata.variant_id;
+            customizationData.eye_hygiene_image_url = foundVariant.metadata.image_url;
+          } else if (foundVariant.type === 'size_volume') {
+            customizationData.size_volume_variant_id = foundVariant.metadata.variant_id;
+            customizationData.size_volume = foundVariant.metadata.size_volume;
+            customizationData.pack_type = foundVariant.metadata.pack_type;
+            customizationData.sku = foundVariant.metadata.sku;
+            customizationData.size_volume_image_url = foundVariant.metadata.image_url;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error processing variant selection:', err);
+      // Continue without variant if there's an error
+    }
+  }
+
+  // Handle MM caliber selection (legacy support)
+  let selectedCaliberData = null;
+  if (selected_mm_caliber && !customizationData) {
+    // Parse mm_calibers to find matching caliber
+    let mmCalibers = product.mm_calibers;
+    if (typeof mmCalibers === 'string') {
+      try {
+        mmCalibers = JSON.parse(mmCalibers);
+      } catch (e) {
+        mmCalibers = [];
+      }
+    }
+    if (!Array.isArray(mmCalibers)) {
+      mmCalibers = mmCalibers ? [mmCalibers] : [];
+    }
+
+    selectedCaliberData = mmCalibers.find(caliber => caliber.mm === selected_mm_caliber);
+    
+    if (selectedCaliberData) {
+      // Store caliber selection in customization
+      if (!customizationData) {
+        customizationData = {};
+      }
+      customizationData.selected_mm_caliber = selected_mm_caliber;
+      customizationData.caliber_image_url = selectedCaliberData.image_url;
+    } else {
+      console.warn(`MM caliber "${selected_mm_caliber}" not found for product ${product_id}`);
+    }
+  }
+
   if (selected_color) {
     // Parse color_images to find matching variant
     let colorImages = product.color_images;
@@ -340,16 +557,17 @@ exports.addToCart = asyncHandler(async (req, res) => {
       const colorName = selectedColorVariant.name || selectedColorVariant.color || 'Unknown';
 
       // Store color selection in customization
-      customizationData = {
-        selected_color: hexCode || selectedColorVariant.color || selectedColorVariant.name,
-        hex_code: hexCode,
-        color_name: colorName,
-        color_display_name: selectedColorVariant.display_name || colorName,
-        variant_price: variantPrice,
-        variant_images: Array.isArray(selectedColorVariant.images) 
-          ? selectedColorVariant.images 
-          : (selectedColorVariant.images ? [selectedColorVariant.images] : [])
-      };
+      if (!customizationData) {
+        customizationData = {};
+      }
+      customizationData.selected_color = hexCode || selectedColorVariant.color || selectedColorVariant.name;
+      customizationData.hex_code = hexCode;
+      customizationData.color_name = colorName;
+      customizationData.color_display_name = selectedColorVariant.display_name || colorName;
+      customizationData.variant_price = variantPrice;
+      customizationData.variant_images = Array.isArray(selectedColorVariant.images) 
+        ? selectedColorVariant.images 
+        : (selectedColorVariant.images ? [selectedColorVariant.images] : [])
     } else {
       // Color not found, but continue with base product
       console.warn(`Color variant "${selected_color}" not found for product ${product_id}, using base product`);

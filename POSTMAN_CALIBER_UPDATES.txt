@@ -1,0 +1,280 @@
+POSTMAN COLLECTION UPDATES - MM CALIBER FUNCTIONALITY
+==========================================================
+
+Below are the new endpoints and updates needed for MM Caliber functionality.
+You can manually add these to your existing Postman collection.
+
+========================================
+1. WEBSITE - PRODUCT CALIBERS
+========================================
+
+--- NEW: Get Product Calibers ---
+Method: GET
+URL: {{base_url}}/api/products/1/calibers
+Headers: (none)
+Body: (none)
+
+Description:
+Get MM calibers for a specific product.
+
+Response Example:
+{
+  "success": true,
+  "message": "Product calibers retrieved successfully",
+  "data": {
+    "product_id": 1,
+    "product_name": "Ray Ban 3025",
+    "calibers": [
+      {
+        "mm": "58",
+        "image_url": "https://example.com/image-58mm.jpg"
+      },
+      {
+        "mm": "62",
+        "image_url": "https://example.com/image-62mm.jpg"
+      }
+    ]
+  }
+}
+
+Usage:
+1. Call this endpoint to get available calibers for a product
+2. Display caliber options with images to user
+3. User can click on caliber image to select it
+4. Use the `mm` value when adding to cart
+
+========================================
+2. CART - CALIBER SELECTION
+========================================
+
+--- NEW: Add Product with MM Caliber ---
+Method: POST
+URL: {{base_url}}/api/cart/items
+Headers:
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "product_id": 1,
+  "quantity": 1,
+  "selected_mm_caliber": "78"
+}
+
+Description:
+Add a product to cart with MM caliber selection.
+
+Product Information (Required):
+- product_id: Product ID to add to cart
+- quantity: Quantity (default: 1)
+
+MM Caliber Selection (Optional):
+- selected_mm_caliber: MM caliber value (e.g., "78", "58", "62")
+  - Must match the `mm` field from the product's `mm_calibers` array
+  - When provided:
+    - Stores caliber selection in cart item's `customization` field
+    - Caliber-specific image is stored for display
+    - Uses caliber image as primary display image in cart
+    - Same caliber variants are combined (quantity incremented)
+    - Different calibers create separate cart items
+
+How MM Caliber Selection Works:
+1. Get product calibers: GET /api/products/:id/calibers
+2. Each caliber object has: mm (value like "78") and image_url
+3. Pass the `mm` value as selected_mm_caliber
+4. Backend will:
+   - Find matching caliber by mm value
+   - Store caliber selection in cart item's customization field
+   - Use caliber-specific image for cart display
+   - Prioritize caliber image over color/product images
+
+Response includes:
+- item: Cart item with:
+  - display_images: Array of images to display - Caliber image if caliber was selected
+  - display_image: First image URL - Primary display image (caliber image takes priority)
+  - customization: Caliber selection data with selected_mm_caliber and caliber_image_url
+  - unit_price: Base product price
+
+Example Response:
+{
+  "success": true,
+  "message": "Item added to cart",
+  "data": {
+    "item": {
+      "id": 1,
+      "product_id": 1,
+      "quantity": 1,
+      "unit_price": 180.00,
+      "display_images": ["https://example.com/caliber-78mm.jpg"],
+      "display_image": "https://example.com/caliber-78mm.jpg",
+      "customization": {
+        "selected_mm_caliber": "78",
+        "caliber_image_url": "https://example.com/caliber-78mm.jpg"
+      }
+    }
+  }
+}
+
+Usage Flow:
+1. Call GET /api/products/:id/calibers to get available calibers
+2. Display caliber options with images to user
+3. User selects a caliber (e.g., "78mm")
+4. Call this endpoint with selected_mm_caliber: "78"
+5. Cart will show the product with the selected caliber image
+
+--- NEW: Add Product with Color + Caliber ---
+Method: POST
+URL: {{base_url}}/api/cart/items
+Headers:
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "product_id": 1,
+  "quantity": 1,
+  "selected_color": "#000000",
+  "selected_mm_caliber": "78"
+}
+
+Description:
+Add a product to cart with both color and MM caliber selection.
+
+This combines both color and caliber selection:
+- selected_color: Color variant selection
+- selected_mm_caliber: MM caliber selection
+
+Image Priority:
+1. Caliber image (highest priority)
+2. Color variant images
+3. Product images (fallback)
+
+Customization Data:
+{
+  "customization": {
+    "selected_color": "#000000",
+    "hex_code": "#000000",
+    "color_name": "Black",
+    "selected_mm_caliber": "78",
+    "caliber_image_url": "https://example.com/caliber-78mm.jpg"
+  }
+}
+
+========================================
+3. ADMIN - CALIBER MANAGEMENT
+========================================
+
+--- Add Product Caliber ---
+Method: POST
+URL: {{base_url}}/api/admin/products/1/calibers
+Headers:
+  Authorization: Bearer {{admin_token}}
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "mm": "78",
+  "image_url": "https://example.com/images/ray-ban-78mm.jpg"
+}
+
+Description:
+Add a new MM caliber to a product.
+
+Request Body:
+- mm: MM caliber value (e.g., "78", "58", "62")
+- image_url: URL of the caliber-specific image
+
+--- Update Product Caliber ---
+Method: PUT
+URL: {{base_url}}/api/admin/products/1/calibers/78
+Headers:
+  Authorization: Bearer {{admin_token}}
+  Content-Type: application/json
+
+Body (raw JSON):
+{
+  "image_url": "https://example.com/images/ray-ban-78mm-updated.jpg"
+}
+
+Description:
+Update an existing MM caliber's image URL.
+
+Request Body:
+- image_url: New URL for the caliber image
+
+--- Delete Product Caliber ---
+Method: DELETE
+URL: {{base_url}}/api/admin/products/1/calibers/78
+Headers:
+  Authorization: Bearer {{admin_token}}
+
+Description:
+Delete an MM caliber from a product.
+
+Parameters:
+- Product ID in URL path
+- MM caliber value in URL path
+
+========================================
+4. TESTING INSTRUCTIONS
+========================================
+
+To test the caliber functionality:
+
+1. First, add calibers to a product using the admin endpoints
+2. Test the website endpoint to fetch calibers
+3. Test adding products to cart with caliber selection
+4. Verify the cart shows the correct caliber images
+
+Example Test Sequence:
+1. POST /api/admin/products/1/calibers (add caliber "78")
+2. GET /api/products/1/calibers (verify caliber is returned)
+3. POST /api/cart/items with selected_mm_caliber: "78"
+4. GET /api/cart (verify cart shows caliber image)
+
+========================================
+5. FRONTEND INTEGRATION EXAMPLE
+========================================
+
+// 1. Fetch product calibers
+const response = await fetch('/api/products/1/calibers');
+const { calibers } = await response.json();
+
+// 2. Display caliber selector
+calibers.forEach(caliber => {
+  const caliberOption = document.createElement('div');
+  caliberOption.innerHTML = `
+    <img src="${caliber.image_url}" alt="${caliber.mm}mm" />
+    <span>${caliber.mm}mm</span>
+  `;
+  caliberOption.onclick = () => addToCartWithCaliber(caliber.mm);
+  document.querySelector('.caliber-selector').appendChild(caliberOption);
+});
+
+// 3. Add to cart with selected caliber
+async function addToCartWithCaliber(mm) {
+  const response = await fetch('/api/cart/items', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({
+      product_id: 1,
+      quantity: 1,
+      selected_mm_caliber: mm
+    })
+  });
+  
+  const result = await response.json();
+  console.log('Added to cart:', result);
+}
+
+========================================
+6. VARIABLES TO SET IN POSTMAN
+========================================
+
+Make sure these variables are set in your Postman environment:
+- base_url: http://localhost:3000
+- access_token: Your user JWT token
+- admin_token: Your admin JWT token
