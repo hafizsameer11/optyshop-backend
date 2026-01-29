@@ -4590,8 +4590,30 @@ exports.getAllFrameSizes = asyncHandler(async (req, res) => {
     prisma.frameSize.count({ where })
   ]);
 
+  // Transform data to match frontend expectations
+  const transformedFrameSizes = frameSizes.map(frameSize => ({
+    id: frameSize.id,
+    name: frameSize.size_label || 'N/A',
+    slug: frameSize.product?.slug || 'N/A',
+    width: frameSize.lens_width || 'N/A',
+    bridge: frameSize.bridge_width || 'N/A',
+    temple: frameSize.temple_length || 'N/A',
+    status: 'Active', // Default status since it's not in the schema
+    // Keep original fields for backward compatibility
+    product_id: frameSize.product_id,
+    lens_width: frameSize.lens_width,
+    bridge_width: frameSize.bridge_width,
+    temple_length: frameSize.temple_length,
+    frame_width: frameSize.frame_width,
+    frame_height: frameSize.frame_height,
+    size_label: frameSize.size_label,
+    product: frameSize.product,
+    created_at: frameSize.created_at,
+    updated_at: frameSize.updated_at
+  }));
+
   return success(res, "Frame sizes retrieved successfully", {
-    frameSizes,
+    frameSizes: transformedFrameSizes,
     pagination: {
       total,
       page: parseInt(page),
@@ -4624,7 +4646,29 @@ exports.getFrameSize = asyncHandler(async (req, res) => {
     return error(res, "Frame size not found", 404);
   }
 
-  return success(res, "Frame size retrieved successfully", { frameSize });
+  // Transform data to match frontend expectations
+  const transformedFrameSize = {
+    id: frameSize.id,
+    name: frameSize.size_label || 'N/A',
+    slug: frameSize.product?.slug || 'N/A',
+    width: frameSize.lens_width || 'N/A',
+    bridge: frameSize.bridge_width || 'N/A',
+    temple: frameSize.temple_length || 'N/A',
+    status: 'Active', // Default status since it's not in the schema
+    // Keep original fields for backward compatibility
+    product_id: frameSize.product_id,
+    lens_width: frameSize.lens_width,
+    bridge_width: frameSize.bridge_width,
+    temple_length: frameSize.temple_length,
+    frame_width: frameSize.frame_width,
+    frame_height: frameSize.frame_height,
+    size_label: frameSize.size_label,
+    product: frameSize.product,
+    created_at: frameSize.created_at,
+    updated_at: frameSize.updated_at
+  };
+
+  return success(res, "Frame size retrieved successfully", { frameSize: transformedFrameSize });
 });
 
 // @desc    Create frame size (Admin)
@@ -4655,8 +4699,40 @@ exports.createFrameSize = asyncHandler(async (req, res) => {
 
   const frameSize = await prisma.frameSize.create({
     data: frameSizeData,
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
   });
-  return success(res, "Frame size created successfully", { frameSize }, 201);
+
+  // Transform data to match frontend expectations
+  const transformedFrameSize = {
+    id: frameSize.id,
+    name: frameSize.size_label || 'N/A',
+    slug: frameSize.product?.slug || 'N/A',
+    width: frameSize.lens_width || 'N/A',
+    bridge: frameSize.bridge_width || 'N/A',
+    temple: frameSize.temple_length || 'N/A',
+    status: 'Active', // Default status since it's not in the schema
+    // Keep original fields for backward compatibility
+    product_id: frameSize.product_id,
+    lens_width: frameSize.lens_width,
+    bridge_width: frameSize.bridge_width,
+    temple_length: frameSize.temple_length,
+    frame_width: frameSize.frame_width,
+    frame_height: frameSize.frame_height,
+    size_label: frameSize.size_label,
+    product: frameSize.product,
+    created_at: frameSize.created_at,
+    updated_at: frameSize.updated_at
+  };
+
+  return success(res, "Frame size created successfully", { frameSize: transformedFrameSize }, 201);
 });
 
 // @desc    Update frame size (Admin)
@@ -4695,8 +4771,40 @@ exports.updateFrameSize = asyncHandler(async (req, res) => {
   const frameSize = await prisma.frameSize.update({
     where: { id: parseInt(id) },
     data: frameSizeData,
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      }
+    }
   });
-  return success(res, "Frame size updated successfully", { frameSize });
+
+  // Transform data to match frontend expectations
+  const transformedFrameSize = {
+    id: frameSize.id,
+    name: frameSize.size_label || 'N/A',
+    slug: frameSize.product?.slug || 'N/A',
+    width: frameSize.lens_width || 'N/A',
+    bridge: frameSize.bridge_width || 'N/A',
+    temple: frameSize.temple_length || 'N/A',
+    status: 'Active', // Default status since it's not in the schema
+    // Keep original fields for backward compatibility
+    product_id: frameSize.product_id,
+    lens_width: frameSize.lens_width,
+    bridge_width: frameSize.bridge_width,
+    temple_length: frameSize.temple_length,
+    frame_width: frameSize.frame_width,
+    frame_height: frameSize.frame_height,
+    size_label: frameSize.size_label,
+    product: frameSize.product,
+    created_at: frameSize.created_at,
+    updated_at: frameSize.updated_at
+  };
+
+  return success(res, "Frame size updated successfully", { frameSize: transformedFrameSize });
 });
 
 // @desc    Delete frame size (Admin)
