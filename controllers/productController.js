@@ -635,14 +635,6 @@ exports.getProduct = asyncHandler(async (req, res) => {
         slug: true
       }
     },
-    brand: {
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        logo_url: true
-      }
-    },
     frameSizes: {
       select: {
         id: true,

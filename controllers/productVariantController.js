@@ -237,40 +237,6 @@ exports.getEyeHygieneVariants = asyncHandler(async (req, res) => {
   }
 });
 
-// Website API endpoints
-exports.getProductCalibers = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const product = await prisma.product.findUnique({
-      where: { 
-        id: parseInt(id),
-        is_active: true 
-      },
-      select: {
-        id: true,
-        name: true,
-        mm_calibers: true
-      }
-    });
-
-    if (!product) {
-      return error(res, 'Product not found', 404);
-    }
-
-    // Parse mm_calibers if they exist
-    const calibers = product.mm_calibers ? JSON.parse(product.mm_calibers) : [];
-
-    return success(res, 'Product calibers retrieved successfully', {
-      product_id: product.id,
-      product_name: product.name,
-      calibers: calibers
-    });
-  } catch (err) {
-    console.error('Get product calibers error:', err);
-    return error(res, 'Error retrieving product calibers', 500);
-  }
-});
 
 exports.getProductWithCalibers = asyncHandler(async (req, res) => {
   const { id } = req.params;
