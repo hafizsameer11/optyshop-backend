@@ -112,6 +112,29 @@ const supportUpload = multer({
 // Single file upload
 exports.uploadSingle = (fieldName = 'image') => upload.single(fieldName);
 
+// Optional single file upload - doesn't fail if no file is provided
+exports.uploadSingleOptional = (fieldName = 'image') => {
+  return (req, res, next) => {
+    // Check if this is multipart/form-data and if the field exists
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return next(); // Not multipart, skip upload
+    }
+    
+    // Use upload.single() but handle the "LIMIT_UNEXPECTED_FILE" error when field is missing
+    upload.single(fieldName)(req, res, (err) => {
+      if (err) {
+        // If it's a multer error about missing file, just continue
+        if (err.code === 'LIMIT_UNEXPECTED_FILE' || err.message.includes('Unexpected field')) {
+          return next();
+        }
+        return next(err);
+      }
+      next();
+    });
+  };
+};
+
 // Multiple files upload
 exports.uploadMultiple = (fieldName = 'images', maxCount = 5) => upload.array(fieldName, maxCount);
 

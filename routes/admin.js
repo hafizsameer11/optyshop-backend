@@ -221,7 +221,7 @@ const {
   deletePhotochromicLens
 } = require('../controllers/photochromicLensController');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadMultiple, uploadSingle, uploadFields, uploadProductFiles } = require('../middleware/upload');
+const { uploadMultiple, uploadSingle, uploadSingleOptional, uploadFields, uploadProductFiles } = require('../middleware/upload');
 const {
   validateCreateProduct,
   validateUpdateProduct
@@ -357,7 +357,7 @@ router.delete('/brands/:id', deleteBrand);
 // Banners
 router.get('/banners', getBannersAdmin);
 router.post('/banners', uploadSingle('image'), createBanner);
-router.put('/banners/:id', uploadSingle('image'), updateBanner);
+router.put('/banners/:id', uploadSingleOptional('image'), updateBanner);
 router.delete('/banners/:id', deleteBanner);
 
 // Blog Posts
