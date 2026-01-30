@@ -135,26 +135,25 @@ exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { product_id, name, description, price, image_url, sort_order } = req.body;
 
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: parseInt(product_id) }
-    });
-
+    const Product = require('../models/Product');
+    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
+    
+    // Check if product exists
+    const product = await Product.findByPk(parseInt(product_id));
     if (!product) {
       return error(res, 'Product not found', 404);
     }
 
-    const variant = await prisma.eyeHygieneVariant.create({
-      data: {
-        product_id: parseInt(product_id),
-        name,
-        description,
-        price: parseFloat(price),
-        image_url,
-        sort_order: parseInt(sort_order) || 0
-      }
+    const variant = await EyeHygieneVariant.create({
+      product_id: parseInt(product_id),
+      name,
+      description,
+      price: parseFloat(price),
+      image_url,
+      sort_order: parseInt(sort_order) || 0
     });
 
-    return success(res, 'Eye hygiene variant created successfully', variant);
+    return success(res, 'Eye hygiene variant created successfully', variant, 201);
   } catch (err) {
     console.error('Create eye hygiene variant error:', err);
     return error(res, 'Error creating eye hygiene variant', 500);
@@ -166,25 +165,27 @@ exports.updateEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { name, description, price, image_url, is_active, sort_order } = req.body;
 
   try {
-    const variant = await prisma.eyeHygieneVariant.findUnique({
-      where: { id: parseInt(id) }
-    });
+    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
+    
+    const variant = await EyeHygieneVariant.findByPk(parseInt(id));
 
     if (!variant) {
       return error(res, 'Eye hygiene variant not found', 404);
     }
 
-    const updatedVariant = await prisma.eyeHygieneVariant.update({
-      where: { id: parseInt(id) },
-      data: {
-        name,
-        description,
-        price: price ? parseFloat(price) : undefined,
-        image_url,
-        is_active: is_active !== undefined ? Boolean(is_active) : undefined,
-        sort_order: sort_order !== undefined ? parseInt(sort_order) : undefined
-      }
-    });
+    const updateData = {
+      name,
+      description,
+      price: parseFloat(price),
+      image_url,
+      sort_order: parseInt(sort_order) || 0
+    };
+
+    if (is_active !== undefined) {
+      updateData.is_active = is_active === 'true' || is_active === true;
+    }
+
+    const updatedVariant = await variant.update(updateData);
 
     return success(res, 'Eye hygiene variant updated successfully', updatedVariant);
   } catch (err) {
@@ -197,17 +198,15 @@ exports.deleteEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const variant = await prisma.eyeHygieneVariant.findUnique({
-      where: { id: parseInt(id) }
-    });
+    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
+    
+    const variant = await EyeHygieneVariant.findByPk(parseInt(id));
 
     if (!variant) {
       return error(res, 'Eye hygiene variant not found', 404);
     }
 
-    await prisma.eyeHygieneVariant.delete({
-      where: { id: parseInt(id) }
-    });
+    await variant.destroy();
 
     return success(res, 'Eye hygiene variant deleted successfully');
   } catch (err) {
@@ -220,14 +219,16 @@ exports.getEyeHygieneVariants = asyncHandler(async (req, res) => {
   const { productId } = req.params;
 
   try {
-    const variants = await prisma.eyeHygieneVariant.findMany({
+    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
+    
+    const variants = await EyeHygieneVariant.findAll({
       where: {
         product_id: parseInt(productId),
         is_active: true
       },
-      orderBy: {
-        sort_order: 'asc'
-      }
+      order: [
+        ['sort_order', 'ASC']
+      ]
     });
 
     return success(res, 'Eye hygiene variants retrieved successfully', variants);
