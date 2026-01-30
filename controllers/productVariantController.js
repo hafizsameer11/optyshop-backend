@@ -642,3 +642,99 @@ exports.getVariantDetails = asyncHandler(async (req, res) => {
     return error(res, 'Error retrieving variant details', 500);
   }
 });
+
+// Eye Hygiene Form Options
+exports.getEyeHygieneFormOptions = asyncHandler(async (req, res) => {
+  try {
+    const { sub_category_id } = req.query;
+
+    // Get subcategory details
+    let subCategory = null;
+    if (sub_category_id) {
+      subCategory = await prisma.subCategory.findUnique({
+        where: { id: parseInt(sub_category_id) },
+        include: {
+          category: true
+        }
+      });
+    }
+
+    // Get eye hygiene products and their variants
+    const eyeHygieneProducts = await prisma.product.findMany({
+      where: {
+        category: {
+          name: 'Eye Hygiene'
+        },
+        is_active: true
+      },
+      include: {
+        sizeVolumeVariants: {
+          where: {
+            is_active: true,
+            stock_status: 'in_stock'
+          },
+          orderBy: [
+            { size_volume: 'asc' },
+            { pack_type: 'asc' }
+          ]
+        },
+        subCategory: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    // Group variants by product
+    const productOptions = eyeHygieneProducts.map(product => ({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      sub_category: product.subCategory,
+      variants: product.sizeVolumeVariants.map(variant => ({
+        id: variant.id,
+        size_volume: variant.size_volume,
+        pack_type: variant.pack_type,
+        display_name: variant.pack_type ? 
+          `${variant.size_volume} ${variant.pack_type}` : 
+          variant.size_volume,
+        price: parseFloat(variant.price),
+        compare_at_price: variant.compare_at_price ? 
+          parseFloat(variant.compare_at_price) : null,
+        image_url: variant.image_url,
+        sku: variant.sku,
+        stock_quantity: variant.stock_quantity,
+        stock_status: variant.stock_status
+      }))
+    })).filter(product => product.variants.length > 0);
+
+    // Get common eye hygiene fields/options
+    const commonFields = {
+      sizes: [...new Set(
+        eyeHygieneProducts.flatMap(p => 
+          p.sizeVolumeVariants.map(v => v.size_volume)
+        )
+      )].sort(),
+      pack_types: [...new Set(
+        eyeHygieneProducts.flatMap(p => 
+          p.sizeVolumeVariants.map(v => v.pack_type).filter(Boolean)
+        )
+      )].sort(),
+      sub_categories: [...new Set(
+        eyeHygieneProducts.map(p => p.subCategory).filter(Boolean)
+          .map(sc => ({ id: sc.id, name: sc.name }))
+      )].sort((a, b) => a.name.localeCompare(b.name))
+    };
+
+    return success(res, 'Eye hygiene form options retrieved successfully', {
+      sub_category: subCategory,
+      products: productOptions,
+      common_fields: commonFields,
+      total_products: productOptions.length,
+      total_variants: productOptions.reduce((sum, p) => sum + p.variants.length, 0)
+    });
+  } catch (err) {
+    console.error('Get eye hygiene form options error:', err);
+    return error(res, 'Error retrieving eye hygiene form options', 500);
+  }
+});

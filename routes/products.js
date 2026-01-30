@@ -14,7 +14,8 @@ const {
 } = require('../controllers/productController');
 const {
   getProductWithCalibers,
-  getProductsByCategory
+  getProductsByCategory,
+  getEyeHygieneVariants
 } = require('../controllers/productVariantController');
 const {
   getProductConfiguration,
@@ -40,6 +41,7 @@ router.get('/:id', validateProductId, getProduct);
 router.get('/:id/related', validateProductId, getRelatedProducts);
 router.get('/:id/configuration', validateProductId, getProductConfiguration);
 router.get('/:id/calibers', validateProductId, getProductWithCalibers);
+router.get('/:id/size-volume-variants', validateProductId, getEyeHygieneVariants);
 
 module.exports = router;
 

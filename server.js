@@ -48,6 +48,7 @@ const contactLensFormRoutes = require('./routes/contactLensForms');
 const prescriptionFormRoutes = require('./routes/prescriptionForms');
 const flashOfferRoutes = require('./routes/flashOffers');
 const productGiftRoutes = require('./routes/productGifts');
+const eyeHygieneFormsRoutes = require('./routes/eyeHygieneForms');
 const databaseRoutes = require('./routes/database');
 const emergencyRoutes = require('./routes/emergency');
 
@@ -229,6 +230,7 @@ app.use('/api/prescription-lens-types', prescriptionLensTypesRoutes); // Standar
 app.use('/api/lens', lensRoutes); // Standard route - includes prescription-lens-types, prescription-sun-colors, etc.
 app.use('/api/flash-offers', flashOfferRoutes);
 app.use('/api/product-gifts', productGiftRoutes);
+app.use('/api/eye-hygiene-forms', eyeHygieneFormsRoutes);
 app.use('/api/admin/database', databaseRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/api/shipping-methods', shippingRoutes); // Keep for backward compatibility
