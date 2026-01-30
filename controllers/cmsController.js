@@ -298,6 +298,7 @@ exports.updateBanner = asyncHandler(async (req, res) => {
     
     // Remove any potential invalid properties
     delete updateData.include;
+    delete updateData.keep_existing_image;
     
     const banner = await prisma.banner.update({
         where: { id: parseInt(id) },
