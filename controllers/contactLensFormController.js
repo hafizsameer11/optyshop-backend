@@ -1147,7 +1147,8 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
     same_for_both_eyes, // Alternative flag name for same functionality
     unit_prices, // JSON object mapping unit (qty) to price, e.g., {"30": 990.00, "60": 1500.00}
-    unit_images // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
+    unit_images, // JSON object mapping unit (qty) to image URLs, e.g., {"30": ["url1", "url2"], "60": ["url3", "url4"]}
+    available_units // Array of available units, e.g., ["30", "60"]
   } = req.body;
 
   // Check if config exists
