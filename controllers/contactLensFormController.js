@@ -12,6 +12,34 @@ const parseJsonField = (value) => {
   }
 };
 
+// Helper function to process uploaded unit images and convert to JSON format
+const processUnitImages = (req, files, existingUnitImages = null) => {
+  const unitImages = existingUnitImages ? (typeof existingUnitImages === 'string' ? JSON.parse(existingUnitImages) : existingUnitImages) : {};
+  
+  if (files && typeof files === 'object') {
+    // Process each unit image field (e.g., unit_images_10, unit_images_20, etc.)
+    Object.keys(files).forEach(fieldname => {
+      if (fieldname.startsWith('unit_images_')) {
+        const unitNumber = fieldname.replace('unit_images_', '');
+        const uploadedFiles = files[fieldname];
+        
+        if (uploadedFiles && Array.isArray(uploadedFiles)) {
+          // Convert uploaded files to URL format
+          const fileUrls = uploadedFiles.map(file => {
+            // Generate URL based on file location
+            const relativePath = file.path.replace(/\\/g, '/').replace('uploads/', '');
+            return `${req.protocol}://${req.get('host')}/uploads/${relativePath}`;
+          });
+          
+          unitImages[unitNumber] = fileUrls;
+        }
+      }
+    });
+  }
+  
+  return unitImages;
+};
+
 // @desc    Get form configuration based on sub-sub-category
 // @route   GET /api/contact-lens-forms/config/:sub_category_id
 // @access  Public
@@ -543,6 +571,12 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     finalLeftPower = right_power;
   }
 
+  // Process uploaded unit images
+  let processedUnitImages = unit_images;
+  if (req.files && Object.keys(req.files).length > 0) {
+    processedUnitImages = processUnitImages(req, req.files, unit_images);
+  }
+
   // Create configuration
   const config = await prisma.contactLensConfiguration.create({
     data: {
@@ -566,7 +600,7 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       // Handle unit_prices - convert object to JSON string
       unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
       // Handle unit_images - convert object to JSON string
-      unit_images: unit_images !== undefined ? (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images)) : null
+      unit_images: processedUnitImages !== undefined ? (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages)) : null
     },
     include: {
       subCategory: {
@@ -665,6 +699,14 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   // Determine if we should copy right to left
   const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
 
+  // Process uploaded unit images
+  let processedUnitImages = unit_images;
+  if (req.files && Object.keys(req.files).length > 0) {
+    // Get existing unit images to merge with new uploads
+    const existingUnitImages = existingConfig.unit_images;
+    processedUnitImages = processUnitImages(req, req.files, existingUnitImages);
+  }
+
   // Prepare update data
   const updateData = {};
 
@@ -711,8 +753,8 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
   }
   // Handle unit_images - convert object to JSON string
-  if (unit_images !== undefined) {
-    updateData.unit_images = unit_images === null || unit_images === '' ? null : (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images));
+  if (processedUnitImages !== undefined) {
+    updateData.unit_images = processedUnitImages === null || processedUnitImages === '' ? null : (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages));
   }
   if (right_qty !== undefined) {
     updateData.right_qty = Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty]);
@@ -1022,6 +1064,12 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
   let finalLeftCylinder = left_cylinder;
   let finalLeftAxis = left_axis;
 
+  // Process uploaded unit images
+  let processedUnitImages = unit_images;
+  if (req.files && Object.keys(req.files).length > 0) {
+    processedUnitImages = processUnitImages(req, req.files, unit_images);
+  }
+
   if (shouldCopyRightToLeft) {
     // Copy right eye values to left eye
     finalLeftQty = right_qty;
@@ -1059,7 +1107,7 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       // Handle unit_prices - convert object to JSON string
       unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
       // Handle unit_images - convert object to JSON string
-      unit_images: unit_images !== undefined ? (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images)) : null
+      unit_images: processedUnitImages !== undefined ? (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages)) : null
     },
     include: {
       subCategory: {
@@ -1167,6 +1215,14 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   // Determine if we should copy right to left
   const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
 
+  // Process uploaded unit images
+  let processedUnitImages = unit_images;
+  if (req.files && Object.keys(req.files).length > 0) {
+    // Get existing unit images to merge with new uploads
+    const existingUnitImages = existingConfig.unit_images;
+    processedUnitImages = processUnitImages(req, req.files, existingUnitImages);
+  }
+
   // Prepare update data
   const updateData = {};
 
@@ -1213,8 +1269,8 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
   }
   // Handle unit_images - convert object to JSON string
-  if (unit_images !== undefined) {
-    updateData.unit_images = unit_images === null || unit_images === '' ? null : (typeof unit_images === 'string' ? unit_images : JSON.stringify(unit_images));
+  if (processedUnitImages !== undefined) {
+    updateData.unit_images = processedUnitImages === null || processedUnitImages === '' ? null : (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages));
   }
 
   // Handle right eye fields
