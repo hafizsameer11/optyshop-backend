@@ -170,7 +170,15 @@ exports.createBanner = asyncHandler(async (req, res) => {
     
     // Convert string booleans to actual booleans
     if (data.is_active !== undefined) {
-        data.is_active = data.is_active === 'true' || data.is_active === true;
+        // Handle various input formats: 'true', 'false', '1', '0', true, false, 1, 0
+        if (data.is_active === 'true' || data.is_active === true || data.is_active === '1' || data.is_active === 1) {
+            data.is_active = true;
+        } else if (data.is_active === 'false' || data.is_active === false || data.is_active === '0' || data.is_active === 0) {
+            data.is_active = false;
+        } else {
+            // Default to false for any other value
+            data.is_active = false;
+        }
     }
     if (data.sort_order !== undefined) {
         data.sort_order = parseInt(data.sort_order || 0);
@@ -279,7 +287,15 @@ exports.updateBanner = asyncHandler(async (req, res) => {
     
     // Convert string booleans to actual booleans
     if (data.is_active !== undefined) {
-        data.is_active = data.is_active === 'true' || data.is_active === true;
+        // Handle various input formats: 'true', 'false', '1', '0', true, false, 1, 0
+        if (data.is_active === 'true' || data.is_active === true || data.is_active === '1' || data.is_active === 1) {
+            data.is_active = true;
+        } else if (data.is_active === 'false' || data.is_active === false || data.is_active === '0' || data.is_active === 0) {
+            data.is_active = false;
+        } else {
+            // Default to false for any other value
+            data.is_active = false;
+        }
     }
     if (data.sort_order !== undefined) {
         data.sort_order = parseInt(data.sort_order || 0);
