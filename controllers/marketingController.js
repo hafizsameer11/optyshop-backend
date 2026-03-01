@@ -26,13 +26,29 @@ exports.createCoupon = asyncHandler(async (req, res) => {
         return error(res, 'Coupon code already exists', 400);
     }
 
-    // Map valid_from/valid_until to starts_at/ends_at and convert to Date objects
+    // Only include valid Coupon fields
+    const validFields = [
+        'description', 'max_discount', 'min_order_amount', 'usage_limit', 
+        'usage_per_user', 'applicable_to', 'conditions', 'is_active'
+    ];
+    
     const couponData = {
-        ...rest,
         code,
         discount_value,
         discount_type
     };
+
+    // Add only valid fields from rest
+    validFields.forEach(field => {
+        if (rest[field] !== undefined) {
+            couponData[field] = rest[field];
+        }
+    });
+
+    // Explicitly remove any invalid fields that might cause issues
+    delete couponData.product_ids;
+    delete couponData.created_at;
+    delete couponData.updated_at;
 
     // Handle date fields - prioritize valid_from/valid_until over starts_at/ends_at
     if (valid_from !== undefined) {
