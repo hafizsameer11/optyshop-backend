@@ -49,6 +49,9 @@ exports.createCoupon = asyncHandler(async (req, res) => {
     delete couponData.product_ids;
     delete couponData.created_at;
     delete couponData.updated_at;
+    
+    // Debug logging to help identify what's being sent
+    console.log('Coupon data being sent to Prisma:', JSON.stringify(couponData, null, 2));
 
     // Handle date fields - prioritize valid_from/valid_until over starts_at/ends_at
     if (valid_from !== undefined) {
@@ -83,7 +86,13 @@ exports.createCoupon = asyncHandler(async (req, res) => {
     }
 
     const coupon = await prisma.coupon.create({
-        data: couponData
+        data: {
+            ...couponData,
+            // Final safety check - ensure no invalid fields
+            product_ids: undefined,
+            created_at: undefined,
+            updated_at: undefined
+        }
     });
 
     return success(res, 'Coupon created successfully', { coupon }, 201);
