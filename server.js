@@ -61,48 +61,23 @@ const app = express();
 // Trust proxy (for rate limiting behind reverse proxy)
 app.set('trust proxy', 1);
 
-// CORS configuration - Completely open, no restrictions
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: '*',
-  exposedHeaders: '*',
-  credentials: false,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
-
-// Additional CORS headers middleware - set headers on all responses (backup)
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-  res.header('Access-Control-Allow-Headers', '*');
-  res.header('Access-Control-Expose-Headers', '*');
-  res.header('Access-Control-Max-Age', '86400'); // 24 hours
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
 // Security middleware - Configure Helmet to allow all cross-origin requests
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration - Allow all origins
-const corsOptions = {
-  origin: true, // Allow all origins
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Authorization'],
-  optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+// CORS — allow any origin (callback + credentials: cannot use origin '*')
+app.use(
+  cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    exposedHeaders: ['Authorization'],
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
+  })
+);
 
 // Body parser middleware - Increased limits for file uploads
 app.use(express.json({ limit: '100mb' }));
