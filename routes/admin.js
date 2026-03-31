@@ -50,6 +50,7 @@ const {
   updateLensCoating,
   deleteLensCoating,
   bulkUploadProducts,
+  uploadAdminImage,
 } = require('../controllers/adminController');
 const {
   getAllOrdersAdmin,
@@ -243,6 +244,13 @@ router.get('/products/:productId/eye-hygiene-variants', getEyeHygieneVariants);
 
 // Dashboard
 router.get('/dashboard', getDashboardStats);
+
+// Generic image upload (multipart field: image or file)
+router.post(
+  '/upload/image',
+  uploadFields([{ name: 'image', maxCount: 1 }, { name: 'file', maxCount: 1 }]),
+  uploadAdminImage
+);
 
 // Products
 router.get('/products', getAllProducts);

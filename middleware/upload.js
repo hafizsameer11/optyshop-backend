@@ -32,6 +32,8 @@ const storage = multer.diskStorage({
       folder = 'campaigns';
     } else if (route.includes('/brands') || route.includes('/admin/brands')) {
       folder = 'brands';
+    } else if (route.includes('/upload/image') || route.includes('/admin/upload')) {
+      folder = 'admin/editor';
     } else if (file.fieldname === 'attachments') {
       folder = 'support-attachments';
     } else if (file.fieldname === 'model_3d') {

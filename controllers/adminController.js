@@ -5134,3 +5134,19 @@ exports.bulkUploadProducts = asyncHandler(async (req, res) => {
       }
     });
 });
+
+// @desc    Generic admin image upload (e.g. rich text / CMS)
+// @route   POST /api/admin/upload/image
+// @access  Private/Admin
+exports.uploadAdminImage = asyncHandler(async (req, res) => {
+  const file = req.files?.image?.[0] || req.files?.file?.[0];
+  if (!file) {
+    return error(
+      res,
+      "Image is required (multipart field name: image or file)",
+      400
+    );
+  }
+  const url = await uploadToS3(file, "admin/editor");
+  return success(res, "Image uploaded", { url });
+});
