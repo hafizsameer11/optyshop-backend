@@ -61,6 +61,17 @@ const parseJsonOption = (value) => {
   }
 };
 
+/** Resolve first non-empty query param (camelCase, snake_case, lowercase, kebab). */
+const pickQueryParam = (query, keys) => {
+  for (const key of keys) {
+    const v = query[key];
+    if (v !== undefined && v !== null && String(v).trim() !== '') {
+      return String(v).trim();
+    }
+  }
+  return undefined;
+};
+
 /**
  * Helper function to format product images and color_images for frontend display
  * 
@@ -423,13 +434,29 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }
 
-  // Filter by subCategory (including sub-subcategories if it's a parent)
-  if (req.query.subCategory) {
-    const subWhere = { slug: req.query.subCategory, is_active: true };
-    // Avoid wrong match when slug repeats across categories (subcategory slug is not globally unique)
-    if (where.category_id) {
-      subWhere.category_id = where.category_id;
-    }
+  // Subcategory (parent row + direct children) and sub-subcategory / leaf (parent_id set only).
+  // Use together: e.g. subCategory=daily & subSubcategory=spherical → intersection.
+  const subCatSlug = pickQueryParam(req.query, [
+    'subCategory',
+    'sub_category',
+    'subcategory',
+    'sub-category'
+  ]);
+  const subSubSlug = pickQueryParam(req.query, [
+    'subSubcategory',
+    'sub_subcategory',
+    'subsubcategory',
+    'sub-subcategory',
+    'subSubCategory'
+  ]);
+
+  let allowedSubCategoryIds = null;
+
+  const intersectSets = (a, b) => new Set([...a].filter((id) => b.has(id)));
+
+  if (subCatSlug) {
+    const subWhere = { slug: subCatSlug, is_active: true };
+    if (where.category_id) subWhere.category_id = where.category_id;
     const subCategoryRecord = await prisma.subCategory.findFirst({
       where: subWhere,
       include: {
@@ -439,14 +466,39 @@ exports.getProducts = asyncHandler(async (req, res) => {
         }
       }
     });
-    
     if (subCategoryRecord) {
-      // If this subcategory has children (sub-subcategories), include products from both parent and children
-      const subcategoryIds = [subCategoryRecord.id];
-      if (subCategoryRecord.children && subCategoryRecord.children.length > 0) {
-        subcategoryIds.push(...subCategoryRecord.children.map(child => child.id));
-      }
-      where.sub_category_id = { in: subcategoryIds };
+      const ids = new Set([subCategoryRecord.id]);
+      for (const c of subCategoryRecord.children || []) ids.add(c.id);
+      allowedSubCategoryIds = ids;
+    } else {
+      allowedSubCategoryIds = new Set();
+    }
+  }
+
+  if (subSubSlug) {
+    const leafWhere = {
+      slug: subSubSlug,
+      is_active: true,
+      parent_id: { not: null }
+    };
+    if (where.category_id) leafWhere.category_id = where.category_id;
+    const leaves = await prisma.subCategory.findMany({
+      where: leafWhere,
+      select: { id: true }
+    });
+    const leafIds = new Set(leaves.map((l) => l.id));
+    allowedSubCategoryIds =
+      allowedSubCategoryIds !== null
+        ? intersectSets(allowedSubCategoryIds, leafIds)
+        : leafIds;
+  }
+
+  if (allowedSubCategoryIds !== null) {
+    const idsArr = [...allowedSubCategoryIds];
+    if (idsArr.length === 0) {
+      where.sub_category_id = -1;
+    } else {
+      where.sub_category_id = { in: idsArr };
     }
   }
 

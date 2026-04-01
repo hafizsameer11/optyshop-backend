@@ -104,6 +104,16 @@ exports.validateProductQuery = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage('Max price must be a positive number'),
+  query('category').optional().isString().trim(),
+  query('subCategory').optional().isString().trim(),
+  query('sub_category').optional().isString().trim(),
+  query('subcategory').optional().isString().trim(),
+  query('sub-category').optional().isString().trim(),
+  query('subSubcategory').optional().isString().trim(),
+  query('sub_subcategory').optional().isString().trim(),
+  query('subsubcategory').optional().isString().trim(),
+  query('sub-subcategory').optional().isString().trim(),
+  query('subSubCategory').optional().isString().trim(),
   handleValidationErrors
 ];
 
