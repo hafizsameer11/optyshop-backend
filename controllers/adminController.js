@@ -1987,7 +1987,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
     const colorImagesMap = {};
 
     // Handle general images (without color codes) - these go to main images array
-    if (req.files && req.files.images) {
+    // When image_colors is present, the parallel-array block below uploads once and maps each file;
+    // do NOT upload here or every file is stored twice and color mapping breaks.
+    if (req.files && req.files.images && !req.body.image_colors) {
       try {
         const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
         const imageUrls = await Promise.all(uploadPromises);
@@ -2797,8 +2799,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     baseImages = [...existingImages];
   }
 
-  // If new images are uploaded, add them to the base images
-  if (req.files && req.files.images) {
+  // If new images are uploaded, add them to the base images (unless image_colors will map them — that block uploads once)
+  if (req.files && req.files.images && !req.body.image_colors) {
     const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
     const newImageUrls = await Promise.all(uploadPromises);
     baseImages = baseImages !== null ? [...baseImages, ...newImageUrls] : newImageUrls;
@@ -3056,13 +3058,20 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       colorImagesData.forEach(item => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-          const existingUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
-          // REPLACE images for this color, don't merge
+          const keptUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
+          // Merge URLs kept from the client with URLs already added by parallel images + image_colors upload
+          // (otherwise the replace below wipes newly uploaded files)
+          const prior = colorImagesMap[hexCode];
+          const fromParallel = prior && Array.isArray(prior.images) ? prior.images : [];
+          const merged = [...keptUrls];
+          fromParallel.forEach((u) => {
+            if (u && !merged.includes(u)) merged.push(u);
+          });
           colorImagesMap[hexCode] = {
             hexCode: hexCode,
             name: item.name || getColorNameFromHex(hexCode),
             price: item.price !== undefined ? parseFloat(item.price) : null,
-            images: existingUrls
+            images: merged
           };
         }
       });
