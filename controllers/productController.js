@@ -425,8 +425,13 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
   // Filter by subCategory (including sub-subcategories if it's a parent)
   if (req.query.subCategory) {
-    const subCategoryRecord = await prisma.subCategory.findFirst({ 
-      where: { slug: req.query.subCategory, is_active: true },
+    const subWhere = { slug: req.query.subCategory, is_active: true };
+    // Avoid wrong match when slug repeats across categories (subcategory slug is not globally unique)
+    if (where.category_id) {
+      subWhere.category_id = where.category_id;
+    }
+    const subCategoryRecord = await prisma.subCategory.findFirst({
+      where: subWhere,
       include: {
         children: {
           where: { is_active: true },
