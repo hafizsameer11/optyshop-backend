@@ -665,6 +665,7 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
     name,
+    sub_category_id,
     product_id,
     right_qty,
     right_base_curve,
@@ -710,6 +711,26 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
 
   // Prepare update data
   const updateData = {};
+  let targetCategoryId = existingConfig.category_id;
+
+  // Allow updating the assigned sub-sub-category for this spherical config.
+  if (sub_category_id !== undefined) {
+    const parsedSubCategoryId = parseInt(sub_category_id);
+    const subCategory = await prisma.subCategory.findUnique({
+      where: { id: parsedSubCategoryId }
+    });
+
+    if (!subCategory) {
+      return error(res, 'Sub-sub-category not found', 404);
+    }
+    if (!subCategory.parent_id) {
+      return error(res, 'This is not a sub-sub-category', 400);
+    }
+
+    updateData.sub_category_id = parsedSubCategoryId;
+    updateData.category_id = subCategory.category_id;
+    targetCategoryId = subCategory.category_id;
+  }
 
   // Validate product_id if provided (must be a contact lens product)
   if (product_id !== undefined) {
@@ -734,7 +755,7 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
       }
 
       // Verify product belongs to the same category/subcategory hierarchy
-      if (product.category_id !== existingConfig.category_id) {
+      if (product.category_id !== targetCategoryId) {
         return error(res, 'Product category does not match the configuration category', 400);
       }
 
