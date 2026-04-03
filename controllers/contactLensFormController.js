@@ -12,6 +12,24 @@ const parseJsonField = (value) => {
   }
 };
 
+/**
+ * List filter: when product_id is set, return only rows for that product (ignore sub_category_id).
+ * Otherwise filter by sub_category_id if provided.
+ */
+const applyContactLensListScope = (where, query) => {
+  const { sub_category_id, product_id } = query;
+  if (product_id !== undefined && product_id !== null && product_id !== '') {
+    const pid = parseInt(product_id, 10);
+    if (!Number.isNaN(pid)) {
+      where.product_id = pid;
+      return;
+    }
+  }
+  if (sub_category_id) {
+    where.sub_category_id = parseInt(sub_category_id, 10);
+  }
+};
+
 // Helper function to process uploaded unit images and convert to JSON format
 const processUnitImages = (req, files, existingUnitImages = null) => {
   const unitImages = existingUnitImages ? (typeof existingUnitImages === 'string' ? JSON.parse(existingUnitImages) : existingUnitImages) : {};
@@ -392,7 +410,7 @@ exports.getFormConfig = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/contact-lens-forms/spherical
 // @access  Admin
 exports.getSphericalConfigs = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 50, sub_category_id } = req.query;
+  const { page = 1, limit = 50 } = req.query;
   const skip = (page - 1) * limit;
 
   const where = {
@@ -400,9 +418,7 @@ exports.getSphericalConfigs = asyncHandler(async (req, res) => {
     is_active: true
   };
 
-  if (sub_category_id) {
-    where.sub_category_id = parseInt(sub_category_id);
-  }
+  applyContactLensListScope(where, req.query);
 
   const [configs, total] = await Promise.all([
     prisma.contactLensConfiguration.findMany({
@@ -909,7 +925,7 @@ exports.deleteSphericalConfig = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/contact-lens-forms/astigmatism
 // @access  Admin
 exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 50, sub_category_id } = req.query;
+  const { page = 1, limit = 50 } = req.query;
   const skip = (page - 1) * limit;
 
   const where = {
@@ -917,9 +933,7 @@ exports.getAstigmatismConfigs = asyncHandler(async (req, res) => {
     is_active: true
   };
 
-  if (sub_category_id) {
-    where.sub_category_id = parseInt(sub_category_id);
-  }
+  applyContactLensListScope(where, req.query);
 
   const [configs, total] = await Promise.all([
     prisma.contactLensConfiguration.findMany({
@@ -1593,16 +1607,12 @@ exports.getAstigmatismDropdownValuesPublic = asyncHandler(async (req, res) => {
 // @route   GET /api/contact-lens-forms/spherical
 // @access  Public
 exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
-  const { sub_category_id } = req.query;
-
   const where = {
     configuration_type: 'spherical',
     is_active: true
   };
 
-  if (sub_category_id) {
-    where.sub_category_id = parseInt(sub_category_id);
-  }
+  applyContactLensListScope(where, req.query);
 
   const configs = await prisma.contactLensConfiguration.findMany({
     where,
@@ -1666,16 +1676,12 @@ exports.getSphericalConfigsPublic = asyncHandler(async (req, res) => {
 // @route   GET /api/contact-lens-forms/astigmatism
 // @access  Public
 exports.getAstigmatismConfigsPublic = asyncHandler(async (req, res) => {
-  const { sub_category_id } = req.query;
-
   const where = {
     configuration_type: 'astigmatism',
     is_active: true
   };
 
-  if (sub_category_id) {
-    where.sub_category_id = parseInt(sub_category_id);
-  }
+  applyContactLensListScope(where, req.query);
 
   const configs = await prisma.contactLensConfiguration.findMany({
     where,
