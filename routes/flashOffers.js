@@ -15,4 +15,7 @@ router.post('/admin', protect, authorizeAdmin(), uploadSingle('image'), flashOff
 router.put('/admin/:id', protect, authorizeAdmin(), uploadSingle('image'), flashOfferController.updateFlashOffer);
 router.delete('/admin/:id', protect, authorizeAdmin(), flashOfferController.deleteFlashOffer);
 
+// Public: flash offer landing page (offer + products in product_ids order). Must be after /active and /admin*.
+router.get('/:id', flashOfferController.getFlashOfferPublicById);
+
 module.exports = router;

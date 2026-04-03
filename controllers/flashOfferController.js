@@ -2,6 +2,73 @@ const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { uploadToS3 } = require('../config/aws');
+const { formatProductMedia } = require('./productController');
+
+const flashOfferProductInclude = {
+  category: {
+    select: { id: true, name: true, slug: true }
+  },
+  subCategory: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      parent_id: true,
+      parent: {
+        select: { id: true, name: true, slug: true }
+      }
+    }
+  }
+};
+
+function buildOfferCountdownPayload(offer, now = new Date()) {
+  const productIds = offer.product_ids ? JSON.parse(offer.product_ids) : [];
+  const endsAt = new Date(offer.ends_at);
+  const timeRemaining = endsAt - now;
+  let countdown = null;
+  if (timeRemaining > 0) {
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+    countdown = {
+      hours,
+      minutes,
+      seconds,
+      totalSeconds: Math.floor(timeRemaining / 1000)
+    };
+  }
+  return {
+    productIds,
+    countdown,
+    is_expired: timeRemaining <= 0,
+    is_currently_active:
+      offer.is_active &&
+      new Date(offer.starts_at) <= now &&
+      new Date(offer.ends_at) >= now
+  };
+}
+
+function formatFlashOfferProducts(productsInOrder) {
+  return productsInOrder.map((product) => {
+    const formatted = formatProductMedia(product);
+    const isEyeHygiene =
+      product.category &&
+      (product.category.name.toLowerCase().includes('eye hygiene') ||
+        product.category.slug.toLowerCase().includes('eye-hygiene') ||
+        (product.subCategory &&
+          (product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+            product.subCategory.slug.toLowerCase().includes('eye-hygiene'))));
+    if (isEyeHygiene) {
+      formatted.size_volume = product.size_volume || null;
+      formatted.pack_type = product.pack_type || null;
+      formatted.expiry_date = product.expiry_date || null;
+      formatted.sizeVolumeVariants = Array.isArray(product.sizeVolumeVariants)
+        ? product.sizeVolumeVariants
+        : [];
+    }
+    return formatted;
+  });
+}
 
 // @desc    Get all flash offers (Public - with optional activeOnly filter)
 // @route   GET /api/flash-offers
@@ -88,6 +155,84 @@ exports.getActiveFlashOffer = asyncHandler(async (req, res) => {
     };
 
     return success(res, 'Active flash offer retrieved successfully', { offer: offerWithCountdown });
+});
+
+// @desc    Get flash offer by id with products (Public — landing page)
+// @route   GET /api/flash-offers/:id
+// @access  Public
+exports.getFlashOfferPublicById = asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id) || id < 1) {
+        return error(res, 'Invalid flash offer id', 400);
+    }
+
+    const offer = await prisma.flashOffer.findUnique({
+        where: { id }
+    });
+
+    if (!offer) {
+        return error(res, 'Flash offer not found', 404);
+    }
+
+    const now = new Date();
+    const { productIds, countdown, is_expired, is_currently_active } =
+        buildOfferCountdownPayload(offer, now);
+
+    let productsInOrder = [];
+    if (productIds.length > 0) {
+        const whereProducts = { id: { in: productIds }, is_active: true };
+        let rows;
+        try {
+            rows = await prisma.product.findMany({
+                where: whereProducts,
+                include: {
+                    ...flashOfferProductInclude,
+                    sizeVolumeVariants: {
+                        where: { is_active: true },
+                        orderBy: [
+                            { sort_order: 'asc' },
+                            { size_volume: 'asc' },
+                            { pack_type: 'asc' }
+                        ]
+                    }
+                }
+            });
+        } catch (err) {
+            if (
+                err.code === 'P2001' ||
+                err.code === 'P2025' ||
+                err.message?.includes('Unknown model') ||
+                err.message?.includes('does not exist')
+            ) {
+                rows = await prisma.product.findMany({
+                    where: whereProducts,
+                    include: flashOfferProductInclude
+                });
+            } else {
+                throw err;
+            }
+        }
+        const byId = new Map(rows.map((p) => [p.id, p]));
+        productsInOrder = productIds.map((pid) => byId.get(pid)).filter(Boolean);
+    }
+
+    const products = formatFlashOfferProducts(productsInOrder);
+
+    const offerPayload = {
+        ...offer,
+        product_ids: productIds,
+        countdown,
+        is_expired,
+        is_currently_active
+    };
+
+    return success(
+        res,
+        'Flash offer retrieved successfully',
+        { offer: offerPayload, products },
+        200,
+        { maxAge: 60 }
+    );
 });
 
 // @desc    Get all flash offers (Admin)
