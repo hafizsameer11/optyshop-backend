@@ -3,6 +3,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { uploadToS3 } = require('../config/aws');
 const { formatProductMedia } = require('./productController');
+const { enrichFormattedProductWithFlashOffer } = require('../utils/flashOfferPricing');
 
 const flashOfferProductInclude = {
   category: {
@@ -48,7 +49,7 @@ function buildOfferCountdownPayload(offer, now = new Date()) {
   };
 }
 
-function formatFlashOfferProducts(productsInOrder) {
+function formatFlashOfferProducts(productsInOrder, offerForPricing) {
   return productsInOrder.map((product) => {
     const formatted = formatProductMedia(product);
     const isEyeHygiene =
@@ -66,7 +67,10 @@ function formatFlashOfferProducts(productsInOrder) {
         ? product.sizeVolumeVariants
         : [];
     }
-    return formatted;
+    return enrichFormattedProductWithFlashOffer(
+      formatted,
+      offerForPricing || null
+    );
   });
 }
 
@@ -216,7 +220,10 @@ exports.getFlashOfferPublicById = asyncHandler(async (req, res) => {
         productsInOrder = productIds.map((pid) => byId.get(pid)).filter(Boolean);
     }
 
-    const products = formatFlashOfferProducts(productsInOrder);
+    const products = formatFlashOfferProducts(
+      productsInOrder,
+      is_currently_active ? offer : null
+    );
 
     const offerPayload = {
         ...offer,

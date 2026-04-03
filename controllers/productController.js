@@ -1,6 +1,11 @@
 const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
+const {
+  getActiveFlashOffers,
+  buildProductIdToOfferMap,
+  enrichFormattedProductWithFlashOffer
+} = require('../utils/flashOfferPricing');
 
 const FRAME_SHAPES = [
   'round',
@@ -603,19 +608,21 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }
 
+  const flashOffers = await getActiveFlashOffers();
+  const flashByProductId = buildProductIdToOfferMap(flashOffers);
+
   // Format products with images and color_images
-  const formattedProducts = products.map(product => {
+  const formattedProducts = products.map((product) => {
     const formatted = formatProductMedia(product);
-    
+
     // Check if product is in Eye Hygiene category or related subcategory
-    const isEyeHygiene = product.category && (
-      product.category.name.toLowerCase().includes('eye hygiene') ||
-      product.category.slug.toLowerCase().includes('eye-hygiene') ||
-      (product.subCategory && (
-        product.subCategory.name.toLowerCase().includes('eye hygiene') ||
-        product.subCategory.slug.toLowerCase().includes('eye-hygiene')
-      ))
-    );
+    const isEyeHygiene =
+      product.category &&
+      (product.category.name.toLowerCase().includes('eye hygiene') ||
+        product.category.slug.toLowerCase().includes('eye-hygiene') ||
+        (product.subCategory &&
+          (product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+            product.subCategory.slug.toLowerCase().includes('eye-hygiene'))));
 
     // Add Eye Hygiene fields if applicable
     if (isEyeHygiene) {
@@ -624,7 +631,10 @@ exports.getProducts = asyncHandler(async (req, res) => {
       formatted.expiry_date = product.expiry_date || null;
     }
 
-    return formatted;
+    return enrichFormattedProductWithFlashOffer(
+      formatted,
+      flashByProductId.get(product.id) || null
+    );
   });
 
   // Add caching for product listings (1 minute) - products may change but listings are relatively stable
@@ -841,8 +851,15 @@ exports.getProduct = asyncHandler(async (req, res) => {
     transformedProduct.size_volume_variants = (product.sizeVolumeVariants && Array.isArray(product.sizeVolumeVariants)) ? product.sizeVolumeVariants : [];
   }
 
+  const flashOffers = await getActiveFlashOffers();
+  const flashByProductId = buildProductIdToOfferMap(flashOffers);
+  const withFlash = enrichFormattedProductWithFlashOffer(
+    transformedProduct,
+    flashByProductId.get(product.id) || null
+  );
+
   // Add caching for single product (2 minutes) - product details change less frequently
-  return success(res, 'Product retrieved successfully', { product: transformedProduct }, 200, { maxAge: 120 });
+  return success(res, 'Product retrieved successfully', { product: withFlash }, 200, { maxAge: 120 });
 });
 
 // @desc    Get product by slug
@@ -1049,8 +1066,15 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     transformedProduct.size_volume_variants = (product.sizeVolumeVariants && Array.isArray(product.sizeVolumeVariants)) ? product.sizeVolumeVariants : [];
   }
 
+  const flashOffers = await getActiveFlashOffers();
+  const flashByProductId = buildProductIdToOfferMap(flashOffers);
+  const withFlash = enrichFormattedProductWithFlashOffer(
+    transformedProduct,
+    flashByProductId.get(product.id) || null
+  );
+
   // Add caching for single product by slug (2 minutes) - product details change less frequently
-  return success(res, 'Product retrieved successfully', { product: transformedProduct }, 200, { maxAge: 120 });
+  return success(res, 'Product retrieved successfully', { product: withFlash }, 200, { maxAge: 120 });
 });
 
 // @desc    Get featured products
@@ -1084,28 +1108,31 @@ exports.getFeaturedProducts = asyncHandler(async (req, res) => {
     orderBy: { created_at: 'desc' }
   });
 
-  // Format products with images and color_images
-  const formattedProducts = products.map(product => {
-    const formatted = formatProductMedia(product);
-    
-    // Check if product is in Eye Hygiene category or related subcategory
-    const isEyeHygiene = product.category && (
-      product.category.name.toLowerCase().includes('eye hygiene') ||
-      product.category.slug.toLowerCase().includes('eye-hygiene') ||
-      (product.subCategory && (
-        product.subCategory.name.toLowerCase().includes('eye hygiene') ||
-        product.subCategory.slug.toLowerCase().includes('eye-hygiene')
-      ))
-    );
+  const flashOffers = await getActiveFlashOffers();
+  const flashByProductId = buildProductIdToOfferMap(flashOffers);
 
-    // Add Eye Hygiene fields if applicable
+  // Format products with images and color_images
+  const formattedProducts = products.map((product) => {
+    const formatted = formatProductMedia(product);
+
+    const isEyeHygiene =
+      product.category &&
+      (product.category.name.toLowerCase().includes('eye hygiene') ||
+        product.category.slug.toLowerCase().includes('eye-hygiene') ||
+        (product.subCategory &&
+          (product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+            product.subCategory.slug.toLowerCase().includes('eye-hygiene'))));
+
     if (isEyeHygiene) {
       formatted.size_volume = product.size_volume || null;
       formatted.pack_type = product.pack_type || null;
       formatted.expiry_date = product.expiry_date || null;
     }
 
-    return formatted;
+    return enrichFormattedProductWithFlashOffer(
+      formatted,
+      flashByProductId.get(product.id) || null
+    );
   });
 
   // Add caching for featured products (2 minutes) - featured products change less frequently
@@ -1153,28 +1180,31 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
     orderBy: { created_at: 'desc' }
   });
 
-  // Format products with images and color_images
-  const formattedProducts = relatedProducts.map(product => {
-    const formatted = formatProductMedia(product);
-    
-    // Check if product is in Eye Hygiene category or related subcategory
-    const isEyeHygiene = product.category && (
-      product.category.name.toLowerCase().includes('eye hygiene') ||
-      product.category.slug.toLowerCase().includes('eye-hygiene') ||
-      (product.subCategory && (
-        product.subCategory.name.toLowerCase().includes('eye hygiene') ||
-        product.subCategory.slug.toLowerCase().includes('eye-hygiene')
-      ))
-    );
+  const flashOffers = await getActiveFlashOffers();
+  const flashByProductId = buildProductIdToOfferMap(flashOffers);
 
-    // Add Eye Hygiene fields if applicable
+  // Format products with images and color_images
+  const formattedProducts = relatedProducts.map((product) => {
+    const formatted = formatProductMedia(product);
+
+    const isEyeHygiene =
+      product.category &&
+      (product.category.name.toLowerCase().includes('eye hygiene') ||
+        product.category.slug.toLowerCase().includes('eye-hygiene') ||
+        (product.subCategory &&
+          (product.subCategory.name.toLowerCase().includes('eye hygiene') ||
+            product.subCategory.slug.toLowerCase().includes('eye-hygiene'))));
+
     if (isEyeHygiene) {
       formatted.size_volume = product.size_volume || null;
       formatted.pack_type = product.pack_type || null;
       formatted.expiry_date = product.expiry_date || null;
     }
 
-    return formatted;
+    return enrichFormattedProductWithFlashOffer(
+      formatted,
+      flashByProductId.get(product.id) || null
+    );
   });
 
   // Add caching for related products (1 minute) - related products may change
