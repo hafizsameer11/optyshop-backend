@@ -627,15 +627,16 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
     finalSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
 
-  // Check if subcategory with same name and parent_id exists (allows duplicates under different parents)
+  // Same display name allowed in different categories; unique per (category, parent, name)
   const existingByName = await prisma.subCategory.findFirst({
     where: {
       name: name,
-      parent_id: parentSubcategoryId
+      parent_id: parentSubcategoryId,
+      category_id: categoryId
     }
   });
   if (existingByName) {
-    return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
+    return error(res, `Subcategory with name "${name}" already exists under this parent in this category`, 400);
   }
 
   let imageUrl = null;
@@ -735,7 +736,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
       const target = createError.meta?.target;
       // Only handle name constraint errors, not slug (slug duplicates are allowed)
       if (Array.isArray(target) && target.includes('name') && !target.includes('slug')) {
-        return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
+        return error(res, `Subcategory with name "${name}" already exists under this parent in this category`, 400);
       }
       // If it's a slug constraint error, it means the database migration hasn't been applied yet
       // Slug duplicates are now allowed, but the database constraint needs to be removed
@@ -789,20 +790,26 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
     return error(res, "Subcategory not found", 404);
   }
 
+  const finalCategoryId =
+    category_id != null && category_id !== '' && !Number.isNaN(parseInt(String(category_id), 10))
+      ? parseInt(String(category_id), 10)
+      : subcategory.category_id;
+
   const data = {};
   if (name) {
     data.name = name;
-    // Check if name is already in use under the same parent (if updating parent_id, check new parent)
+    // Same name allowed in different categories; scope by category + parent
     const currentParentId = parent_id !== undefined ? (parent_id ? parseInt(parent_id) : null) :
       (parent_subcategory_id !== undefined ? (parent_subcategory_id ? parseInt(parent_subcategory_id) : null) : subcategory.parent_id);
     const existingByName = await prisma.subCategory.findFirst({
       where: {
         name: name,
-        parent_id: currentParentId
+        parent_id: currentParentId,
+        category_id: finalCategoryId
       }
     });
     if (existingByName && existingByName.id !== parseInt(id)) {
-      return error(res, `Subcategory with name "${name}" already exists under this parent subcategory`, 400);
+      return error(res, `Subcategory with name "${name}" already exists under this parent in this category`, 400);
     }
   }
 
@@ -823,9 +830,6 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
       }
     }
   }
-
-  // Determine the category ID (use new one if provided, otherwise keep existing)
-  const finalCategoryId = category_id ? parseInt(category_id, 10) : subcategory.category_id;
 
   if (category_id) {
     const categoryId = parseInt(category_id, 10);

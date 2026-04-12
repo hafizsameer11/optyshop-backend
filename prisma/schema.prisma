@@ -75,7 +75,7 @@ model SubCategory {
   parent                    SubCategory?               @relation("SubCategoryHierarchy", fields: [parent_id], references: [id])
   children                  SubCategory[]              @relation("SubCategoryHierarchy")
 
-  @@unique([name, parent_id])
+  @@unique([category_id, name, parent_id])
   @@index([category_id])
   @@index([parent_id])
   @@map("subcategories")
