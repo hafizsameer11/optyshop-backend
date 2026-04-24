@@ -34,6 +34,7 @@ exports.getCategories = asyncHandler(async (req, res) => {
             select: {
               id: true,
               name: true,
+              name_it: true,
               slug: true,
               image: true,
               parent_id: true,
@@ -86,6 +87,7 @@ exports.getCategory = asyncHandler(async (req, res) => {
             select: {
               id: true,
               name: true,
+              name_it: true,
               slug: true,
               image: true,
               parent_id: true,

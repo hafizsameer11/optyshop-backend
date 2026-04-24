@@ -526,7 +526,7 @@ exports.getNestedSubCategories = asyncHandler(async (req, res) => {
 });
 
 exports.createSubCategory = asyncHandler(async (req, res) => {
-  const { name, category_id, parent_id, parent_subcategory_id, description, is_active, sort_order, slug } = req.body;
+  const { name, name_it, category_id, parent_id, parent_subcategory_id, description, is_active, sort_order, slug } = req.body;
 
   // Debug logging
   console.log('📥 Create SubCategory Request:', {
@@ -662,6 +662,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
 
     const createData = {
       name,
+      name_it: name_it && String(name_it).trim() ? String(name_it).trim() : null,
       slug: finalSlug,
       category_id: categoryId,
       parent_id: parentSubcategoryId !== null ? parentSubcategoryId : null, // Explicitly set parent_id (null for top-level, number for nested)
@@ -775,7 +776,7 @@ exports.createSubCategory = asyncHandler(async (req, res) => {
 
 exports.updateSubCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, category_id, parent_id, parent_subcategory_id, description, is_active, sort_order, slug: newSlug } = req.body;
+  const { name, name_it, category_id, parent_id, parent_subcategory_id, description, is_active, sort_order, slug: newSlug } = req.body;
 
   const subcategory = await prisma.subCategory.findUnique({
     where: { id: parseInt(id) },
@@ -900,6 +901,10 @@ exports.updateSubCategory = asyncHandler(async (req, res) => {
   }
 
   if (description !== undefined) data.description = description;
+  if (name_it !== undefined) {
+    data.name_it =
+      name_it === null || name_it === '' || name_it === 'null' ? null : String(name_it).trim() || null;
+  }
   if (is_active !== undefined) data.is_active = is_active === 'true' || is_active === true;
   if (sort_order !== undefined) data.sort_order = parseInt(sort_order);
 
@@ -2093,15 +2098,16 @@ exports.createProduct = asyncHandler(async (req, res) => {
         uploadedUrls.forEach((url, index) => {
           const hexCode = imageColors[index];
           if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-            if (!colorImagesMap[hexCode]) {
-              colorImagesMap[hexCode] = {
+            const slotKey = `slot_${index}`;
+            if (!colorImagesMap[slotKey]) {
+              colorImagesMap[slotKey] = {
                 hexCode: hexCode,
                 name: getColorNameFromHex(hexCode),
                 price: null,
                 images: []
               };
             }
-            colorImagesMap[hexCode].images.push(url);
+            colorImagesMap[slotKey].images.push(url);
           } else {
             // No color specified, add to general images
             generalImages.push(url);
@@ -2117,14 +2123,22 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // Convert colorImagesMap to array format
+    // Convert colorImagesMap to array format (preserve slot_* order)
     if (Object.keys(colorImagesMap).length > 0) {
-      const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
-        hexCode: colorData.hexCode,
-        name: colorData.name || getColorNameFromHex(colorData.hexCode),
-        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-        images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
-      }));
+      const keys = Object.keys(colorImagesMap);
+      const slotKeys = keys
+        .filter((k) => k.startsWith('slot_'))
+        .sort((a, b) => parseInt(a.replace(/^slot_/, ''), 10) - parseInt(b.replace(/^slot_/, ''), 10));
+      const otherKeys = keys.filter((k) => !k.startsWith('slot_'));
+      const colorImagesArray = [...slotKeys, ...otherKeys].map((k) => {
+        const colorData = colorImagesMap[k];
+        return {
+          hexCode: colorData.hexCode,
+          name: colorData.name || getColorNameFromHex(colorData.hexCode),
+          price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+          images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
+        };
+      });
 
       productData.color_images = JSON.stringify(colorImagesArray);
     }
@@ -2744,10 +2758,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         : (Array.isArray(product.color_images) ? product.color_images : []);
 
       // Group existing by hex code
-      existingColorImages.forEach(item => {
+      existingColorImages.forEach((item, idx) => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-          colorImagesMap[hexCode] = {
+          const slotKey = `slot_${idx}`;
+          colorImagesMap[slotKey] = {
             hexCode: hexCode,
             name: item.name || getColorNameFromHex(hexCode),
             price: item.price !== undefined ? parseFloat(item.price) : null,
@@ -3046,32 +3061,29 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       // Clear the map first if color_images is explicitly provided
       if (req.body.color_images !== null && req.body.color_images !== '' && req.body.color_images !== '[]') {
         // Only clear if it's not an empty array/null
-        Object.keys(colorImagesMap).forEach(key => {
-          // Keep only colors that are in the new data
-          const existsInNew = colorImagesData.some(item => {
-            const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
-            return hexCode === key;
-          });
-          if (!existsInNew) {
+        Object.keys(colorImagesMap).forEach((key) => {
+          if (!key.startsWith('slot_')) return;
+          const i = parseInt(String(key).replace(/^slot_/, ''), 10);
+          if (Number.isNaN(i) || i < 0 || i >= colorImagesData.length) {
             delete colorImagesMap[key];
           }
         });
       }
 
-      // Add/update color images from the provided data
-      colorImagesData.forEach(item => {
+      // Add/update color images from the provided data (slot index preserves multiple variants with same hex)
+      colorImagesData.forEach((item, idx) => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
           const keptUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
-          // Merge URLs kept from the client with URLs already added by parallel images + image_colors upload
-          // (otherwise the replace below wipes newly uploaded files)
           const prior = colorImagesMap[hexCode];
           const fromParallel = prior && Array.isArray(prior.images) ? prior.images : [];
           const merged = [...keptUrls];
           fromParallel.forEach((u) => {
             if (u && !merged.includes(u)) merged.push(u);
           });
-          colorImagesMap[hexCode] = {
+          if (prior) delete colorImagesMap[hexCode];
+          const slotKey = `slot_${idx}`;
+          colorImagesMap[slotKey] = {
             hexCode: hexCode,
             name: item.name || getColorNameFromHex(hexCode),
             price: item.price !== undefined ? parseFloat(item.price) : null,
@@ -3122,9 +3134,13 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Always check for deletions if there are existing color images
   if (existingColorImages.length > 0) {
     const newColorImagesMap = {};
-    Object.values(colorImagesMap).forEach(colorData => {
+    Object.values(colorImagesMap).forEach((colorData) => {
       const hexCode = colorData.hexCode;
-      newColorImagesMap[hexCode] = new Set(colorData.images || []);
+      if (!hexCode) return;
+      if (!newColorImagesMap[hexCode]) newColorImagesMap[hexCode] = new Set();
+      (colorData.images || []).forEach((u) => {
+        if (u) newColorImagesMap[hexCode].add(u);
+      });
     });
 
     // Collect all images to delete
@@ -3175,14 +3191,22 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // Convert colorImagesMap to array format
+  // Convert colorImagesMap to array format (preserve slot_* order so duplicate hex variants stay separate)
   if (Object.keys(colorImagesMap).length > 0) {
-    const colorImagesArray = Object.values(colorImagesMap).map(colorData => ({
-      hexCode: colorData.hexCode,
-      name: colorData.name || getColorNameFromHex(colorData.hexCode),
-      price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-      images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
-    }));
+    const keys = Object.keys(colorImagesMap);
+    const slotKeys = keys
+      .filter((k) => k.startsWith('slot_'))
+      .sort((a, b) => parseInt(a.replace(/^slot_/, ''), 10) - parseInt(b.replace(/^slot_/, ''), 10));
+    const otherKeys = keys.filter((k) => !k.startsWith('slot_'));
+    const colorImagesArray = [...slotKeys, ...otherKeys].map((k) => {
+      const colorData = colorImagesMap[k];
+      return {
+        hexCode: colorData.hexCode,
+        name: colorData.name || getColorNameFromHex(colorData.hexCode),
+        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+        images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
+      };
+    });
 
     productData.color_images = JSON.stringify(colorImagesArray);
   } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {

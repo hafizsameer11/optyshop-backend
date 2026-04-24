@@ -133,6 +133,39 @@ const formatProductMedia = (product) => {
       colorImages = [];
     }
   }
+  // Legacy admin format: object keyed by hex or color name → expand to array so every variant is kept
+  if (colorImages && typeof colorImages === 'object' && !Array.isArray(colorImages)) {
+    colorImages = Object.entries(colorImages).map(([key, raw]) => {
+      const v = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      const hk = String(key).trim();
+      const hexFromKey = /^#[0-9A-Fa-f]{6}$/i.test(hk) ? hk.toUpperCase() : null;
+      let hexCode =
+        v.hexCode ||
+        v.hex_code ||
+        hexFromKey ||
+        (v.color ? getColorHexCode(v.color) : null) ||
+        (hk && hk.length < 80 && !hk.includes('//') ? getColorHexCode(hk) : null) ||
+        '#000000';
+      if (hexCode && !String(hexCode).startsWith('#')) {
+        hexCode = `#${String(hexCode).replace(/^#/, '')}`;
+      }
+      hexCode = String(hexCode).toUpperCase();
+      if (!/^#[0-9A-Fa-f]{6}$/.test(hexCode)) hexCode = '#000000';
+      const imgs = Array.isArray(v.images)
+        ? v.images
+        : Array.isArray(raw)
+          ? raw
+          : typeof raw === 'string' && raw
+            ? [raw]
+            : [];
+      return {
+        hexCode,
+        name: v.name || (typeof key === 'string' && !/^#/.test(hk) ? key : getColorNameFromHex(hexCode)),
+        price: v.price !== undefined && v.price !== null ? parseFloat(v.price) : null,
+        images: imgs.filter(Boolean),
+      };
+    });
+  }
   if (!Array.isArray(colorImages)) {
     colorImages = colorImages ? [colorImages] : [];
   }

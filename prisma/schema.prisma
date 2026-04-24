@@ -37,6 +37,7 @@ model User {
 model Category {
   id                 Int                        @id @default(autoincrement())
   name               String                     @unique @db.VarChar(100)
+  name_it            String?                    @db.VarChar(100)
   slug               String                     @unique @db.VarChar(100)
   description        String?                    @db.Text
   image              String?                    @db.VarChar(500)
@@ -58,6 +59,7 @@ model SubCategory {
   id                        Int                        @id @default(autoincrement())
   category_id               Int
   name                      String                     @db.VarChar(100)
+  name_it                   String?                    @db.VarChar(100)
   slug                      String                     @db.VarChar(100)
   description               String?                    @db.Text
   image                     String?                    @db.VarChar(500)
