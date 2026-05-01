@@ -22,7 +22,11 @@ const storage = multer.diskStorage({
       } else {
         folder = 'products';
       }
-    } else if (route.includes('/contact-lens-configs') || route.includes('/admin/contact-lens-configs')) {
+    } else if (
+      route.includes('/contact-lens-configs') ||
+      route.includes('/admin/contact-lens-configs') ||
+      route.includes('/contact-lens-forms')
+    ) {
       folder = 'contact-lens-configs';
     } else if (route.includes('/subcategories') || route.includes('/admin/subcategories')) {
       folder = 'subcategories';

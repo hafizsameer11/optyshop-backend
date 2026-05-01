@@ -12,6 +12,92 @@ const parseJsonField = (value) => {
   }
 };
 
+/** multipart/form-data sends booleans as strings */
+const parseMultipartBoolean = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'boolean') return value;
+  const s = String(value).toLowerCase().trim();
+  if (s === 'true' || s === '1' || s === 'yes' || s === 'on') return true;
+  if (s === 'false' || s === '0' || s === 'no' || s === 'off') return false;
+  return undefined;
+};
+
+const parseMultipartTruthy = (value) => {
+  if (value === undefined || value === null || value === '') return false;
+  if (typeof value === 'boolean') return value;
+  const s = String(value).toLowerCase().trim();
+  return s === 'true' || s === '1' || s === 'yes' || s === 'on';
+};
+
+/**
+ * Eye dropdown fields are stored as JSON arrays. Clients often send JSON strings e.g. '["3"]'.
+ */
+const normalizeJsonArrayLikeField = (val) => {
+  if (val === undefined || val === null) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const t = val.trim();
+    if (!t) return [];
+    try {
+      const parsed = JSON.parse(t);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      return [val];
+    }
+  }
+  return [val];
+};
+
+const stringifyEyeArrayForDb = (val) => JSON.stringify(normalizeJsonArrayLikeField(val));
+
+const normalizeLastIfArray = (val) => {
+  if (val === undefined || val === null) return val;
+  if (Array.isArray(val)) return val[val.length - 1];
+  return val;
+};
+
+/** unit_prices: duplicate keys may become an array — take last; canonical JSON string for DB */
+const normalizeUnitPricesForDb = (val) => {
+  if (val === undefined || val === null || val === '') return null;
+  const raw = normalizeLastIfArray(val);
+  if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
+    return JSON.stringify(raw);
+  }
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return JSON.stringify(parsed);
+    } catch {
+      return raw;
+    }
+  }
+  return JSON.stringify(raw);
+};
+
+const normalizeAvailableUnitsForDb = (val) => {
+  if (val === undefined || val === null || val === '') return null;
+  const raw = normalizeLastIfArray(val);
+  if (Array.isArray(raw)) return JSON.stringify(raw);
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      const parsed = JSON.parse(t);
+      return JSON.stringify(Array.isArray(parsed) ? parsed : [parsed]);
+    } catch {
+      return JSON.stringify([raw]);
+    }
+  }
+  return JSON.stringify([raw]);
+};
+
+/** Build /uploads/<relative> from multer disk path (handles absolute /app/... paths). */
+const uploadRelativePathForUrl = (filePath) => {
+  const normalized = String(filePath || '').replace(/\\/g, '/');
+  const m = normalized.match(/\/uploads\/(.+)$/i);
+  return m ? m[1] : normalized.split('/').slice(-2).join('/');
+};
+
 /**
  * List filter: when product_id is set, return only rows for that product (ignore sub_category_id).
  * Otherwise filter by sub_category_id if provided.
@@ -32,7 +118,17 @@ const applyContactLensListScope = (where, query) => {
 
 // Helper function to process uploaded unit images and convert to JSON format
 const processUnitImages = (req, files, existingUnitImages = null) => {
-  const unitImages = existingUnitImages ? (typeof existingUnitImages === 'string' ? JSON.parse(existingUnitImages) : existingUnitImages) : {};
+  let unitImages = {};
+  if (existingUnitImages) {
+    try {
+      unitImages =
+        typeof existingUnitImages === 'string' ? JSON.parse(existingUnitImages) : existingUnitImages;
+      if (!unitImages || typeof unitImages !== 'object' || Array.isArray(unitImages)) unitImages = {};
+    } catch (e) {
+      console.error('processUnitImages: could not parse existing unit_images', e);
+      unitImages = {};
+    }
+  }
   
   if (files && typeof files === 'object') {
     // Process each unit image field (e.g., unit_images_10, unit_images_20, etc.)
@@ -44,7 +140,7 @@ const processUnitImages = (req, files, existingUnitImages = null) => {
 
         if (uploadedFiles && Array.isArray(uploadedFiles)) {
           const fileUrls = uploadedFiles.map(file => {
-            const relativePath = file.path.replace(/\\/g, '/').replace('uploads/', '');
+            const relativePath = uploadRelativePathForUrl(file.path);
             return `${req.protocol}://${req.get('host')}/uploads/${relativePath}`;
           });
           const prev = Array.isArray(unitImages[unitNumber]) ? unitImages[unitNumber] : [];
@@ -570,7 +666,8 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
   }
 
   // Determine if we should copy right to left
-  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+  const shouldCopyRightToLeft =
+    parseMultipartTruthy(copy_right_to_left) || parseMultipartTruthy(same_for_both_eyes);
 
   // Prepare left eye values - copy from right if flag is set, otherwise use provided values
   let finalLeftQty = left_qty;
@@ -600,20 +697,18 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       category_id: category_id ? parseInt(category_id) : subCategory.category_id,
       product_id: productId,
       configuration_type: 'spherical',
-      right_qty: right_qty !== undefined ? (Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1])) : JSON.stringify([1]),
-      right_base_curve: right_base_curve !== undefined ? (Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve])) : null,
-      right_diameter: right_diameter !== undefined ? (Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter])) : null,
-      right_power: right_power !== undefined ? (Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power])) : null,
-      left_qty: finalLeftQty !== undefined ? (Array.isArray(finalLeftQty) ? JSON.stringify(finalLeftQty) : JSON.stringify([finalLeftQty || 1])) : null,
-      left_base_curve: finalLeftBaseCurve !== undefined ? (Array.isArray(finalLeftBaseCurve) ? JSON.stringify(finalLeftBaseCurve) : JSON.stringify([finalLeftBaseCurve])) : null,
-      left_diameter: finalLeftDiameter !== undefined ? (Array.isArray(finalLeftDiameter) ? JSON.stringify(finalLeftDiameter) : JSON.stringify([finalLeftDiameter])) : null,
-      left_power: finalLeftPower !== undefined ? (Array.isArray(finalLeftPower) ? JSON.stringify(finalLeftPower) : JSON.stringify([finalLeftPower])) : null,
+      right_qty: right_qty !== undefined ? stringifyEyeArrayForDb(right_qty) : JSON.stringify([1]),
+      right_base_curve: right_base_curve !== undefined ? stringifyEyeArrayForDb(right_base_curve) : null,
+      right_diameter: right_diameter !== undefined ? stringifyEyeArrayForDb(right_diameter) : null,
+      right_power: right_power !== undefined ? stringifyEyeArrayForDb(right_power) : null,
+      left_qty: finalLeftQty !== undefined ? stringifyEyeArrayForDb(finalLeftQty) : null,
+      left_base_curve: finalLeftBaseCurve !== undefined ? stringifyEyeArrayForDb(finalLeftBaseCurve) : null,
+      left_diameter: finalLeftDiameter !== undefined ? stringifyEyeArrayForDb(finalLeftDiameter) : null,
+      left_power: finalLeftPower !== undefined ? stringifyEyeArrayForDb(finalLeftPower) : null,
       price: price ? parseFloat(price) : null,
       display_name: display_name || name,
-      // Handle available_units - convert array to JSON string (independent from qty)
-      available_units: available_units !== undefined ? (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units]))) : null,
-      // Handle unit_prices - convert object to JSON string
-      unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
+      available_units: available_units !== undefined ? normalizeAvailableUnitsForDb(available_units) : null,
+      unit_prices: unit_prices !== undefined ? normalizeUnitPricesForDb(unit_prices) : null,
       // Handle unit_images - convert object to JSON string
       unit_images: processedUnitImages !== undefined ? (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages)) : null
     },
@@ -714,7 +809,8 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   }
 
   // Determine if we should copy right to left
-  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+  const shouldCopyRightToLeft =
+    parseMultipartTruthy(copy_right_to_left) || parseMultipartTruthy(same_for_both_eyes);
 
   // Process uploaded unit images
   let processedUnitImages = unit_images;
@@ -780,57 +876,63 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (name) updateData.name = name;
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
-  if (is_active !== undefined) updateData.is_active = is_active;
-  // Handle available_units - convert array to JSON string (independent from qty)
+  if (is_active !== undefined) {
+    const b = parseMultipartBoolean(is_active);
+    if (b !== undefined) updateData.is_active = b;
+  }
   if (available_units !== undefined) {
-    updateData.available_units = available_units === null || available_units === '' ? null : (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units])));
+    updateData.available_units =
+      available_units === null || available_units === '' ? null : normalizeAvailableUnitsForDb(available_units);
   }
-  // Handle unit_prices - convert object to JSON string
   if (unit_prices !== undefined) {
-    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
+    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : normalizeUnitPricesForDb(unit_prices);
   }
-  // Handle unit_images - convert object to JSON string
   if (processedUnitImages !== undefined) {
-    updateData.unit_images = processedUnitImages === null || processedUnitImages === '' ? null : (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages));
+    updateData.unit_images =
+      processedUnitImages === null || processedUnitImages === ''
+        ? null
+        : typeof processedUnitImages === 'string'
+          ? processedUnitImages
+          : JSON.stringify(processedUnitImages);
   }
   if (right_qty !== undefined) {
-    updateData.right_qty = Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty]);
+    updateData.right_qty = stringifyEyeArrayForDb(right_qty);
   }
   if (right_base_curve !== undefined) {
-    updateData.right_base_curve = Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]);
+    updateData.right_base_curve = stringifyEyeArrayForDb(right_base_curve);
   }
   if (right_diameter !== undefined) {
-    updateData.right_diameter = Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]);
+    updateData.right_diameter = stringifyEyeArrayForDb(right_diameter);
   }
   if (right_power !== undefined) {
-    updateData.right_power = Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]);
+    updateData.right_power = stringifyEyeArrayForDb(right_power);
   }
 
   // Handle left eye values - copy from right if flag is set
   if (shouldCopyRightToLeft) {
-    // Use right eye values for left eye (use updated right values if provided, otherwise use existing)
     const rightQtyToUse = right_qty !== undefined ? right_qty : parseJsonField(existingConfig.right_qty);
-    const rightBaseCurveToUse = right_base_curve !== undefined ? right_base_curve : parseJsonField(existingConfig.right_base_curve);
-    const rightDiameterToUse = right_diameter !== undefined ? right_diameter : parseJsonField(existingConfig.right_diameter);
+    const rightBaseCurveToUse =
+      right_base_curve !== undefined ? right_base_curve : parseJsonField(existingConfig.right_base_curve);
+    const rightDiameterToUse =
+      right_diameter !== undefined ? right_diameter : parseJsonField(existingConfig.right_diameter);
     const rightPowerToUse = right_power !== undefined ? right_power : parseJsonField(existingConfig.right_power);
 
-    updateData.left_qty = Array.isArray(rightQtyToUse) ? JSON.stringify(rightQtyToUse) : JSON.stringify([rightQtyToUse || 1]);
-    updateData.left_base_curve = Array.isArray(rightBaseCurveToUse) ? JSON.stringify(rightBaseCurveToUse) : JSON.stringify([rightBaseCurveToUse]);
-    updateData.left_diameter = Array.isArray(rightDiameterToUse) ? JSON.stringify(rightDiameterToUse) : JSON.stringify([rightDiameterToUse]);
-    updateData.left_power = Array.isArray(rightPowerToUse) ? JSON.stringify(rightPowerToUse) : JSON.stringify([rightPowerToUse]);
+    updateData.left_qty = stringifyEyeArrayForDb(rightQtyToUse ?? [1]);
+    updateData.left_base_curve = stringifyEyeArrayForDb(rightBaseCurveToUse ?? []);
+    updateData.left_diameter = stringifyEyeArrayForDb(rightDiameterToUse ?? []);
+    updateData.left_power = stringifyEyeArrayForDb(rightPowerToUse ?? []);
   } else {
-    // Use provided left eye values
     if (left_qty !== undefined) {
-      updateData.left_qty = Array.isArray(left_qty) ? JSON.stringify(left_qty) : JSON.stringify([left_qty]);
+      updateData.left_qty = stringifyEyeArrayForDb(left_qty);
     }
     if (left_base_curve !== undefined) {
-      updateData.left_base_curve = Array.isArray(left_base_curve) ? JSON.stringify(left_base_curve) : JSON.stringify([left_base_curve]);
+      updateData.left_base_curve = stringifyEyeArrayForDb(left_base_curve);
     }
     if (left_diameter !== undefined) {
-      updateData.left_diameter = Array.isArray(left_diameter) ? JSON.stringify(left_diameter) : JSON.stringify([left_diameter]);
+      updateData.left_diameter = stringifyEyeArrayForDb(left_diameter);
     }
     if (left_power !== undefined) {
-      updateData.left_power = Array.isArray(left_power) ? JSON.stringify(left_power) : JSON.stringify([left_power]);
+      updateData.left_power = stringifyEyeArrayForDb(left_power);
     }
   }
 
@@ -1089,7 +1191,8 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
   }
 
   // Determine if we should copy right to left
-  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+  const shouldCopyRightToLeft =
+    parseMultipartTruthy(copy_right_to_left) || parseMultipartTruthy(same_for_both_eyes);
 
   // Prepare left eye values - copy from right if flag is set, otherwise use provided values
   let finalLeftQty = left_qty;
@@ -1123,24 +1226,22 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       category_id: category_id ? parseInt(category_id) : subCategory.category_id,
       product_id: productId,
       configuration_type: 'astigmatism',
-      right_qty: Array.isArray(right_qty) ? JSON.stringify(right_qty) : JSON.stringify([right_qty || 1]),
-      right_base_curve: Array.isArray(right_base_curve) ? JSON.stringify(right_base_curve) : JSON.stringify([right_base_curve]),
-      right_diameter: Array.isArray(right_diameter) ? JSON.stringify(right_diameter) : JSON.stringify([right_diameter]),
-      right_power: Array.isArray(right_power) ? JSON.stringify(right_power) : JSON.stringify([right_power]),
-      right_cylinder: right_cylinder !== undefined ? (Array.isArray(right_cylinder) ? JSON.stringify(right_cylinder) : JSON.stringify([right_cylinder])) : null,
-      right_axis: right_axis !== undefined ? (Array.isArray(right_axis) ? JSON.stringify(right_axis) : JSON.stringify([right_axis])) : null,
-      left_qty: finalLeftQty !== undefined ? (Array.isArray(finalLeftQty) ? JSON.stringify(finalLeftQty) : JSON.stringify([finalLeftQty || 1])) : null,
-      left_base_curve: finalLeftBaseCurve !== undefined ? (Array.isArray(finalLeftBaseCurve) ? JSON.stringify(finalLeftBaseCurve) : JSON.stringify([finalLeftBaseCurve])) : null,
-      left_diameter: finalLeftDiameter !== undefined ? (Array.isArray(finalLeftDiameter) ? JSON.stringify(finalLeftDiameter) : JSON.stringify([finalLeftDiameter])) : null,
-      left_power: finalLeftPower !== undefined ? (Array.isArray(finalLeftPower) ? JSON.stringify(finalLeftPower) : JSON.stringify([finalLeftPower])) : null,
-      left_cylinder: finalLeftCylinder !== undefined ? (Array.isArray(finalLeftCylinder) ? JSON.stringify(finalLeftCylinder) : JSON.stringify([finalLeftCylinder])) : null,
-      left_axis: finalLeftAxis !== undefined ? (Array.isArray(finalLeftAxis) ? JSON.stringify(finalLeftAxis) : JSON.stringify([finalLeftAxis])) : null,
+      right_qty: stringifyEyeArrayForDb(right_qty ?? [1]),
+      right_base_curve: stringifyEyeArrayForDb(right_base_curve ?? []),
+      right_diameter: stringifyEyeArrayForDb(right_diameter ?? []),
+      right_power: stringifyEyeArrayForDb(right_power ?? []),
+      right_cylinder: right_cylinder !== undefined ? stringifyEyeArrayForDb(right_cylinder) : null,
+      right_axis: right_axis !== undefined ? stringifyEyeArrayForDb(right_axis) : null,
+      left_qty: finalLeftQty !== undefined ? stringifyEyeArrayForDb(finalLeftQty) : null,
+      left_base_curve: finalLeftBaseCurve !== undefined ? stringifyEyeArrayForDb(finalLeftBaseCurve) : null,
+      left_diameter: finalLeftDiameter !== undefined ? stringifyEyeArrayForDb(finalLeftDiameter) : null,
+      left_power: finalLeftPower !== undefined ? stringifyEyeArrayForDb(finalLeftPower) : null,
+      left_cylinder: finalLeftCylinder !== undefined ? stringifyEyeArrayForDb(finalLeftCylinder) : null,
+      left_axis: finalLeftAxis !== undefined ? stringifyEyeArrayForDb(finalLeftAxis) : null,
       price: price ? parseFloat(price) : null,
       display_name: display_name || name,
-      // Handle available_units - convert array to JSON string (independent from qty)
-      available_units: available_units !== undefined ? (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units]))) : null,
-      // Handle unit_prices - convert object to JSON string
-      unit_prices: unit_prices !== undefined ? (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices)) : null,
+      available_units: available_units !== undefined ? normalizeAvailableUnitsForDb(available_units) : null,
+      unit_prices: unit_prices !== undefined ? normalizeUnitPricesForDb(unit_prices) : null,
       // Handle unit_images - convert object to JSON string
       unit_images: processedUnitImages !== undefined ? (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages)) : null
     },
@@ -1248,7 +1349,8 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   }
 
   // Determine if we should copy right to left
-  const shouldCopyRightToLeft = copy_right_to_left === true || same_for_both_eyes === true;
+  const shouldCopyRightToLeft =
+    parseMultipartTruthy(copy_right_to_left) || parseMultipartTruthy(same_for_both_eyes);
 
   // Process uploaded unit images
   let processedUnitImages = unit_images;
@@ -1294,50 +1396,55 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   if (name) updateData.name = name;
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
-  if (is_active !== undefined) updateData.is_active = is_active;
-  // Handle available_units - convert array to JSON string (independent from qty)
+  if (is_active !== undefined) {
+    const b = parseMultipartBoolean(is_active);
+    if (b !== undefined) updateData.is_active = b;
+  }
   if (available_units !== undefined) {
-    updateData.available_units = available_units === null || available_units === '' ? null : (Array.isArray(available_units) ? JSON.stringify(available_units) : (typeof available_units === 'string' ? available_units : JSON.stringify([available_units])));
+    updateData.available_units =
+      available_units === null || available_units === '' ? null : normalizeAvailableUnitsForDb(available_units);
   }
-  // Handle unit_prices - convert object to JSON string
   if (unit_prices !== undefined) {
-    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : (typeof unit_prices === 'string' ? unit_prices : JSON.stringify(unit_prices));
+    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : normalizeUnitPricesForDb(unit_prices);
   }
-  // Handle unit_images - convert object to JSON string
   if (processedUnitImages !== undefined) {
-    updateData.unit_images = processedUnitImages === null || processedUnitImages === '' ? null : (typeof processedUnitImages === 'string' ? processedUnitImages : JSON.stringify(processedUnitImages));
+    updateData.unit_images =
+      processedUnitImages === null || processedUnitImages === ''
+        ? null
+        : typeof processedUnitImages === 'string'
+          ? processedUnitImages
+          : JSON.stringify(processedUnitImages);
   }
 
-  // Handle right eye fields
   const rightFields = ['right_qty', 'right_base_curve', 'right_diameter', 'right_power', 'right_cylinder', 'right_axis'];
-  rightFields.forEach(field => {
+  rightFields.forEach((field) => {
     if (req.body[field] !== undefined) {
-      updateData[field] = Array.isArray(req.body[field]) ? JSON.stringify(req.body[field]) : JSON.stringify([req.body[field]]);
+      updateData[field] = stringifyEyeArrayForDb(req.body[field]);
     }
   });
 
-  // Handle left eye fields - copy from right if flag is set
   if (shouldCopyRightToLeft) {
-    // Use right eye values for left eye (use updated right values if provided, otherwise use existing)
     const rightQtyToUse = right_qty !== undefined ? right_qty : parseJsonField(existingConfig.right_qty);
-    const rightBaseCurveToUse = right_base_curve !== undefined ? right_base_curve : parseJsonField(existingConfig.right_base_curve);
-    const rightDiameterToUse = right_diameter !== undefined ? right_diameter : parseJsonField(existingConfig.right_diameter);
+    const rightBaseCurveToUse =
+      right_base_curve !== undefined ? right_base_curve : parseJsonField(existingConfig.right_base_curve);
+    const rightDiameterToUse =
+      right_diameter !== undefined ? right_diameter : parseJsonField(existingConfig.right_diameter);
     const rightPowerToUse = right_power !== undefined ? right_power : parseJsonField(existingConfig.right_power);
-    const rightCylinderToUse = right_cylinder !== undefined ? right_cylinder : parseJsonField(existingConfig.right_cylinder);
+    const rightCylinderToUse =
+      right_cylinder !== undefined ? right_cylinder : parseJsonField(existingConfig.right_cylinder);
     const rightAxisToUse = right_axis !== undefined ? right_axis : parseJsonField(existingConfig.right_axis);
 
-    updateData.left_qty = Array.isArray(rightQtyToUse) ? JSON.stringify(rightQtyToUse) : JSON.stringify([rightQtyToUse || 1]);
-    updateData.left_base_curve = Array.isArray(rightBaseCurveToUse) ? JSON.stringify(rightBaseCurveToUse) : JSON.stringify([rightBaseCurveToUse]);
-    updateData.left_diameter = Array.isArray(rightDiameterToUse) ? JSON.stringify(rightDiameterToUse) : JSON.stringify([rightDiameterToUse]);
-    updateData.left_power = Array.isArray(rightPowerToUse) ? JSON.stringify(rightPowerToUse) : JSON.stringify([rightPowerToUse]);
-    updateData.left_cylinder = Array.isArray(rightCylinderToUse) ? JSON.stringify(rightCylinderToUse) : JSON.stringify([rightCylinderToUse]);
-    updateData.left_axis = Array.isArray(rightAxisToUse) ? JSON.stringify(rightAxisToUse) : JSON.stringify([rightAxisToUse]);
+    updateData.left_qty = stringifyEyeArrayForDb(rightQtyToUse ?? [1]);
+    updateData.left_base_curve = stringifyEyeArrayForDb(rightBaseCurveToUse ?? []);
+    updateData.left_diameter = stringifyEyeArrayForDb(rightDiameterToUse ?? []);
+    updateData.left_power = stringifyEyeArrayForDb(rightPowerToUse ?? []);
+    updateData.left_cylinder = stringifyEyeArrayForDb(rightCylinderToUse ?? []);
+    updateData.left_axis = stringifyEyeArrayForDb(rightAxisToUse ?? []);
   } else {
-    // Use provided left eye values
     const leftFields = ['left_qty', 'left_base_curve', 'left_diameter', 'left_power', 'left_cylinder', 'left_axis'];
-    leftFields.forEach(field => {
+    leftFields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        updateData[field] = Array.isArray(req.body[field]) ? JSON.stringify(req.body[field]) : JSON.stringify([req.body[field]]);
+        updateData[field] = stringifyEyeArrayForDb(req.body[field]);
       }
     });
   }
@@ -1531,7 +1638,10 @@ exports.updateAstigmatismDropdownValue = asyncHandler(async (req, res) => {
     updateData.eye_type = eye_type || null;
   }
   if (sort_order !== undefined) updateData.sort_order = sort_order;
-  if (is_active !== undefined) updateData.is_active = is_active;
+  if (is_active !== undefined) {
+    const b = parseMultipartBoolean(is_active);
+    if (b !== undefined) updateData.is_active = b;
+  }
 
   const dropdownValue = await prisma.astigmatismDropdownValue.update({
     where: { id: parseInt(id) },
