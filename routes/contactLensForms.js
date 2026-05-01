@@ -24,6 +24,12 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 const { uploadFields } = require('../middleware/upload');
 
+// Multer matches exact multipart field names. Accept both `unit_images_90` and legacy `unit_images_90[]`.
+const CONTACT_LENS_UNIT_IMAGE_FIELDS = [10, 20, 30, 60, 90, 180].flatMap((u) => [
+  { name: `unit_images_${u}`, maxCount: 5 },
+  { name: `unit_images_${u}[]`, maxCount: 5 },
+]);
+
 // Public routes (Website)
 router.get('/config/:sub_category_id', getFormConfig);
 router.get('/config/:config_id/unit/:unit', getUnitPriceAndImages); // Get price and images for selected unit
@@ -45,42 +51,14 @@ router.delete('/admin/astigmatism/dropdown-values/:id', protect, authorize('admi
 
 // Admin routes - Astigmatism configurations
 router.get('/admin/astigmatism', protect, authorize('admin', 'staff'), getAstigmatismConfigs);
-router.post('/admin/astigmatism', protect, authorize('admin', 'staff'), uploadFields([
-  { name: 'unit_images_10', maxCount: 5 },
-  { name: 'unit_images_20', maxCount: 5 },
-  { name: 'unit_images_30', maxCount: 5 },
-  { name: 'unit_images_60', maxCount: 5 },
-  { name: 'unit_images_90', maxCount: 5 },
-  { name: 'unit_images_180', maxCount: 5 }
-]), createAstigmatismConfig);
-router.put('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), uploadFields([
-  { name: 'unit_images_10', maxCount: 5 },
-  { name: 'unit_images_20', maxCount: 5 },
-  { name: 'unit_images_30', maxCount: 5 },
-  { name: 'unit_images_60', maxCount: 5 },
-  { name: 'unit_images_90', maxCount: 5 },
-  { name: 'unit_images_180', maxCount: 5 }
-]), updateAstigmatismConfig);
+router.post('/admin/astigmatism', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), createAstigmatismConfig);
+router.put('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), updateAstigmatismConfig);
 router.delete('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), deleteAstigmatismConfig);
 
 // Admin routes - Spherical configurations
 router.get('/admin/spherical', protect, authorize('admin', 'staff'), getSphericalConfigs);
-router.post('/admin/spherical', protect, authorize('admin', 'staff'), uploadFields([
-  { name: 'unit_images_10', maxCount: 5 },
-  { name: 'unit_images_20', maxCount: 5 },
-  { name: 'unit_images_30', maxCount: 5 },
-  { name: 'unit_images_60', maxCount: 5 },
-  { name: 'unit_images_90', maxCount: 5 },
-  { name: 'unit_images_180', maxCount: 5 }
-]), createSphericalConfig);
-router.put('/admin/spherical/:id', protect, authorize('admin', 'staff'), uploadFields([
-  { name: 'unit_images_10', maxCount: 5 },
-  { name: 'unit_images_20', maxCount: 5 },
-  { name: 'unit_images_30', maxCount: 5 },
-  { name: 'unit_images_60', maxCount: 5 },
-  { name: 'unit_images_90', maxCount: 5 },
-  { name: 'unit_images_180', maxCount: 5 }
-]), updateSphericalConfig);
+router.post('/admin/spherical', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), createSphericalConfig);
+router.put('/admin/spherical/:id', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), updateSphericalConfig);
 router.delete('/admin/spherical/:id', protect, authorize('admin', 'staff'), deleteSphericalConfig);
 
 module.exports = router;

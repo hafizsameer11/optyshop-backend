@@ -38,18 +38,17 @@ const processUnitImages = (req, files, existingUnitImages = null) => {
     // Process each unit image field (e.g., unit_images_10, unit_images_20, etc.)
     Object.keys(files).forEach(fieldname => {
       if (fieldname.startsWith('unit_images_')) {
-        const unitNumber = fieldname.replace('unit_images_', '');
+        let unitNumber = fieldname.slice('unit_images_'.length);
+        if (unitNumber.endsWith('[]')) unitNumber = unitNumber.slice(0, -2);
         const uploadedFiles = files[fieldname];
-        
+
         if (uploadedFiles && Array.isArray(uploadedFiles)) {
-          // Convert uploaded files to URL format
           const fileUrls = uploadedFiles.map(file => {
-            // Generate URL based on file location
             const relativePath = file.path.replace(/\\/g, '/').replace('uploads/', '');
             return `${req.protocol}://${req.get('host')}/uploads/${relativePath}`;
           });
-          
-          unitImages[unitNumber] = fileUrls;
+          const prev = Array.isArray(unitImages[unitNumber]) ? unitImages[unitNumber] : [];
+          unitImages[unitNumber] = [...prev, ...fileUrls];
         }
       }
     });
