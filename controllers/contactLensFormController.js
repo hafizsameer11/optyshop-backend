@@ -91,6 +91,23 @@ const normalizeAvailableUnitsForDb = (val) => {
   return JSON.stringify([raw]);
 };
 
+/** unit_images from JSON body or multipart field (stringified JSON). Empty object {} means clear all URLs. */
+const parseUnitImagesBody = (unit_images) => {
+  if (unit_images === undefined || unit_images === null || unit_images === '') return undefined;
+  if (typeof unit_images === 'object' && !Array.isArray(unit_images)) return unit_images;
+  if (typeof unit_images === 'string') {
+    const t = unit_images.trim();
+    if (!t) return undefined;
+    try {
+      const parsed = JSON.parse(t);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+};
+
 /** Build /uploads/<relative> from multer disk path (handles absolute /app/... paths). */
 const uploadRelativePathForUrl = (filePath) => {
   const normalized = String(filePath || '').replace(/\\/g, '/');
@@ -683,10 +700,11 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     finalLeftPower = right_power;
   }
 
-  // Process uploaded unit images
-  let processedUnitImages = unit_images;
+  // Process uploaded unit images (merge uploads onto JSON from client, not only prior DB state)
+  const parsedUnitImagesBody = parseUnitImagesBody(unit_images);
+  let processedUnitImages = parsedUnitImagesBody;
   if (req.files && Object.keys(req.files).length > 0) {
-    processedUnitImages = processUnitImages(req, req.files, unit_images);
+    processedUnitImages = processUnitImages(req, req.files, parsedUnitImagesBody);
   }
 
   // Create configuration
@@ -812,12 +830,13 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   const shouldCopyRightToLeft =
     parseMultipartTruthy(copy_right_to_left) || parseMultipartTruthy(same_for_both_eyes);
 
-  // Process uploaded unit images
-  let processedUnitImages = unit_images;
+  // Process uploaded unit images: merge new files onto client-sent URLs (removals), else existing DB
+  const parsedUnitImagesBody = parseUnitImagesBody(unit_images);
+  let processedUnitImages = parsedUnitImagesBody;
   if (req.files && Object.keys(req.files).length > 0) {
-    // Get existing unit images to merge with new uploads
-    const existingUnitImages = existingConfig.unit_images;
-    processedUnitImages = processUnitImages(req, req.files, existingUnitImages);
+    const mergeBase =
+      parsedUnitImagesBody !== undefined ? parsedUnitImagesBody : existingConfig.unit_images;
+    processedUnitImages = processUnitImages(req, req.files, mergeBase);
   }
 
   // Prepare update data
@@ -1202,10 +1221,10 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
   let finalLeftCylinder = left_cylinder;
   let finalLeftAxis = left_axis;
 
-  // Process uploaded unit images
-  let processedUnitImages = unit_images;
+  const parsedUnitImagesBody = parseUnitImagesBody(unit_images);
+  let processedUnitImages = parsedUnitImagesBody;
   if (req.files && Object.keys(req.files).length > 0) {
-    processedUnitImages = processUnitImages(req, req.files, unit_images);
+    processedUnitImages = processUnitImages(req, req.files, parsedUnitImagesBody);
   }
 
   if (shouldCopyRightToLeft) {
@@ -1352,12 +1371,12 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   const shouldCopyRightToLeft =
     parseMultipartTruthy(copy_right_to_left) || parseMultipartTruthy(same_for_both_eyes);
 
-  // Process uploaded unit images
-  let processedUnitImages = unit_images;
+  const parsedUnitImagesBody = parseUnitImagesBody(unit_images);
+  let processedUnitImages = parsedUnitImagesBody;
   if (req.files && Object.keys(req.files).length > 0) {
-    // Get existing unit images to merge with new uploads
-    const existingUnitImages = existingConfig.unit_images;
-    processedUnitImages = processUnitImages(req, req.files, existingUnitImages);
+    const mergeBase =
+      parsedUnitImagesBody !== undefined ? parsedUnitImagesBody : existingConfig.unit_images;
+    processedUnitImages = processUnitImages(req, req.files, mergeBase);
   }
 
   // Prepare update data
