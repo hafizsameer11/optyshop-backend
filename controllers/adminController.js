@@ -1407,6 +1407,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     search,
     category_id,
     sub_category_id,
+    brand_id,
     is_active,
     product_type,
     sortBy = 'created_at',
@@ -1428,12 +1429,35 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
     }
   }
 
-  if (category_id) {
-    where.category_id = parseInt(category_id);
+  // Support multi-value category_id (passed as array of IDs by frontend)
+  if (category_id !== undefined && category_id !== null && category_id !== '') {
+    if (Array.isArray(category_id)) {
+      const ids = category_id.map((v) => parseInt(v, 10)).filter((n) => !Number.isNaN(n));
+      if (ids.length > 0) where.category_id = { in: ids };
+    } else {
+      const parsed = parseInt(category_id, 10);
+      if (!Number.isNaN(parsed)) where.category_id = parsed;
+    }
   }
 
-  if (sub_category_id) {
-    where.sub_category_id = parseInt(sub_category_id);
+  if (sub_category_id !== undefined && sub_category_id !== null && sub_category_id !== '') {
+    if (Array.isArray(sub_category_id)) {
+      const ids = sub_category_id.map((v) => parseInt(v, 10)).filter((n) => !Number.isNaN(n));
+      if (ids.length > 0) where.sub_category_id = { in: ids };
+    } else {
+      const parsed = parseInt(sub_category_id, 10);
+      if (!Number.isNaN(parsed)) where.sub_category_id = parsed;
+    }
+  }
+
+  if (brand_id !== undefined && brand_id !== null && brand_id !== '') {
+    if (Array.isArray(brand_id)) {
+      const ids = brand_id.map((v) => parseInt(v, 10)).filter((n) => !Number.isNaN(n));
+      if (ids.length > 0) where.brand_id = { in: ids };
+    } else {
+      const parsed = parseInt(brand_id, 10);
+      if (!Number.isNaN(parsed)) where.brand_id = parsed;
+    }
   }
 
   if (product_type) {

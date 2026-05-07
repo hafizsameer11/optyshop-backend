@@ -130,33 +130,50 @@ exports.getProductCalibers = asyncHandler(async (req, res) => {
   }
 });
 
-// Eye Hygiene Variant Management
+// Eye Hygiene Variant Management (Prisma)
 exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
-  const { product_id, name, description, price, image_url, sort_order } = req.body;
+  const { product_id, name, description, price, image_url, sort_order, is_active } = req.body;
 
   try {
-    const Product = require('../models/Product');
-    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
-    
-    // Check if product exists
-    const product = await Product.findByPk(parseInt(product_id));
+    if (!product_id) {
+      return error(res, 'product_id is required', 400);
+    }
+    if (!name || !String(name).trim()) {
+      return error(res, 'name is required', 400);
+    }
+    if (price === undefined || price === null || price === '' || isNaN(parseFloat(price))) {
+      return error(res, 'Valid price is required', 400);
+    }
+
+    const productIdInt = parseInt(product_id, 10);
+    const product = await prisma.product.findUnique({ where: { id: productIdInt } });
     if (!product) {
       return error(res, 'Product not found', 404);
     }
 
-    const variant = await EyeHygieneVariant.create({
-      product_id: parseInt(product_id),
-      name,
-      description,
-      price: parseFloat(price),
-      image_url,
-      sort_order: parseInt(sort_order) || 0
+    const variant = await prisma.eyeHygieneVariant.create({
+      data: {
+        product_id: productIdInt,
+        name: String(name).trim(),
+        description: description || null,
+        price: parseFloat(price),
+        image_url: image_url || null,
+        sort_order: sort_order !== undefined && sort_order !== null && sort_order !== ''
+          ? parseInt(sort_order, 10) || 0
+          : 0,
+        is_active: is_active === undefined
+          ? true
+          : (is_active === true || is_active === 'true' || is_active === 1 || is_active === '1')
+      }
     });
 
     return success(res, 'Eye hygiene variant created successfully', variant, 201);
   } catch (err) {
     console.error('Create eye hygiene variant error:', err);
-    return error(res, 'Error creating eye hygiene variant', 500);
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('does not exist')) {
+      return error(res, 'EyeHygieneVariant table does not exist. Please run migration: npx prisma migrate deploy', 503);
+    }
+    return error(res, err.message || 'Error creating eye hygiene variant', 500);
   }
 });
 
@@ -165,32 +182,40 @@ exports.updateEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { name, description, price, image_url, is_active, sort_order } = req.body;
 
   try {
-    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
-    
-    const variant = await EyeHygieneVariant.findByPk(parseInt(id));
-
-    if (!variant) {
+    const idInt = parseInt(id, 10);
+    const existing = await prisma.eyeHygieneVariant.findUnique({ where: { id: idInt } });
+    if (!existing) {
       return error(res, 'Eye hygiene variant not found', 404);
     }
 
-    const updateData = {
-      name,
-      description,
-      price: parseFloat(price),
-      image_url,
-      sort_order: parseInt(sort_order) || 0
-    };
-
+    const updateData = {};
+    if (name !== undefined) updateData.name = String(name).trim();
+    if (description !== undefined) updateData.description = description || null;
+    if (price !== undefined && price !== null && price !== '') {
+      const p = parseFloat(price);
+      if (!isNaN(p)) updateData.price = p;
+    }
+    if (image_url !== undefined) updateData.image_url = image_url || null;
+    if (sort_order !== undefined && sort_order !== null && sort_order !== '') {
+      const s = parseInt(sort_order, 10);
+      if (!isNaN(s)) updateData.sort_order = s;
+    }
     if (is_active !== undefined) {
-      updateData.is_active = is_active === 'true' || is_active === true;
+      updateData.is_active = is_active === true || is_active === 'true' || is_active === 1 || is_active === '1';
     }
 
-    const updatedVariant = await variant.update(updateData);
+    const updatedVariant = await prisma.eyeHygieneVariant.update({
+      where: { id: idInt },
+      data: updateData
+    });
 
     return success(res, 'Eye hygiene variant updated successfully', updatedVariant);
   } catch (err) {
     console.error('Update eye hygiene variant error:', err);
-    return error(res, 'Error updating eye hygiene variant', 500);
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('does not exist')) {
+      return error(res, 'EyeHygieneVariant table does not exist. Please run migration: npx prisma migrate deploy', 503);
+    }
+    return error(res, err.message || 'Error updating eye hygiene variant', 500);
   }
 });
 
@@ -198,43 +223,47 @@ exports.deleteEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
-    
-    const variant = await EyeHygieneVariant.findByPk(parseInt(id));
-
-    if (!variant) {
+    const idInt = parseInt(id, 10);
+    const existing = await prisma.eyeHygieneVariant.findUnique({ where: { id: idInt } });
+    if (!existing) {
       return error(res, 'Eye hygiene variant not found', 404);
     }
 
-    await variant.destroy();
+    await prisma.eyeHygieneVariant.delete({ where: { id: idInt } });
 
     return success(res, 'Eye hygiene variant deleted successfully');
   } catch (err) {
     console.error('Delete eye hygiene variant error:', err);
-    return error(res, 'Error deleting eye hygiene variant', 500);
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('does not exist')) {
+      return error(res, 'EyeHygieneVariant table does not exist. Please run migration: npx prisma migrate deploy', 503);
+    }
+    return error(res, err.message || 'Error deleting eye hygiene variant', 500);
   }
 });
 
+// Admin: list all variants (active + inactive) for a product
 exports.getEyeHygieneVariants = asyncHandler(async (req, res) => {
   const { productId } = req.params;
+  const { only_active } = req.query;
 
   try {
-    const EyeHygieneVariant = require('../models/EyeHygieneVariant');
-    
-    const variants = await EyeHygieneVariant.findAll({
-      where: {
-        product_id: parseInt(productId),
-        is_active: true
-      },
-      order: [
-        ['sort_order', 'ASC']
-      ]
+    const where = { product_id: parseInt(productId, 10) };
+    if (only_active === 'true' || only_active === '1') {
+      where.is_active = true;
+    }
+
+    const variants = await prisma.eyeHygieneVariant.findMany({
+      where,
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }]
     });
 
     return success(res, 'Eye hygiene variants retrieved successfully', variants);
   } catch (err) {
     console.error('Get eye hygiene variants error:', err);
-    return error(res, 'Error retrieving eye hygiene variants', 500);
+    if (err.code === 'P2001' || err.code === 'P2025' || err.message?.includes('does not exist')) {
+      return error(res, 'EyeHygieneVariant table does not exist. Please run migration: npx prisma migrate deploy', 503);
+    }
+    return error(res, err.message || 'Error retrieving eye hygiene variants', 500);
   }
 });
 
