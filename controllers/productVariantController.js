@@ -242,12 +242,17 @@ exports.deleteEyeHygieneVariant = asyncHandler(async (req, res) => {
 });
 
 // Admin: list all variants (active + inactive) for a product
+// Public: GET /api/products/:id/size-volume-variants (param is `id`, not `productId`)
 exports.getEyeHygieneVariants = asyncHandler(async (req, res) => {
-  const { productId } = req.params;
+  const rawProductId = req.params.productId ?? req.params.id;
   const { only_active } = req.query;
 
   try {
-    const where = { product_id: parseInt(productId, 10) };
+    const productId = parseInt(String(rawProductId), 10);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return error(res, 'Invalid product id', 400);
+    }
+    const where = { product_id: productId };
     if (only_active === 'true' || only_active === '1') {
       where.is_active = true;
     }
