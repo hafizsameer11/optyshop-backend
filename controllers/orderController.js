@@ -15,7 +15,9 @@ const formatContactLensDetails = (item) => {
   const details = {
     right_eye: null,
     left_eye: null,
-    astigmatism: null
+    astigmatism: null,
+    color: null,
+    color_value: null
   };
 
   // Right eye details
@@ -38,19 +40,28 @@ const formatContactLensDetails = (item) => {
     };
   }
 
-  // Astigmatism details (from customization)
+  // Astigmatism + optional color variant (from customization)
   if (item.customization) {
-    const customization = typeof item.customization === 'string' 
-      ? JSON.parse(item.customization) 
-      : item.customization;
+    try {
+      const customization = typeof item.customization === 'string' 
+        ? JSON.parse(item.customization) 
+        : item.customization;
     
-    if (customization && (customization.left_cylinder || customization.right_cylinder)) {
-      details.astigmatism = {
-        left_cylinder: customization.left_cylinder,
-        right_cylinder: customization.right_cylinder,
-        left_axis: customization.left_axis,
-        right_axis: customization.right_axis
-      };
+      if (customization && (customization.left_cylinder || customization.right_cylinder)) {
+        details.astigmatism = {
+          left_cylinder: customization.left_cylinder,
+          right_cylinder: customization.right_cylinder,
+          left_axis: customization.left_axis,
+          right_axis: customization.right_axis
+        };
+      }
+
+      if (customization && (customization.selected_color || customization.color_display_name)) {
+        details.color = customization.color_display_name || customization.selected_color || null;
+        details.color_value = customization.selected_color || null;
+      }
+    } catch (_e) {
+      // ignore invalid customization JSON
     }
   }
 

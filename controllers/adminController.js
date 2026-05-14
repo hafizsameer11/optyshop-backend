@@ -4325,7 +4325,13 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
             right_cylinder: parsedItem.customization.right_cylinder,
             left_axis: parsedItem.customization.left_axis,
             right_axis: parsedItem.customization.right_axis
-          } : null
+          } : null,
+          color: parsedItem.customization && (parsedItem.customization.selected_color || parsedItem.customization.color_display_name)
+            ? (parsedItem.customization.color_display_name || parsedItem.customization.selected_color)
+            : null,
+          color_value: parsedItem.customization && parsedItem.customization.selected_color
+            ? parsedItem.customization.selected_color
+            : null
         };
       } else {
         parsedItem.contact_lens_details = null;

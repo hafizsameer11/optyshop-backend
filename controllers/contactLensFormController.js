@@ -30,6 +30,88 @@ const parseMultipartTruthy = (value) => {
 };
 
 /**
+ * Parse product.color_images (JSON string, array, or legacy object keyed by hex/name).
+ * @returns {Array<{ hexCode?: string|null, name?: string|null, value?: string|null, images: string[] }>}
+ */
+function parseProductColorImagesList(color_images) {
+  if (!color_images) return [];
+  let raw = color_images;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(raw)) {
+    return raw.map((c) => {
+      const hex = c.hexCode || c.hex_code || null;
+      const name = c.name || c.color || null;
+      const imgs = Array.isArray(c.images)
+        ? c.images.filter(Boolean)
+        : c.images
+          ? [c.images].filter(Boolean)
+          : [];
+      return { hexCode: hex, name, images: imgs, value: c.value };
+    });
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw).map(([key, v]) => {
+      const valueObj = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+      const hk = String(key).trim();
+      const hexFromKey = /^#[0-9A-Fa-f]{3,8}$/i.test(hk) ? hk : null;
+      const hexCode = valueObj.hexCode || valueObj.hex_code || hexFromKey;
+      const name = valueObj.name || valueObj.color || (!hexFromKey && hk && !hk.includes('//') ? hk : null);
+      const imgs = Array.isArray(valueObj.images)
+        ? valueObj.images.filter(Boolean)
+        : Array.isArray(v)
+          ? v.filter(Boolean)
+          : typeof v === 'string' && v
+            ? [v]
+            : [];
+      return { hexCode, name, images: imgs, value: valueObj.value };
+    });
+  }
+  return [];
+}
+
+/**
+ * Persist selected color on cart line (same keys as frame color flow) so cart display_images resolve correctly.
+ */
+function buildContactLensColorCustomization(product, selectedColorRaw, colorDisplayName) {
+  const selRaw = selectedColorRaw == null ? '' : String(selectedColorRaw).trim();
+  if (!selRaw) return null;
+  const selLower = selRaw.toLowerCase();
+  const list = parseProductColorImagesList(product.color_images);
+  if (!list.length) {
+    return {
+      selected_color: selRaw,
+      color_display_name: colorDisplayName || selRaw
+    };
+  }
+  const variant = list.find((c) => {
+    const hex = String(c.hexCode || '').toLowerCase();
+    const val = String(c.value || '').toLowerCase();
+    const nm = String(c.name || '').toLowerCase();
+    return (
+      (hex && (hex === selLower || hex.replace('#', '') === selLower.replace('#', ''))) ||
+      (val && (val === selLower || val.replace('#', '') === selLower.replace('#', ''))) ||
+      (nm && nm === selLower)
+    );
+  });
+  const primaryHex = variant && variant.hexCode ? String(variant.hexCode) : selRaw.startsWith('#') ? selRaw : null;
+  const payload = {
+    selected_color: primaryHex || selRaw,
+    color_display_name: colorDisplayName || (variant && variant.name ? String(variant.name) : null) || selRaw
+  };
+  if (variant && Array.isArray(variant.images) && variant.images.length) {
+    payload.variant_images = variant.images;
+  }
+  if (primaryHex) payload.hex_code = primaryHex;
+  return payload;
+}
+
+/**
  * Eye dropdown fields are stored as JSON arrays. Clients often send JSON strings e.g. '["3"]'.
  */
 const normalizeJsonArrayLikeField = (val) => {
@@ -1914,8 +1996,25 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     left_cylinder,
     right_cylinder,
     left_axis,
-    right_axis
+    right_axis,
+    selected_color,
+    selectedColor,
+    color_display_name,
+    colorDisplayName
   } = req.body;
+
+  const selectedColorParam =
+    selected_color !== undefined && selected_color !== null && String(selected_color).trim() !== ''
+      ? String(selected_color).trim()
+      : selectedColor !== undefined && selectedColor !== null && String(selectedColor).trim() !== ''
+        ? String(selectedColor).trim()
+        : '';
+  const colorDisplayNameParam =
+    color_display_name !== undefined && color_display_name !== null && String(color_display_name).trim() !== ''
+      ? String(color_display_name).trim()
+      : colorDisplayName !== undefined && colorDisplayName !== null && String(colorDisplayName).trim() !== ''
+        ? String(colorDisplayName).trim()
+        : '';
 
   // Validate required fields
   if (!product_id) {
@@ -1957,18 +2056,26 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     contact_lens_left_power: parseNum(left_power)
   };
 
-  // Add astigmatism-specific fields if form type is astigmatism
+  // Customization: astigmatism (cylinder/axis) + optional color variant (same structure as frame cart lines)
+  const colorCustomization = buildContactLensColorCustomization(
+    product,
+    selectedColorParam,
+    colorDisplayNameParam
+  );
+  let customizationMerged = null;
   if (form_type === 'astigmatism') {
-    // Note: CartItem schema doesn't have separate left/right cylinder and axis fields
-    // These are stored in customization field as JSON
-    // All values come from dropdowns as strings
-    const astigmatismData = {
+    customizationMerged = {
       left_cylinder: parseNum(left_cylinder),
       right_cylinder: parseNum(right_cylinder),
       left_axis: parseNum(left_axis, 'int'),
       right_axis: parseNum(right_axis, 'int')
     };
-    contactLensData.customization = JSON.stringify(astigmatismData);
+  }
+  if (colorCustomization) {
+    customizationMerged = { ...(customizationMerged || {}), ...colorCustomization };
+  }
+  if (customizationMerged && Object.keys(customizationMerged).length) {
+    contactLensData.customization = JSON.stringify(customizationMerged);
   }
 
   // Calculate quantity (sum of left and right)
@@ -1995,7 +2102,8 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
           name: true,
           slug: true,
           price: true,
-          images: true
+          images: true,
+          color_images: true
         }
       }
     }
