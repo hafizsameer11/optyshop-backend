@@ -4,10 +4,16 @@ const { success, error } = require('../utils/response');
 
 // Helper function to parse JSON fields
 const parseJsonField = (value) => {
-  if (!value) return null;
+  if (value === undefined || value === null || value === '') return null;
   try {
-    return typeof value === 'string' ? JSON.parse(value) : value;
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      return Object.values(parsed).filter((v) => v != null && v !== '');
+    }
+    return parsed;
   } catch (e) {
+    if (typeof value === 'string' && value.trim() !== '') return [value.trim()];
     return value;
   }
 };
@@ -198,20 +204,34 @@ const uploadRelativePathForUrl = (filePath) => {
 };
 
 /**
- * List filter: when product_id is set, return only rows for that product (ignore sub_category_id).
- * Otherwise filter by sub_category_id if provided.
+ * List filter: when product_id is set, return configs for that product plus shared configs
+ * (product_id null) for the same sub-sub-category. Otherwise filter by sub_category_id only.
  */
 const applyContactLensListScope = (where, query) => {
   const { sub_category_id, product_id } = query;
+  const subCatId =
+    sub_category_id !== undefined && sub_category_id !== null && sub_category_id !== ''
+      ? parseInt(sub_category_id, 10)
+      : NaN;
+  const hasSubCat = !Number.isNaN(subCatId);
+
   if (product_id !== undefined && product_id !== null && product_id !== '') {
     const pid = parseInt(product_id, 10);
     if (!Number.isNaN(pid)) {
-      where.product_id = pid;
+      if (hasSubCat) {
+        where.sub_category_id = subCatId;
+      }
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [{ product_id: pid }, { product_id: null }]
+        }
+      ];
       return;
     }
   }
-  if (sub_category_id) {
-    where.sub_category_id = parseInt(sub_category_id, 10);
+  if (hasSubCat) {
+    where.sub_category_id = subCatId;
   }
 };
 
