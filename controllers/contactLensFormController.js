@@ -204,8 +204,9 @@ const uploadRelativePathForUrl = (filePath) => {
 };
 
 /**
- * List filter: when product_id is set, return configs for that product plus shared configs
- * (product_id null) for the same sub-sub-category. Otherwise filter by sub_category_id only.
+ * List filter:
+ * - With product_id: rows for that product OR shared rows (product_id null) for sub_category_id when given.
+ * - Product-linked rows are not gated on sub_category_id (avoids wrong leaf id on the storefront).
  */
 const applyContactLensListScope = (where, query) => {
   const { sub_category_id, product_id } = query;
@@ -219,14 +220,10 @@ const applyContactLensListScope = (where, query) => {
     const pid = parseInt(product_id, 10);
     if (!Number.isNaN(pid)) {
       if (hasSubCat) {
-        where.sub_category_id = subCatId;
+        where.OR = [{ product_id: pid }, { product_id: null, sub_category_id: subCatId }];
+      } else {
+        where.product_id = pid;
       }
-      where.AND = [
-        ...(Array.isArray(where.AND) ? where.AND : []),
-        {
-          OR: [{ product_id: pid }, { product_id: null }]
-        }
-      ];
       return;
     }
   }

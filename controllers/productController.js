@@ -66,6 +66,68 @@ const parseJsonOption = (value) => {
   }
 };
 
+/** Parse prescription array fields stored as JSON strings on contact lens configurations. */
+const parseContactLensArrayField = (value) => {
+  if (value === undefined || value === null || value === '') return [];
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      return Object.values(parsed).filter((v) => v != null && v !== '');
+    }
+    return [parsed];
+  } catch (e) {
+    if (typeof value === 'string' && value.trim() !== '') return [value.trim()];
+    return [];
+  }
+};
+
+const formatContactLensConfigsForApi = (configs) => {
+  if (!Array.isArray(configs)) return [];
+  return configs.map((config) => {
+    let available_units = null;
+    let unit_prices = null;
+    let unit_images = null;
+    try {
+      if (config.available_units) {
+        available_units =
+          typeof config.available_units === 'string'
+            ? JSON.parse(config.available_units)
+            : config.available_units;
+      }
+      if (config.unit_prices) {
+        unit_prices =
+          typeof config.unit_prices === 'string' ? JSON.parse(config.unit_prices) : config.unit_prices;
+      }
+      if (config.unit_images) {
+        unit_images =
+          typeof config.unit_images === 'string' ? JSON.parse(config.unit_images) : config.unit_images;
+      }
+    } catch (e) {
+      console.error('formatContactLensConfigsForApi: unit fields parse error', e);
+    }
+    return {
+      ...config,
+      price: config.price != null ? config.price.toString() : null,
+      right_qty: parseContactLensArrayField(config.right_qty),
+      right_base_curve: parseContactLensArrayField(config.right_base_curve),
+      right_diameter: parseContactLensArrayField(config.right_diameter),
+      right_power: parseContactLensArrayField(config.right_power),
+      right_cylinder: parseContactLensArrayField(config.right_cylinder),
+      right_axis: parseContactLensArrayField(config.right_axis),
+      left_qty: parseContactLensArrayField(config.left_qty),
+      left_base_curve: parseContactLensArrayField(config.left_base_curve),
+      left_diameter: parseContactLensArrayField(config.left_diameter),
+      left_power: parseContactLensArrayField(config.left_power),
+      left_cylinder: parseContactLensArrayField(config.left_cylinder),
+      left_axis: parseContactLensArrayField(config.left_axis),
+      available_units,
+      unit_prices,
+      unit_images
+    };
+  });
+};
+
 /** Resolve first non-empty query param (camelCase, snake_case, lowercase, kebab). */
 const pickQueryParam = (query, keys) => {
   for (const key of keys) {
@@ -915,7 +977,15 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
       select: {
         id: true,
         name: true,
-        slug: true
+        slug: true,
+        parent_id: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
       }
     },
     frameSizes: {
@@ -964,8 +1034,12 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
       ],
       select: {
         id: true,
+        name: true,
+        sub_category_id: true,
+        product_id: true,
         configuration_type: true,
         display_name: true,
+        price: true,
         lens_type: true,
         right_qty: true,
         right_base_curve: true,
@@ -978,7 +1052,11 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
         left_diameter: true,
         left_power: true,
         left_cylinder: true,
-        left_axis: true
+        left_axis: true,
+        available_units: true,
+        unit_prices: true,
+        unit_images: true,
+        is_active: true
       }
     },
     reviews: {
@@ -1077,6 +1155,8 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     ))
   );
 
+  const parsedContactLensConfigs = formatContactLensConfigsForApi(product.contactLensConfigs);
+
   // Transform lensTypes and lensCoatings
   const transformedProduct = {
     ...formattedProduct,
@@ -1086,8 +1166,17 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
     base_curve_options: baseCurveOptions,
     diameter_options: diameterOptions,
     powers_range: powersRange,
-    // Contact lens configurations (for dropdowns in frontend)
-    contact_lens_configs: product.contactLensConfigs || []
+    // Contact lens configurations (parsed arrays for storefront dropdowns)
+    contact_lens_configs: parsedContactLensConfigs,
+    subcategory: product.subCategory
+      ? {
+          id: product.subCategory.id,
+          name: product.subCategory.name,
+          slug: product.subCategory.slug,
+          parent_id: product.subCategory.parent_id,
+          parent: product.subCategory.parent || null
+        }
+      : formattedProduct.subcategory || null
   };
 
   // Add Eye Hygiene fields if applicable
