@@ -1,7 +1,20 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { jwtSecret, jwtExpire, jwtRefreshSecret, jwtRefreshExpire } = require('../config/jwt');
+const { sendPasswordResetEmail } = require('../utils/email');
+
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function getFrontendBaseUrl() {
+  const url = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
+  return url.replace(/\/$/, '');
+}
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -353,6 +366,132 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating profile',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Request password reset email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const genericMessage =
+      'If an account exists with that email, you will receive password reset instructions shortly.';
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.is_active) {
+      return res.json({ success: true, message: genericMessage });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = hashResetToken(resetToken);
+    const resetExpires = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        reset_password_token: resetTokenHash,
+        reset_password_expires: resetExpires
+      }
+    });
+
+    const resetUrl = `${getFrontendBaseUrl()}/reset-password?token=${resetToken}`;
+    const emailResult = await sendPasswordResetEmail({
+      to: user.email,
+      firstName: user.first_name,
+      resetUrl
+    });
+
+    if (!emailResult.success) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[forgotPassword] Email not sent. Reset link (dev only):', resetUrl);
+      } else {
+        console.error('[forgotPassword] Failed to send email:', emailResult.message || emailResult.error);
+        return res.status(503).json({
+          success: false,
+          message:
+            'Unable to send reset email right now. Please try again later or contact support.'
+        });
+      }
+    }
+
+    return res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    console.error('forgotPassword error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error processing password reset request',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Reset password with token from email
+// @route   POST /api/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required'
+      });
+    }
+
+    const tokenHash = hashResetToken(String(token).trim());
+    const user = await prisma.user.findFirst({
+      where: {
+        reset_password_token: tokenHash,
+        reset_password_expires: { gt: new Date() }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset link. Please request a new password reset.'
+      });
+    }
+
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        reset_password_token: null,
+        reset_password_expires: null,
+        refresh_token: null
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Password reset successfully. You can sign in with your new password.'
+    });
+  } catch (error) {
+    console.error('resetPassword error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error resetting password',
       error: error.message
     });
   }

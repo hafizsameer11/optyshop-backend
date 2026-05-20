@@ -166,6 +166,198 @@ const formatContactLensDetails = (item) => {
   return details;
 };
 
+/** Apply resolved variant to cart pricing/customization payload. */
+function applyResolvedVariant(foundVariant, selectedVariantId, variantType) {
+  const customizationData = {
+    selected_variant_id: selectedVariantId,
+    variant_type: variantType,
+    variant_name: foundVariant.name,
+    variant_display_name: foundVariant.display_name,
+    variant_price: foundVariant.price,
+    variant_image_url: foundVariant.image_url,
+    variant_metadata: foundVariant.metadata
+  };
+
+  if (foundVariant.type === 'mm_caliber') {
+    customizationData.selected_mm_caliber = foundVariant.metadata.mm;
+    customizationData.caliber_image_url = foundVariant.metadata.image_url;
+  } else if (foundVariant.type === 'eye_hygiene') {
+    customizationData.eye_hygiene_variant_id = foundVariant.metadata.variant_id;
+    customizationData.eye_hygiene_variant_name = foundVariant.name;
+    customizationData.eye_hygiene_image_url = foundVariant.metadata.image_url;
+  } else if (foundVariant.type === 'size_volume') {
+    customizationData.size_volume_variant_id = foundVariant.metadata.variant_id;
+    customizationData.size_volume = foundVariant.metadata.size_volume;
+    customizationData.pack_type = foundVariant.metadata.pack_type;
+    customizationData.sku = foundVariant.metadata.sku;
+    customizationData.size_volume_image_url = foundVariant.metadata.image_url;
+  }
+
+  return {
+    variantPrice: foundVariant.price,
+    customizationData
+  };
+}
+
+async function loadProductVariantRelations(productId) {
+  return prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      mm_calibers: true,
+      eyeHygieneVariants: {
+        where: { is_active: true },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image_url: true,
+          sort_order: true
+        }
+      },
+      sizeVolumeVariants: {
+        where: { is_active: true },
+        select: {
+          id: true,
+          size_volume: true,
+          pack_type: true,
+          price: true,
+          compare_at_price: true,
+          stock_quantity: true,
+          stock_status: true,
+          sku: true,
+          image_url: true,
+          sort_order: true
+        }
+      }
+    }
+  });
+}
+
+function resolveVariantFromProduct(productWithVariants, { selected_variant_id, variant_type, eye_hygiene_variant_id, size_volume_variant_id }) {
+  if (!productWithVariants) return null;
+
+  let mmCalibers = [];
+  if (productWithVariants.mm_calibers) {
+    try {
+      mmCalibers = typeof productWithVariants.mm_calibers === 'string'
+        ? JSON.parse(productWithVariants.mm_calibers)
+        : productWithVariants.mm_calibers;
+    } catch (e) {
+      mmCalibers = [];
+    }
+  }
+
+  let foundVariant = null;
+  let resolvedSelectedVariantId = selected_variant_id;
+  let resolvedVariantType = variant_type;
+
+  if (selected_variant_id && variant_type) {
+    if (variant_type === 'mm_caliber' && selected_variant_id.startsWith('caliber_')) {
+      const mm = selected_variant_id.replace('caliber_', '');
+      const caliberData = mmCalibers.find(c => c.mm === mm);
+      if (caliberData) {
+        foundVariant = {
+          type: 'mm_caliber',
+          name: `${mm}mm`,
+          display_name: `${mm}mm Caliber`,
+          price: parseFloat(productWithVariants.price),
+          image_url: caliberData.image_url,
+          metadata: { mm, image_url: caliberData.image_url }
+        };
+      }
+    } else if (variant_type === 'eye_hygiene' && selected_variant_id.startsWith('eye_hygiene_')) {
+      const variantIdNum = parseInt(selected_variant_id.replace('eye_hygiene_', ''), 10);
+      const eyeHygieneVariant = productWithVariants.eyeHygieneVariants.find(v => v.id === variantIdNum);
+      if (eyeHygieneVariant) {
+        foundVariant = {
+          type: 'eye_hygiene',
+          name: eyeHygieneVariant.name,
+          display_name: eyeHygieneVariant.name,
+          description: eyeHygieneVariant.description,
+          price: parseFloat(eyeHygieneVariant.price),
+          image_url: eyeHygieneVariant.image_url,
+          metadata: { variant_id: eyeHygieneVariant.id, image_url: eyeHygieneVariant.image_url }
+        };
+      }
+    } else if (variant_type === 'size_volume' && selected_variant_id.startsWith('size_volume_')) {
+      const variantIdNum = parseInt(selected_variant_id.replace('size_volume_', ''), 10);
+      const sizeVolumeVariant = productWithVariants.sizeVolumeVariants.find(v => v.id === variantIdNum);
+      if (sizeVolumeVariant) {
+        foundVariant = {
+          type: 'size_volume',
+          name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+          display_name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+          price: parseFloat(sizeVolumeVariant.price),
+          compare_at_price: sizeVolumeVariant.compare_at_price ? parseFloat(sizeVolumeVariant.compare_at_price) : null,
+          image_url: sizeVolumeVariant.image_url,
+          stock_quantity: sizeVolumeVariant.stock_quantity,
+          stock_status: sizeVolumeVariant.stock_status,
+          sku: sizeVolumeVariant.sku,
+          metadata: {
+            variant_id: sizeVolumeVariant.id,
+            size_volume: sizeVolumeVariant.size_volume,
+            pack_type: sizeVolumeVariant.pack_type,
+            sku: sizeVolumeVariant.sku,
+            image_url: sizeVolumeVariant.image_url
+          }
+        };
+      }
+    }
+  }
+
+  if (!foundVariant && eye_hygiene_variant_id) {
+    const variantIdNum = parseInt(eye_hygiene_variant_id, 10);
+    const eyeHygieneVariant = productWithVariants.eyeHygieneVariants.find(v => v.id === variantIdNum);
+    if (eyeHygieneVariant) {
+      resolvedSelectedVariantId = `eye_hygiene_${eyeHygieneVariant.id}`;
+      resolvedVariantType = 'eye_hygiene';
+      foundVariant = {
+        type: 'eye_hygiene',
+        name: eyeHygieneVariant.name,
+        display_name: eyeHygieneVariant.name,
+        description: eyeHygieneVariant.description,
+        price: parseFloat(eyeHygieneVariant.price),
+        image_url: eyeHygieneVariant.image_url,
+        metadata: { variant_id: eyeHygieneVariant.id, image_url: eyeHygieneVariant.image_url }
+      };
+    }
+  }
+
+  if (!foundVariant && size_volume_variant_id) {
+    const variantIdNum = parseInt(size_volume_variant_id, 10);
+    const sizeVolumeVariant = productWithVariants.sizeVolumeVariants.find(v => v.id === variantIdNum);
+    if (sizeVolumeVariant) {
+      resolvedSelectedVariantId = `size_volume_${sizeVolumeVariant.id}`;
+      resolvedVariantType = 'size_volume';
+      foundVariant = {
+        type: 'size_volume',
+        name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+        display_name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+        price: parseFloat(sizeVolumeVariant.price),
+        compare_at_price: sizeVolumeVariant.compare_at_price ? parseFloat(sizeVolumeVariant.compare_at_price) : null,
+        image_url: sizeVolumeVariant.image_url,
+        stock_quantity: sizeVolumeVariant.stock_quantity,
+        stock_status: sizeVolumeVariant.stock_status,
+        sku: sizeVolumeVariant.sku,
+        metadata: {
+          variant_id: sizeVolumeVariant.id,
+          size_volume: sizeVolumeVariant.size_volume,
+          pack_type: sizeVolumeVariant.pack_type,
+          sku: sizeVolumeVariant.sku,
+          image_url: sizeVolumeVariant.image_url
+        }
+      };
+    }
+  }
+
+  if (!foundVariant) return null;
+  return applyResolvedVariant(foundVariant, resolvedSelectedVariantId, resolvedVariantType);
+}
+
 // @desc    Get user's cart
 // @route   GET /api/cart
 // @access  Private
@@ -288,6 +480,9 @@ exports.addToCart = asyncHandler(async (req, res) => {
     // Variant selection (new)
     selected_variant_id, // Selected variant ID (e.g., "caliber_78", "eye_hygiene_1", "size_volume_2")
     variant_type, // Variant type: "mm_caliber", "eye_hygiene", "size_volume"
+    size_volume_variant_id,
+    eye_hygiene_variant_id,
+    customization,
     // Lens configuration fields
     lens_type, // 'distance_vision', 'near_vision', 'progressive'
     prescription_data, // JSON object with PD, OD (SPH, CYL, AXIS), OS (SPH, CYL, AXIS)
@@ -342,153 +537,38 @@ exports.addToCart = asyncHandler(async (req, res) => {
   let variantPrice = null;
   let customizationData = null;
 
-  // Handle new variant selection (takes priority over other selections)
-  if (selected_variant_id && variant_type) {
+  // Resolve eye hygiene / size-volume / caliber variants (by composite id or numeric ids)
+  let parsedRequestCustomization = null;
+  if (customization) {
     try {
-      // Get product with all variant data
-      const productWithVariants = await prisma.product.findUnique({
-        where: { id: product_id },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          mm_calibers: true,
-          eyeHygieneVariants: {
-            where: { is_active: true },
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              price: true,
-              image_url: true,
-              sort_order: true
-            }
-          },
-          sizeVolumeVariants: {
-            where: { is_active: true },
-            select: {
-              id: true,
-              size_volume: true,
-              pack_type: true,
-              price: true,
-              compare_at_price: true,
-              stock_quantity: true,
-              stock_status: true,
-              sku: true,
-              image_url: true,
-              sort_order: true
-            }
-          }
-        }
+      parsedRequestCustomization = typeof customization === 'string'
+        ? JSON.parse(customization)
+        : customization;
+    } catch (e) {
+      parsedRequestCustomization = null;
+    }
+  }
+
+  const resolvedEyeHygieneId = eye_hygiene_variant_id
+    ?? parsedRequestCustomization?.eye_hygiene_variant_id;
+  const resolvedSizeVolumeId = size_volume_variant_id
+    ?? parsedRequestCustomization?.size_volume_variant_id;
+
+  if (selected_variant_id || resolvedEyeHygieneId || resolvedSizeVolumeId) {
+    try {
+      const productWithVariants = await loadProductVariantRelations(product_id);
+      const resolved = resolveVariantFromProduct(productWithVariants, {
+        selected_variant_id,
+        variant_type,
+        eye_hygiene_variant_id: resolvedEyeHygieneId,
+        size_volume_variant_id: resolvedSizeVolumeId
       });
-
-      if (productWithVariants) {
-        // Parse mm_calibers if needed
-        let mmCalibers = [];
-        if (productWithVariants.mm_calibers) {
-          try {
-            mmCalibers = typeof productWithVariants.mm_calibers === 'string' 
-              ? JSON.parse(productWithVariants.mm_calibers) 
-              : productWithVariants.mm_calibers;
-          } catch (e) {
-            mmCalibers = [];
-          }
-        }
-
-        let foundVariant = null;
-
-        if (variant_type === 'mm_caliber' && selected_variant_id.startsWith('caliber_')) {
-          const mm = selected_variant_id.replace('caliber_', '');
-          const caliberData = mmCalibers.find(c => c.mm === mm);
-          
-          if (caliberData) {
-            foundVariant = {
-              type: 'mm_caliber',
-              name: `${mm}mm`,
-              display_name: `${mm}mm Caliber`,
-              price: parseFloat(productWithVariants.price),
-              image_url: caliberData.image_url,
-              metadata: {
-                mm: mm,
-                image_url: caliberData.image_url
-              }
-            };
-          }
-        } else if (variant_type === 'eye_hygiene' && selected_variant_id.startsWith('eye_hygiene_')) {
-          const variantIdNum = parseInt(selected_variant_id.replace('eye_hygiene_', ''));
-          const eyeHygieneVariant = productWithVariants.eyeHygieneVariants.find(v => v.id === variantIdNum);
-          
-          if (eyeHygieneVariant) {
-            foundVariant = {
-              type: 'eye_hygiene',
-              name: eyeHygieneVariant.name,
-              display_name: eyeHygieneVariant.name,
-              description: eyeHygieneVariant.description,
-              price: parseFloat(eyeHygieneVariant.price),
-              image_url: eyeHygieneVariant.image_url,
-              metadata: {
-                variant_id: eyeHygieneVariant.id,
-                image_url: eyeHygieneVariant.image_url
-              }
-            };
-          }
-        } else if (variant_type === 'size_volume' && selected_variant_id.startsWith('size_volume_')) {
-          const variantIdNum = parseInt(selected_variant_id.replace('size_volume_', ''));
-          const sizeVolumeVariant = productWithVariants.sizeVolumeVariants.find(v => v.id === variantIdNum);
-          
-          if (sizeVolumeVariant) {
-            foundVariant = {
-              type: 'size_volume',
-              name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
-              display_name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
-              price: parseFloat(sizeVolumeVariant.price),
-              compare_at_price: sizeVolumeVariant.compare_at_price ? parseFloat(sizeVolumeVariant.compare_at_price) : null,
-              image_url: sizeVolumeVariant.image_url,
-              stock_quantity: sizeVolumeVariant.stock_quantity,
-              stock_status: sizeVolumeVariant.stock_status,
-              sku: sizeVolumeVariant.sku,
-              metadata: {
-                variant_id: sizeVolumeVariant.id,
-                size_volume: sizeVolumeVariant.size_volume,
-                pack_type: sizeVolumeVariant.pack_type,
-                sku: sizeVolumeVariant.sku,
-                image_url: sizeVolumeVariant.image_url
-              }
-            };
-          }
-        }
-
-        if (foundVariant) {
-          variantPrice = foundVariant.price;
-          customizationData = {
-            selected_variant_id: selected_variant_id,
-            variant_type: variant_type,
-            variant_name: foundVariant.name,
-            variant_display_name: foundVariant.display_name,
-            variant_price: foundVariant.price,
-            variant_image_url: foundVariant.image_url,
-            variant_metadata: foundVariant.metadata
-          };
-
-          // Add variant-specific data to customization
-          if (foundVariant.type === 'mm_caliber') {
-            customizationData.selected_mm_caliber = foundVariant.metadata.mm;
-            customizationData.caliber_image_url = foundVariant.metadata.image_url;
-          } else if (foundVariant.type === 'eye_hygiene') {
-            customizationData.eye_hygiene_variant_id = foundVariant.metadata.variant_id;
-            customizationData.eye_hygiene_image_url = foundVariant.metadata.image_url;
-          } else if (foundVariant.type === 'size_volume') {
-            customizationData.size_volume_variant_id = foundVariant.metadata.variant_id;
-            customizationData.size_volume = foundVariant.metadata.size_volume;
-            customizationData.pack_type = foundVariant.metadata.pack_type;
-            customizationData.sku = foundVariant.metadata.sku;
-            customizationData.size_volume_image_url = foundVariant.metadata.image_url;
-          }
-        }
+      if (resolved) {
+        variantPrice = resolved.variantPrice;
+        customizationData = resolved.customizationData;
       }
     } catch (err) {
       console.error('Error processing variant selection:', err);
-      // Continue without variant if there's an error
     }
   }
 
@@ -909,9 +989,15 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   }
 
-  // Prepare customization data (include color selection if provided)
+  // Merge request customization (frame/color fields) with resolved variant data
   let finalCustomizationData = customizationData;
-  
+  if (parsedRequestCustomization) {
+    finalCustomizationData = {
+      ...parsedRequestCustomization,
+      ...(customizationData || {})
+    };
+  }
+
   const cartItem = await prisma.cartItem.create({
     data: {
       cart_id: cart.id,

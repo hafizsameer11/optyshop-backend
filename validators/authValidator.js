@@ -68,6 +68,29 @@ exports.validateChangePassword = [
   handleValidationErrors
 ];
 
+// Forgot password validation
+exports.validateForgotPassword = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  handleValidationErrors
+];
+
+// Reset password validation
+exports.validateResetPassword = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Reset token is required'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  handleValidationErrors
+];
+
 // Update profile validation
 exports.validateUpdateProfile = [
   body('first_name')

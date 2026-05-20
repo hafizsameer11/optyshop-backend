@@ -174,9 +174,66 @@ const sendCartNotificationToAdmin = async ({ customer, product, cartItem, shippi
   });
 };
 
+/**
+ * Send password reset link to user
+ */
+const sendPasswordResetEmail = async ({ to, firstName, resetUrl }) => {
+  const name = firstName || 'there';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #172554; color: white; padding: 20px; text-align: center; }
+        .content { background-color: #f9fafb; padding: 24px; margin-top: 20px; }
+        .button {
+          display: inline-block;
+          background-color: #172554;
+          color: #ffffff !important;
+          padding: 14px 28px;
+          text-decoration: none;
+          border-radius: 8px;
+          font-weight: bold;
+          margin: 20px 0;
+        }
+        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Reset your password</h1>
+        </div>
+        <div class="content">
+          <p>Hi ${name},</p>
+          <p>We received a request to reset your OptiShop account password. Click the button below to choose a new password. This link expires in 1 hour.</p>
+          <p style="text-align: center;">
+            <a href="${resetUrl}" class="button">Reset password</a>
+          </p>
+          <p>If you did not request this, you can ignore this email. Your password will not change.</p>
+          <p style="word-break: break-all; font-size: 12px; color: #666;">Or copy this link: ${resetUrl}</p>
+          <div class="footer">
+            <p>OptiShop</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to,
+    subject: 'Reset your OptiShop password',
+    html,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendCartNotificationToAdmin,
+  sendPasswordResetEmail,
 };
 
 

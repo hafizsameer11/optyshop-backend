@@ -7,20 +7,26 @@ const {
   getMe,
   logout,
   updateProfile,
-  changePassword
+  changePassword,
+  forgotPassword,
+  resetPassword
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const {
   validateRegister,
   validateLogin,
   validateChangePassword,
-  validateUpdateProfile
+  validateUpdateProfile,
+  validateForgotPassword,
+  validateResetPassword
 } = require('../validators/authValidator');
 
 // Public routes
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
 router.post('/refresh', refreshToken);
+router.post('/forgot-password', validateForgotPassword, forgotPassword);
+router.post('/reset-password', validateResetPassword, resetPassword);
 
 // Protected routes
 router.get('/me', protect, getMe);
