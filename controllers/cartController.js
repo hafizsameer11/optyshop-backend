@@ -237,7 +237,11 @@ async function loadProductVariantRelations(productId) {
   });
 }
 
-function resolveVariantFromProduct(productWithVariants, { selected_variant_id, variant_type, eye_hygiene_variant_id, size_volume_variant_id }) {
+function normalizeVolumeLabel(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+}
+
+function resolveVariantFromProduct(productWithVariants, { selected_variant_id, variant_type, eye_hygiene_variant_id, size_volume_variant_id, size_volume_label }) {
   if (!productWithVariants) return null;
 
   let mmCalibers = [];
@@ -354,8 +358,67 @@ function resolveVariantFromProduct(productWithVariants, { selected_variant_id, v
     }
   }
 
+  if (!foundVariant && size_volume_label) {
+    const normLabel = normalizeVolumeLabel(size_volume_label);
+    const sizeVolumeVariant = productWithVariants.sizeVolumeVariants.find(
+      (v) => normalizeVolumeLabel(v.size_volume) === normLabel
+    );
+    if (sizeVolumeVariant) {
+      resolvedSelectedVariantId = `size_volume_${sizeVolumeVariant.id}`;
+      resolvedVariantType = 'size_volume';
+      foundVariant = {
+        type: 'size_volume',
+        name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+        display_name: sizeVolumeVariant.pack_type ? `${sizeVolumeVariant.size_volume} ${sizeVolumeVariant.pack_type}` : sizeVolumeVariant.size_volume,
+        price: parseFloat(sizeVolumeVariant.price),
+        compare_at_price: sizeVolumeVariant.compare_at_price ? parseFloat(sizeVolumeVariant.compare_at_price) : null,
+        image_url: sizeVolumeVariant.image_url,
+        stock_quantity: sizeVolumeVariant.stock_quantity,
+        stock_status: sizeVolumeVariant.stock_status,
+        sku: sizeVolumeVariant.sku,
+        metadata: {
+          variant_id: sizeVolumeVariant.id,
+          size_volume: sizeVolumeVariant.size_volume,
+          pack_type: sizeVolumeVariant.pack_type,
+          sku: sizeVolumeVariant.sku,
+          image_url: sizeVolumeVariant.image_url
+        }
+      };
+    }
+  }
+
   if (!foundVariant) return null;
   return applyResolvedVariant(foundVariant, resolvedSelectedVariantId, resolvedVariantType);
+}
+
+/** Stable key so different sizes (90ml vs 300ml) stay separate cart lines. */
+function getCartVariantKey(customization) {
+  if (!customization || typeof customization !== 'object') return 'base';
+  if (customization.size_volume_variant_id != null) {
+    return `sv:${customization.size_volume_variant_id}`;
+  }
+  if (customization.eye_hygiene_variant_id != null) {
+    return `eh:${customization.eye_hygiene_variant_id}`;
+  }
+  if (customization.selected_variant_id) {
+    return `v:${customization.selected_variant_id}`;
+  }
+  if (customization.size_volume) {
+    return `vol:${String(customization.size_volume).trim().toLowerCase()}`;
+  }
+  if (customization.selected_color) {
+    return `color:${String(customization.selected_color).trim().toLowerCase()}`;
+  }
+  return 'base';
+}
+
+function parseCustomizationField(raw) {
+  if (!raw) return null;
+  try {
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return null;
+  }
 }
 
 // @desc    Get user's cart
@@ -561,7 +624,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
         selected_variant_id,
         variant_type,
         eye_hygiene_variant_id: resolvedEyeHygieneId,
-        size_volume_variant_id: resolvedSizeVolumeId
+        size_volume_variant_id: resolvedSizeVolumeId,
+        size_volume_label: parsedRequestCustomization?.size_volume
       });
       if (resolved) {
         variantPrice = resolved.variantPrice;
@@ -569,6 +633,24 @@ exports.addToCart = asyncHandler(async (req, res) => {
       }
     } catch (err) {
       console.error('Error processing variant selection:', err);
+    }
+  }
+
+  // Fallback: trust variant price sent from storefront when DB row missing
+  if (variantPrice === null && parsedRequestCustomization) {
+    const fallbackPrice =
+      parsedRequestCustomization.variant_price ??
+      parsedRequestCustomization.eye_hygiene_variant_price;
+    if (fallbackPrice !== undefined && fallbackPrice !== null && fallbackPrice !== '') {
+      const parsed = parseFloat(fallbackPrice);
+      if (Number.isFinite(parsed)) {
+        variantPrice = parsed;
+        if (!customizationData) {
+          customizationData = { ...parsedRequestCustomization };
+        } else {
+          customizationData.variant_price = parsed;
+        }
+      }
     }
   }
 
@@ -688,46 +770,13 @@ exports.addToCart = asyncHandler(async (req, res) => {
     where: existingItemWhere
   });
 
-  // Additional check: if color is selected, verify it matches existing item's color
+  // Only merge quantity when the same variant (size, color, etc.) is already in the cart
   let shouldUpdateExisting = false;
-  if (existingItem && selected_color && customizationData) {
-    // Parse existing item's customization to check color match
-    let existingCustomization = null;
-    if (existingItem.customization) {
-      try {
-        existingCustomization = typeof existingItem.customization === 'string'
-          ? JSON.parse(existingItem.customization)
-          : existingItem.customization;
-      } catch (e) {
-        existingCustomization = null;
-      }
-    }
-    
-    // If existing item has same color, update quantity
-    if (existingCustomization && existingCustomization.selected_color) {
-      const existingColor = existingCustomization.selected_color.toLowerCase().trim();
-      const newColor = customizationData.selected_color.toLowerCase().trim();
-      shouldUpdateExisting = existingColor === newColor;
-    } else if (!existingCustomization || !existingCustomization.selected_color) {
-      // Existing item has no color, treat as different item if color is now selected
-      shouldUpdateExisting = false;
-    }
-  } else if (existingItem && !selected_color) {
-    // No color selected, check if existing item also has no color
-    let existingCustomization = null;
-    if (existingItem.customization) {
-      try {
-        existingCustomization = typeof existingItem.customization === 'string'
-          ? JSON.parse(existingItem.customization)
-          : existingItem.customization;
-      } catch (e) {
-        existingCustomization = null;
-      }
-    }
-    shouldUpdateExisting = !existingCustomization || !existingCustomization.selected_color;
-  } else if (existingItem) {
-    // Existing item found, update it
-    shouldUpdateExisting = true;
+  if (existingItem) {
+    const existingCustomization = parseCustomizationField(existingItem.customization);
+    const newKey = getCartVariantKey(customizationData || parsedRequestCustomization);
+    const existingKey = getCartVariantKey(existingCustomization);
+    shouldUpdateExisting = newKey === existingKey;
   }
 
   if (existingItem && shouldUpdateExisting) {
