@@ -285,40 +285,80 @@ const parseJsonFieldToUnitArray = (val) => {
   }
 };
 
-/** Merge incoming pack fields with existing row so a partial save does not drop other packs. */
+/**
+ * Apply pack fields on config update.
+ * When admin sends available_units (+ prices/images), treat as authoritative replacement
+ * so removed packs are deleted from DB — do not merge leftover keys from existing row.
+ */
 const reconcilePackFieldsForUpdate = (existingConfig, { available_units, unit_prices, unit_images }) => {
   const existingUnits = parseJsonFieldToUnitArray(existingConfig.available_units);
   const existingPrices = parseJsonFieldToObject(existingConfig.unit_prices);
   const existingImages = parseJsonFieldToObject(existingConfig.unit_images);
 
   const unitsExplicit = available_units !== undefined;
+  const pricesExplicit = unit_prices !== undefined;
+  const imagesExplicit = unit_images !== undefined;
+
   const incomingUnits = unitsExplicit
     ? parseJsonFieldToUnitArray(normalizeAvailableUnitsForDb(available_units))
     : null;
-  const incomingPrices =
-    unit_prices !== undefined ? parseJsonFieldToObject(normalizeUnitPricesForDb(unit_prices)) : null;
-  const incomingImages = unit_images;
+  const incomingPrices = pricesExplicit
+    ? parseJsonFieldToObject(normalizeUnitPricesForDb(unit_prices))
+    : null;
+  let incomingImages = null;
+  if (imagesExplicit) {
+    if (unit_images === null || unit_images === '') {
+      incomingImages = {};
+    } else if (typeof unit_images === 'string') {
+      incomingImages = parseJsonFieldToObject(unit_images);
+    } else if (typeof unit_images === 'object' && !Array.isArray(unit_images)) {
+      incomingImages = unit_images;
+    } else {
+      incomingImages = {};
+    }
+  }
 
-  const mergedPrices = { ...existingPrices, ...(incomingPrices || {}) };
-  const mergedImages =
-    incomingImages !== undefined
-      ? typeof incomingImages === 'string'
-        ? parseJsonFieldToObject(incomingImages)
-        : incomingImages
-      : { ...existingImages };
+  const isFullPackReplace = unitsExplicit && (pricesExplicit || imagesExplicit);
+
+  if (isFullPackReplace) {
+    const allowed = [...new Set(incomingUnits || [])]
+      .map((u) => (typeof u === 'number' ? u : parseInt(String(u), 10)))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+    const allowedKeys = new Set(allowed.map(String));
+
+    const prunedPrices = {};
+    if (incomingPrices) {
+      Object.entries(incomingPrices).forEach(([k, v]) => {
+        if (allowedKeys.has(String(k))) prunedPrices[k] = v;
+      });
+    }
+
+    const prunedImages = {};
+    allowedKeys.forEach((k) => {
+      prunedImages[k] = incomingImages && Object.prototype.hasOwnProperty.call(incomingImages, k)
+        ? incomingImages[k]
+        : [];
+    });
+
+    return {
+      available_units: allowed.length > 0 ? JSON.stringify(allowed) : null,
+      unit_prices: Object.keys(prunedPrices).length > 0 ? JSON.stringify(prunedPrices) : null,
+      unit_images: allowed.length > 0 ? JSON.stringify(prunedImages) : null,
+    };
+  }
+
+  // Partial update (legacy): merge with existing
+  const mergedPrices = pricesExplicit ? { ...existingPrices, ...incomingPrices } : { ...existingPrices };
+  const mergedImages = imagesExplicit ? { ...existingImages, ...incomingImages } : { ...existingImages };
 
   let allowed;
   if (unitsExplicit) {
-    allowed = [...new Set([...(incomingUnits || []), ...Object.keys(mergedPrices), ...Object.keys(mergedImages)])]
+    allowed = [...new Set(incomingUnits || [])]
       .map((u) => (typeof u === 'number' ? u : parseInt(String(u), 10)))
       .filter((n) => !Number.isNaN(n) && n > 0);
   } else {
     allowed = [
-      ...new Set([
-        ...existingUnits,
-        ...Object.keys(mergedPrices),
-        ...Object.keys(mergedImages),
-      ]),
+      ...new Set([...existingUnits, ...Object.keys(mergedPrices), ...Object.keys(mergedImages)]),
     ]
       .map((u) => (typeof u === 'number' ? u : parseInt(String(u), 10)))
       .filter((n) => !Number.isNaN(n) && n > 0);
