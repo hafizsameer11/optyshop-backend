@@ -252,6 +252,38 @@ exports.uploadProductFiles = () => {
   };
 };
 
+// Contact lens config: accept any unit_images_<packSize> field (not limited to 10/20/30/…)
+exports.uploadContactLensConfigFiles = () => {
+  const anyUpload = upload.any();
+
+  return (req, res, next) => {
+    anyUpload(req, res, (err) => {
+      if (err) {
+        console.error('❌ Multer error in contact lens config upload:', {
+          name: err.name,
+          code: err.code,
+          message: err.message,
+          url: req.originalUrl,
+          method: req.method
+        });
+        return next(err);
+      }
+
+      const filesByField = {};
+      if (req.files && Array.isArray(req.files)) {
+        req.files.forEach((file) => {
+          const fn = file.fieldname;
+          if (!fn.startsWith('unit_images_')) return;
+          if (!filesByField[fn]) filesByField[fn] = [];
+          filesByField[fn].push(file);
+        });
+      }
+      req.files = filesByField;
+      next();
+    });
+  };
+};
+
 // Support form attachments upload (max 5 files, 100MB each)
 exports.uploadSupportAttachments = (fieldName = 'attachments') => supportUpload.array(fieldName, 5);
 

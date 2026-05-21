@@ -195,7 +195,9 @@ function applyResolvedVariant(foundVariant, selectedVariantId, variantType) {
 
   return {
     variantPrice: foundVariant.price,
-    customizationData
+    customizationData,
+    stockQuantity: foundVariant.stock_quantity,
+    stockStatus: foundVariant.stock_status
   };
 }
 
@@ -531,7 +533,7 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addToCart = asyncHandler(async (req, res) => {
   const { 
     product_id, 
-    quantity = 1, 
+    quantity: quantityRaw = 1, 
     lens_index, 
     lens_coating, 
     lens_coatings, 
@@ -572,6 +574,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
     // Coupon code (optional - will be applied automatically)
     coupon_code
   } = req.body;
+
+  const quantity = Math.max(1, parseInt(quantityRaw, 10) || 1);
 
   // Get or create cart
   let cart = await prisma.cart.findUnique({ where: { user_id: req.user.id } });
@@ -617,6 +621,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   const resolvedSizeVolumeId = size_volume_variant_id
     ?? parsedRequestCustomization?.size_volume_variant_id;
 
+  let resolvedVariantStockQuantity = null;
   if (selected_variant_id || resolvedEyeHygieneId || resolvedSizeVolumeId) {
     try {
       const productWithVariants = await loadProductVariantRelations(product_id);
@@ -630,6 +635,12 @@ exports.addToCart = asyncHandler(async (req, res) => {
       if (resolved) {
         variantPrice = resolved.variantPrice;
         customizationData = resolved.customizationData;
+        if (resolved.stockQuantity != null && !Number.isNaN(Number(resolved.stockQuantity))) {
+          resolvedVariantStockQuantity = Number(resolved.stockQuantity);
+        }
+        if (resolved.stockStatus === 'out_of_stock') {
+          return error(res, 'Selected variant is out of stock', 400);
+        }
       }
     } catch (err) {
       console.error('Error processing variant selection:', err);
@@ -749,11 +760,12 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   }
 
-  // Check stock
-  const stockQuantity = product.stock_quantity;
-  
-  if (stockQuantity < quantity) {
-    return error(res, 'Insufficient stock', 400);
+  // Check stock (use size/volume variant stock when a variant was selected)
+  const stockQuantity =
+    resolvedVariantStockQuantity != null ? resolvedVariantStockQuantity : product.stock_quantity;
+
+  if (stockQuantity != null && Number(stockQuantity) < quantity) {
+    return error(res, `Insufficient stock. Only ${stockQuantity} available.`, 400);
   }
 
   // Check if item already exists in cart (with same product, lens_index, and color)

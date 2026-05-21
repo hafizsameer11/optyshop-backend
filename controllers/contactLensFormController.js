@@ -144,9 +144,33 @@ const normalizeLastIfArray = (val) => {
   return val;
 };
 
-/** unit_prices: duplicate keys may become an array — take last; canonical JSON string for DB */
+const parseJsonObjectFragment = (item) => {
+  if (item === undefined || item === null || item === '') return null;
+  if (typeof item === 'object' && !Array.isArray(item)) return item;
+  if (typeof item === 'string') {
+    const t = item.trim();
+    if (!t) return null;
+    try {
+      const parsed = JSON.parse(t);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+/** unit_prices: duplicate multipart keys may become an array — merge all fragments */
 const normalizeUnitPricesForDb = (val) => {
   if (val === undefined || val === null || val === '') return null;
+  if (Array.isArray(val)) {
+    const merged = {};
+    val.forEach((item) => {
+      const obj = parseJsonObjectFragment(item);
+      if (obj) Object.assign(merged, obj);
+    });
+    return Object.keys(merged).length > 0 ? JSON.stringify(merged) : null;
+  }
   const raw = normalizeLastIfArray(val);
   if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
     return JSON.stringify(raw);
@@ -164,24 +188,66 @@ const normalizeUnitPricesForDb = (val) => {
 
 const normalizeAvailableUnitsForDb = (val) => {
   if (val === undefined || val === null || val === '') return null;
+  const collect = (arr) =>
+    arr
+      .map((v) => {
+        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+        return !Number.isNaN(n) && n > 0 ? n : null;
+      })
+      .filter((n) => n !== null);
+
+  if (Array.isArray(val)) {
+    const all = [];
+    val.forEach((item) => {
+      if (Array.isArray(item)) {
+        all.push(...collect(item));
+        return;
+      }
+      if (typeof item === 'string') {
+        const t = item.trim();
+        if (!t) return;
+        try {
+          const parsed = JSON.parse(t);
+          if (Array.isArray(parsed)) all.push(...collect(parsed));
+          else all.push(...collect([parsed]));
+        } catch {
+          all.push(...collect([item]));
+        }
+        return;
+      }
+      all.push(...collect([item]));
+    });
+    const unique = [...new Set(all)];
+    return unique.length > 0 ? JSON.stringify(unique) : null;
+  }
+
   const raw = normalizeLastIfArray(val);
-  if (Array.isArray(raw)) return JSON.stringify(raw);
+  if (Array.isArray(raw)) return JSON.stringify([...new Set(collect(raw))]);
   if (typeof raw === 'string') {
     const t = raw.trim();
     if (!t) return null;
     try {
       const parsed = JSON.parse(t);
-      return JSON.stringify(Array.isArray(parsed) ? parsed : [parsed]);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      return JSON.stringify([...new Set(collect(arr))]);
     } catch {
-      return JSON.stringify([raw]);
+      return JSON.stringify(collect([raw]));
     }
   }
-  return JSON.stringify([raw]);
+  return JSON.stringify(collect([raw]));
 };
 
 /** unit_images from JSON body or multipart field (stringified JSON). Empty object {} means clear all URLs. */
 const parseUnitImagesBody = (unit_images) => {
   if (unit_images === undefined || unit_images === null || unit_images === '') return undefined;
+  if (Array.isArray(unit_images)) {
+    const merged = {};
+    unit_images.forEach((item) => {
+      const obj = parseJsonObjectFragment(item);
+      if (obj) Object.assign(merged, obj);
+    });
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
   if (typeof unit_images === 'object' && !Array.isArray(unit_images)) return unit_images;
   if (typeof unit_images === 'string') {
     const t = unit_images.trim();
@@ -192,6 +258,106 @@ const parseUnitImagesBody = (unit_images) => {
     } catch {
       return undefined;
     }
+  }
+  return undefined;
+};
+
+const parseJsonFieldToObject = (val, fallback = {}) => {
+  if (val === undefined || val === null || val === '') return { ...fallback };
+  try {
+    const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { ...fallback };
+  } catch {
+    return { ...fallback };
+  }
+};
+
+const parseJsonFieldToUnitArray = (val) => {
+  if (val === undefined || val === null || val === '') return [];
+  try {
+    const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+    const arr = Array.isArray(parsed) ? parsed : [parsed];
+    return arr
+      .map((v) => (typeof v === 'number' ? v : parseInt(String(v), 10)))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+  } catch {
+    return [];
+  }
+};
+
+/** Merge incoming pack fields with existing row so a partial save does not drop other packs. */
+const reconcilePackFieldsForUpdate = (existingConfig, { available_units, unit_prices, unit_images }) => {
+  const existingUnits = parseJsonFieldToUnitArray(existingConfig.available_units);
+  const existingPrices = parseJsonFieldToObject(existingConfig.unit_prices);
+  const existingImages = parseJsonFieldToObject(existingConfig.unit_images);
+
+  const unitsExplicit = available_units !== undefined;
+  const incomingUnits = unitsExplicit
+    ? parseJsonFieldToUnitArray(normalizeAvailableUnitsForDb(available_units))
+    : null;
+  const incomingPrices =
+    unit_prices !== undefined ? parseJsonFieldToObject(normalizeUnitPricesForDb(unit_prices)) : null;
+  const incomingImages = unit_images;
+
+  const mergedPrices = { ...existingPrices, ...(incomingPrices || {}) };
+  const mergedImages =
+    incomingImages !== undefined
+      ? typeof incomingImages === 'string'
+        ? parseJsonFieldToObject(incomingImages)
+        : incomingImages
+      : { ...existingImages };
+
+  let allowed;
+  if (unitsExplicit) {
+    allowed = [...new Set([...(incomingUnits || []), ...Object.keys(mergedPrices), ...Object.keys(mergedImages)])]
+      .map((u) => (typeof u === 'number' ? u : parseInt(String(u), 10)))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+  } else {
+    allowed = [
+      ...new Set([
+        ...existingUnits,
+        ...Object.keys(mergedPrices),
+        ...Object.keys(mergedImages),
+      ]),
+    ]
+      .map((u) => (typeof u === 'number' ? u : parseInt(String(u), 10)))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+  }
+  const allowedKeys = new Set(allowed.map(String));
+
+  const prunedPrices = {};
+  Object.entries(mergedPrices).forEach(([k, v]) => {
+    if (allowedKeys.has(String(k))) prunedPrices[k] = v;
+  });
+
+  const prunedImages = {};
+  Object.entries(mergedImages).forEach(([k, v]) => {
+    if (allowedKeys.has(String(k))) prunedImages[k] = v;
+  });
+
+  return {
+    available_units: allowed.length > 0 ? JSON.stringify(allowed) : null,
+    unit_prices: Object.keys(prunedPrices).length > 0 ? JSON.stringify(prunedPrices) : null,
+    unit_images: Object.keys(prunedImages).length > 0 ? JSON.stringify(prunedImages) : null,
+  };
+};
+
+const lookupUnitPackValue = (map, unit) => {
+  if (!map || typeof map !== 'object') return undefined;
+  const unitKey = String(unit);
+  if (map[unitKey] !== undefined) return map[unitKey];
+  const target = String(unit)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/packs?$/i, '');
+  for (const [key, value] of Object.entries(map)) {
+    const normalized = String(key)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/packs?$/i, '');
+    if (normalized === target) return value;
   }
   return undefined;
 };
@@ -998,20 +1164,17 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     const b = parseMultipartBoolean(is_active);
     if (b !== undefined) updateData.is_active = b;
   }
-  if (available_units !== undefined) {
-    updateData.available_units =
-      available_units === null || available_units === '' ? null : normalizeAvailableUnitsForDb(available_units);
-  }
-  if (unit_prices !== undefined) {
-    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : normalizeUnitPricesForDb(unit_prices);
-  }
-  if (processedUnitImages !== undefined) {
-    updateData.unit_images =
-      processedUnitImages === null || processedUnitImages === ''
-        ? null
-        : typeof processedUnitImages === 'string'
-          ? processedUnitImages
-          : JSON.stringify(processedUnitImages);
+  const packFieldsTouched =
+    available_units !== undefined || unit_prices !== undefined || processedUnitImages !== undefined;
+  if (packFieldsTouched) {
+    const reconciled = reconcilePackFieldsForUpdate(existingConfig, {
+      available_units,
+      unit_prices,
+      unit_images: processedUnitImages,
+    });
+    updateData.available_units = reconciled.available_units;
+    updateData.unit_prices = reconciled.unit_prices;
+    updateData.unit_images = reconciled.unit_images;
   }
   if (right_qty !== undefined) {
     updateData.right_qty = stringifyEyeArrayForDb(right_qty);
@@ -1518,20 +1681,17 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     const b = parseMultipartBoolean(is_active);
     if (b !== undefined) updateData.is_active = b;
   }
-  if (available_units !== undefined) {
-    updateData.available_units =
-      available_units === null || available_units === '' ? null : normalizeAvailableUnitsForDb(available_units);
-  }
-  if (unit_prices !== undefined) {
-    updateData.unit_prices = unit_prices === null || unit_prices === '' ? null : normalizeUnitPricesForDb(unit_prices);
-  }
-  if (processedUnitImages !== undefined) {
-    updateData.unit_images =
-      processedUnitImages === null || processedUnitImages === ''
-        ? null
-        : typeof processedUnitImages === 'string'
-          ? processedUnitImages
-          : JSON.stringify(processedUnitImages);
+  const packFieldsTouched =
+    available_units !== undefined || unit_prices !== undefined || processedUnitImages !== undefined;
+  if (packFieldsTouched) {
+    const reconciled = reconcilePackFieldsForUpdate(existingConfig, {
+      available_units,
+      unit_prices,
+      unit_images: processedUnitImages,
+    });
+    updateData.available_units = reconciled.available_units;
+    updateData.unit_prices = reconciled.unit_prices;
+    updateData.unit_images = reconciled.unit_images;
   }
 
   const rightFields = ['right_qty', 'right_base_curve', 'right_diameter', 'right_power', 'right_cylinder', 'right_axis'];
@@ -2322,14 +2482,18 @@ exports.getUnitPriceAndImages = asyncHandler(async (req, res) => {
     console.error('Error parsing available_units, unit_prices or unit_images:', e);
   }
 
-  // Convert unit to string for lookup (keys in unit_prices/unit_images are strings)
-  const unitKey = String(unit);
+  const unitKey = String(unitValue);
 
-  // Get price for the selected unit
-  const unitPrice = unitPrices && unitPrices[unitKey] !== undefined ? parseFloat(unitPrices[unitKey]) : (config.price ? parseFloat(config.price) : null);
-  
-  // Get images for the selected unit
-  const unitImageUrls = unitImages && unitImages[unitKey] ? (Array.isArray(unitImages[unitKey]) ? unitImages[unitKey] : [unitImages[unitKey]]) : null;
+  const rawUnitPrice = lookupUnitPackValue(unitPrices, unitValue);
+  const unitPrice =
+    rawUnitPrice !== undefined ? parseFloat(rawUnitPrice) : config.price ? parseFloat(config.price) : null;
+
+  const rawUnitImages = lookupUnitPackValue(unitImages, unitValue);
+  const unitImageUrls = rawUnitImages
+    ? Array.isArray(rawUnitImages)
+      ? rawUnitImages
+      : [rawUnitImages]
+    : null;
 
   // If no unit-specific images, fall back to general images
   let images = unitImageUrls;

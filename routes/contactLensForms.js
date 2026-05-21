@@ -22,13 +22,7 @@ const {
   getUnitPriceAndImages
 } = require('../controllers/contactLensFormController');
 const { protect, authorize } = require('../middleware/auth');
-const { uploadFields } = require('../middleware/upload');
-
-// Multer matches exact multipart field names. Accept both `unit_images_90` and legacy `unit_images_90[]`.
-const CONTACT_LENS_UNIT_IMAGE_FIELDS = [10, 20, 30, 60, 90, 180].flatMap((u) => [
-  { name: `unit_images_${u}`, maxCount: 5 },
-  { name: `unit_images_${u}[]`, maxCount: 5 },
-]);
+const { uploadContactLensConfigFiles } = require('../middleware/upload');
 
 // Public routes (Website)
 router.get('/config/:sub_category_id', getFormConfig);
@@ -51,14 +45,14 @@ router.delete('/admin/astigmatism/dropdown-values/:id', protect, authorize('admi
 
 // Admin routes - Astigmatism configurations
 router.get('/admin/astigmatism', protect, authorize('admin', 'staff'), getAstigmatismConfigs);
-router.post('/admin/astigmatism', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), createAstigmatismConfig);
-router.put('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), updateAstigmatismConfig);
+router.post('/admin/astigmatism', protect, authorize('admin', 'staff'), uploadContactLensConfigFiles(), createAstigmatismConfig);
+router.put('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), uploadContactLensConfigFiles(), updateAstigmatismConfig);
 router.delete('/admin/astigmatism/:id', protect, authorize('admin', 'staff'), deleteAstigmatismConfig);
 
 // Admin routes - Spherical configurations
 router.get('/admin/spherical', protect, authorize('admin', 'staff'), getSphericalConfigs);
-router.post('/admin/spherical', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), createSphericalConfig);
-router.put('/admin/spherical/:id', protect, authorize('admin', 'staff'), uploadFields(CONTACT_LENS_UNIT_IMAGE_FIELDS), updateSphericalConfig);
+router.post('/admin/spherical', protect, authorize('admin', 'staff'), uploadContactLensConfigFiles(), createSphericalConfig);
+router.put('/admin/spherical/:id', protect, authorize('admin', 'staff'), uploadContactLensConfigFiles(), updateSphericalConfig);
 router.delete('/admin/spherical/:id', protect, authorize('admin', 'staff'), deleteSphericalConfig);
 
 module.exports = router;
