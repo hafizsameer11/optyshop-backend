@@ -1698,7 +1698,10 @@ exports.addProductCaliber = asyncHandler(async (req, res) => {
       return error(res, 'Caliber already exists', 400);
     }
 
-    currentCalibers.push({ mm, image_url });
+    const normalizedImageUrl =
+      image_url && String(image_url).trim() ? String(image_url).trim() : '';
+
+    currentCalibers.push({ mm, image_url: normalizedImageUrl });
 
     const updatedProduct = await prisma.product.update({
       where: { id: parseInt(productId) },
@@ -1734,7 +1737,10 @@ exports.updateProductCaliber = asyncHandler(async (req, res) => {
       return error(res, 'Caliber not found', 404);
     }
 
-    currentCalibers[caliberIndex].image_url = image_url;
+    if (image_url !== undefined) {
+      currentCalibers[caliberIndex].image_url =
+        image_url && String(image_url).trim() ? String(image_url).trim() : '';
+    }
 
     const updatedProduct = await prisma.product.update({
       where: { id: parseInt(productId) },

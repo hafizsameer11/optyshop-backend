@@ -112,10 +112,18 @@ exports.getBannersAdmin = asyncHandler(async (req, res) => {
     return success(res, 'Banners retrieved', { banners });
 });
 
-exports.createBanner = asyncHandler(async (req, res) => {
-    if (!req.file) return error(res, 'Image is required', 400);
+const getBannerUploadFile = (req, fieldName) => {
+    const fromFields = req.files?.[fieldName]?.[0];
+    if (fromFields) return fromFields;
+    if (fieldName === 'image' && req.file) return req.file;
+    return null;
+};
 
-    const url = await uploadToS3(req.file, 'cms/banners');
+exports.createBanner = asyncHandler(async (req, res) => {
+    const imageFile = getBannerUploadFile(req, 'image');
+    if (!imageFile) return error(res, 'Image is required', 400);
+
+    const url = await uploadToS3(imageFile, 'cms/banners');
     const data = { ...req.body };
     
     // Set default position if not provided (using position instead of page_type)
@@ -190,6 +198,11 @@ exports.createBanner = asyncHandler(async (req, res) => {
     // Remove any potential invalid properties
     delete cleanData.include;
     
+    const mobileImageFile = getBannerUploadFile(req, 'mobile_image');
+    if (mobileImageFile) {
+        cleanData.mobile_image_url = await uploadToS3(mobileImageFile, 'cms/banners');
+    }
+
     const banner = await prisma.banner.create({
         data: {
             ...cleanData,
@@ -222,9 +235,14 @@ exports.updateBanner = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = { ...req.body };
 
-    if (req.file) {
-        const url = await uploadToS3(req.file, 'cms/banners');
-        data.image_url = url;
+    const imageFile = getBannerUploadFile(req, 'image');
+    if (imageFile) {
+        data.image_url = await uploadToS3(imageFile, 'cms/banners');
+    }
+
+    const mobileImageFile = getBannerUploadFile(req, 'mobile_image');
+    if (mobileImageFile) {
+        data.mobile_image_url = await uploadToS3(mobileImageFile, 'cms/banners');
     }
     
     // Validate position if provided (using position instead of page_type)
@@ -346,8 +364,13 @@ exports.deleteBanner = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const banner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
     if (banner) {
-        const key = banner.image_url.split('.com/')[1];
-        if (key) await deleteFromS3(key);
+        const keys = [banner.image_url, banner.mobile_image_url]
+            .filter(Boolean)
+            .map((url) => url.split('.com/')[1])
+            .filter(Boolean);
+        for (const key of keys) {
+            await deleteFromS3(key);
+        }
         await prisma.banner.delete({ where: { id: parseInt(id) } });
     }
     return success(res, 'Banner deleted');

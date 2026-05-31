@@ -799,6 +799,7 @@ model Banner {
   id              Int            @id @default(autoincrement())
   title           String         @db.VarChar(150)
   image_url       String         @db.VarChar(500)
+  mobile_image_url String?       @db.VarChar(500)
   link_url        String?        @db.VarChar(500)
   position        String?        @db.VarChar(50)
   page_type       BannerPageType @default(home)

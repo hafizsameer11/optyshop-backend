@@ -365,8 +365,8 @@ router.delete('/brands/:id', deleteBrand);
 
 // Banners
 router.get('/banners', getBannersAdmin);
-router.post('/banners', uploadSingle('image'), createBanner);
-router.put('/banners/:id', uploadSingleOptional('image'), updateBanner);
+router.post('/banners', uploadFields([{ name: 'image', maxCount: 1 }, { name: 'mobile_image', maxCount: 1 }]), createBanner);
+router.put('/banners/:id', uploadFields([{ name: 'image', maxCount: 1 }, { name: 'mobile_image', maxCount: 1 }]), updateBanner);
 router.delete('/banners/:id', deleteBanner);
 
 // Blog Posts
