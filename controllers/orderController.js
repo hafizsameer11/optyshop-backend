@@ -87,6 +87,137 @@ const parseOrderItems = (items) => {
   });
 };
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const parseJsonField = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const getAddressEmail = (addressField) => {
+  const addr = parseJsonField(addressField);
+  return addr?.email ? normalizeEmail(addr.email) : '';
+};
+
+const sanitizeTrackedOrder = (order) => {
+  const shipping = parseJsonField(order.shipping_address);
+  const billing = parseJsonField(order.billing_address);
+
+  return {
+    order_number: order.order_number,
+    status: order.status,
+    payment_status: order.payment_status,
+    payment_method: order.payment_method,
+    subtotal: order.subtotal,
+    tax: order.tax,
+    shipping: order.shipping,
+    discount: order.discount,
+    total: order.total,
+    created_at: order.created_at,
+    updated_at: order.updated_at,
+    shipped_at: order.shipped_at,
+    delivered_at: order.delivered_at,
+    shipping_address: shipping
+      ? {
+          first_name: shipping.first_name,
+          last_name: shipping.last_name,
+          city: shipping.city,
+          zip_code: shipping.zip_code,
+          country: shipping.country,
+        }
+      : null,
+    billing_address: billing
+      ? {
+          first_name: billing.first_name,
+          last_name: billing.last_name,
+          city: billing.city,
+          zip_code: billing.zip_code,
+          country: billing.country,
+        }
+      : null,
+    items: parseOrderItems(order.items).map((item) => ({
+      id: item.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      product_sku: item.product_sku,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+      product: item.product
+        ? {
+            id: item.product.id,
+            name: item.product.name,
+            slug: item.product.slug,
+            images: item.product.images,
+          }
+        : null,
+      contact_lens_details: item.contact_lens_details || null,
+    })),
+  };
+};
+
+// @desc    Track order by order number + email (public)
+// @route   POST /api/orders/track
+// @access  Public
+exports.trackOrder = asyncHandler(async (req, res) => {
+  const orderNumber = String(req.body.order_number || req.query.order_number || '').trim();
+  const email = normalizeEmail(req.body.email || req.query.email);
+
+  if (!orderNumber) {
+    return error(res, 'Order number is required', 400);
+  }
+  if (!email) {
+    return error(res, 'Email is required', 400);
+  }
+
+  const order = await prisma.order.findFirst({
+    where: {
+      order_number: orderNumber.toUpperCase(),
+    },
+    include: {
+      user: {
+        select: {
+          email: true,
+          first_name: true,
+          last_name: true,
+        },
+      },
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              images: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!order) {
+    return error(res, 'Order not found. Please check your order number and email.', 404);
+  }
+
+  const shippingEmail = getAddressEmail(order.shipping_address);
+  const userEmail = normalizeEmail(order.user?.email);
+
+  if (email !== shippingEmail && email !== userEmail) {
+    return error(res, 'Order not found. Please check your order number and email.', 404);
+  }
+
+  return success(res, 'Order found', {
+    order: sanitizeTrackedOrder(order),
+  });
+});
+
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private

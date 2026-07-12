@@ -2217,7 +2217,11 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     selected_color,
     selectedColor,
     color_display_name,
-    colorDisplayName
+    colorDisplayName,
+    selected_unit,
+    selectedUnit,
+    config_id,
+    configId,
   } = req.body;
 
   const selectedColorParam =
@@ -2232,6 +2236,17 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
       : colorDisplayName !== undefined && colorDisplayName !== null && String(colorDisplayName).trim() !== ''
         ? String(colorDisplayName).trim()
         : '';
+
+  const selectedUnitRaw =
+    selected_unit !== undefined && selected_unit !== null && String(selected_unit).trim() !== ''
+      ? selected_unit
+      : selectedUnit !== undefined && selectedUnit !== null && String(selectedUnit).trim() !== ''
+        ? selectedUnit
+        : null;
+  const selectedUnitValue =
+    selectedUnitRaw !== null && !isNaN(parseInt(String(selectedUnitRaw), 10))
+      ? parseInt(String(selectedUnitRaw), 10)
+      : null;
 
   // Validate required fields
   if (!product_id) {
@@ -2258,22 +2273,145 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
   // All values come from dropdowns as strings, so we parse them carefully
   const parseNum = (val, type = 'float') => {
     if (val === undefined || val === null || val === '') return null;
-    const parsed = type === 'int' ? parseInt(String(val)) : parseFloat(String(val));
+    const parsed = type === 'int' ? parseInt(String(val), 10) : parseFloat(String(val));
     return isNaN(parsed) ? null : parsed;
   };
 
+  // Allow 0 for a disabled eye — do NOT use `|| 1` (0 is falsy and was forcing qty 2).
+  const rightQtyParsed = parseNum(right_qty, 'int');
+  const leftQtyParsed = parseNum(left_qty, 'int');
+  const rightQty = rightQtyParsed === null ? 0 : Math.max(0, rightQtyParsed);
+  const leftQty = leftQtyParsed === null ? 0 : Math.max(0, leftQtyParsed);
+
+  if (rightQty < 1 && leftQty < 1) {
+    return error(res, 'Select at least one eye with quantity of 1 or more', 400);
+  }
+
   const contactLensData = {
-    contact_lens_right_qty: parseNum(right_qty, 'int') || 1,
-    contact_lens_right_base_curve: parseNum(right_base_curve),
-    contact_lens_right_diameter: parseNum(right_diameter),
-    contact_lens_right_power: parseNum(right_power),
-    contact_lens_left_qty: parseNum(left_qty, 'int') || 1,
-    contact_lens_left_base_curve: parseNum(left_base_curve),
-    contact_lens_left_diameter: parseNum(left_diameter),
-    contact_lens_left_power: parseNum(left_power)
+    contact_lens_right_qty: rightQty,
+    contact_lens_right_base_curve: rightQty > 0 ? parseNum(right_base_curve) : null,
+    contact_lens_right_diameter: rightQty > 0 ? parseNum(right_diameter) : null,
+    contact_lens_right_power: rightQty > 0 ? parseNum(right_power) : null,
+    contact_lens_left_qty: leftQty,
+    contact_lens_left_base_curve: leftQty > 0 ? parseNum(left_base_curve) : null,
+    contact_lens_left_diameter: leftQty > 0 ? parseNum(left_diameter) : null,
+    contact_lens_left_power: leftQty > 0 ? parseNum(left_power) : null
   };
 
-  // Customization: astigmatism (cylinder/axis) + optional color variant (same structure as frame cart lines)
+  // Resolve pack (unit) price from contact lens configurations for this product
+  const productIdInt = parseInt(product_id, 10);
+  const configIdInt =
+    config_id !== undefined && config_id !== null && String(config_id).trim() !== ''
+      ? parseInt(String(config_id), 10)
+      : configId !== undefined && configId !== null && String(configId).trim() !== ''
+        ? parseInt(String(configId), 10)
+        : NaN;
+
+  const packWhereOr = [{ product_id: productIdInt }];
+  if (sub_category_id) {
+    packWhereOr.push({ sub_category_id: parseInt(String(sub_category_id), 10) });
+  }
+  if (!isNaN(configIdInt)) {
+    packWhereOr.push({ id: configIdInt });
+  }
+
+  const packConfigs = await prisma.contactLensConfiguration.findMany({
+    where: {
+      configuration_type: form_type,
+      is_active: true,
+      OR: packWhereOr,
+    },
+    select: {
+      id: true,
+      product_id: true,
+      price: true,
+      unit_prices: true,
+      available_units: true,
+    },
+    orderBy: [{ sort_order: 'asc' }],
+  });
+
+  // Prefer explicit config_id, then product-linked configs, then shared subcategory configs
+  const orderedConfigs = [
+    ...(!isNaN(configIdInt) ? packConfigs.filter((c) => c.id === configIdInt) : []),
+    ...packConfigs.filter((c) => c.product_id === productIdInt && (isNaN(configIdInt) || c.id !== configIdInt)),
+    ...packConfigs.filter(
+      (c) =>
+        c.product_id !== productIdInt &&
+        (isNaN(configIdInt) || c.id !== configIdInt)
+    ),
+  ];
+
+  let availableUnitsSet = new Set();
+  let mergedUnitPrices = {};
+  let configFallbackPrice = null;
+
+  for (const cfg of orderedConfigs) {
+    if (configFallbackPrice == null && cfg.price != null) {
+      const p = parseFloat(cfg.price);
+      if (!isNaN(p)) configFallbackPrice = p;
+    }
+    let unitPrices = null;
+    let availableUnits = null;
+    try {
+      if (cfg.unit_prices) {
+        unitPrices =
+          typeof cfg.unit_prices === 'string' ? JSON.parse(cfg.unit_prices) : cfg.unit_prices;
+      }
+      if (cfg.available_units) {
+        availableUnits =
+          typeof cfg.available_units === 'string'
+            ? JSON.parse(cfg.available_units)
+            : cfg.available_units;
+      }
+    } catch (e) {
+      console.error('Error parsing pack unit_prices/available_units:', e);
+    }
+    if (Array.isArray(availableUnits)) {
+      availableUnits.forEach((u) => {
+        const n = parseInt(String(u), 10);
+        if (!isNaN(n)) availableUnitsSet.add(n);
+      });
+    }
+    if (unitPrices && typeof unitPrices === 'object') {
+      Object.keys(unitPrices).forEach((k) => {
+        const n = parseInt(String(k), 10);
+        if (!isNaN(n)) availableUnitsSet.add(n);
+        if (mergedUnitPrices[String(k)] === undefined) {
+          mergedUnitPrices[String(k)] = unitPrices[k];
+        }
+      });
+    }
+  }
+
+  const hasPackOptions = availableUnitsSet.size > 0 || Object.keys(mergedUnitPrices).length > 0;
+
+  if (hasPackOptions && selectedUnitValue == null) {
+    return error(res, 'Pack size (selected_unit) is required for this product', 400);
+  }
+
+  if (selectedUnitValue != null && availableUnitsSet.size > 0 && !availableUnitsSet.has(selectedUnitValue)) {
+    // Still allow if price map has the key via lookupUnitPackValue
+    const hasPrice = lookupUnitPackValue(mergedUnitPrices, selectedUnitValue) !== undefined;
+    if (!hasPrice) {
+      return error(res, `Invalid pack size: ${selectedUnitValue}`, 400);
+    }
+  }
+
+  let unitPrice = parseFloat(product.price);
+  if (selectedUnitValue != null) {
+    const rawPackPrice = lookupUnitPackValue(mergedUnitPrices, selectedUnitValue);
+    if (rawPackPrice !== undefined && rawPackPrice !== null && String(rawPackPrice).trim() !== '') {
+      const parsedPack = parseFloat(rawPackPrice);
+      if (!isNaN(parsedPack)) {
+        unitPrice = parsedPack;
+      }
+    } else if (configFallbackPrice != null) {
+      unitPrice = configFallbackPrice;
+    }
+  }
+
+  // Customization: astigmatism (cylinder/axis) + optional color + selected pack
   const colorCustomization = buildContactLensColorCustomization(
     product,
     selectedColorParam,
@@ -2282,34 +2420,41 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
   let customizationMerged = null;
   if (form_type === 'astigmatism') {
     customizationMerged = {
-      left_cylinder: parseNum(left_cylinder),
-      right_cylinder: parseNum(right_cylinder),
-      left_axis: parseNum(left_axis, 'int'),
-      right_axis: parseNum(right_axis, 'int')
+      left_cylinder: leftQty > 0 ? parseNum(left_cylinder) : null,
+      right_cylinder: rightQty > 0 ? parseNum(right_cylinder) : null,
+      left_axis: leftQty > 0 ? parseNum(left_axis, 'int') : null,
+      right_axis: rightQty > 0 ? parseNum(right_axis, 'int') : null
     };
   }
   if (colorCustomization) {
     customizationMerged = { ...(customizationMerged || {}), ...colorCustomization };
   }
+  if (selectedUnitValue != null) {
+    customizationMerged = {
+      ...(customizationMerged || {}),
+      selected_unit: selectedUnitValue,
+      pack_price: unitPrice,
+    };
+  }
   if (customizationMerged && Object.keys(customizationMerged).length) {
     contactLensData.customization = JSON.stringify(customizationMerged);
   }
 
-  // Calculate quantity (sum of left and right)
-  const quantity = (contactLensData.contact_lens_right_qty || 0) + (contactLensData.contact_lens_left_qty || 0);
+  // Line quantity = packs for enabled eyes only (exact selection)
+  const quantity = rightQty + leftQty;
 
   // Check stock
   if (product.stock_quantity < quantity) {
     return error(res, 'Insufficient stock', 400);
   }
 
-  // Create cart item
+  // Create cart item with selected pack unit_price
   const cartItem = await prisma.cartItem.create({
     data: {
       cart_id: cart.id,
-      product_id: parseInt(product_id),
+      product_id: productIdInt,
       quantity: quantity,
-      unit_price: product.price,
+      unit_price: unitPrice,
       ...contactLensData
     },
     include: {
@@ -2341,9 +2486,22 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     productImages = [];
   }
 
+  let parsedCustomization = null;
+  if (cartItem.customization) {
+    try {
+      parsedCustomization =
+        typeof cartItem.customization === 'string'
+          ? JSON.parse(cartItem.customization)
+          : cartItem.customization;
+    } catch (e) {
+      parsedCustomization = null;
+    }
+  }
+
   const parsedItem = {
     ...cartItem,
-    customization: cartItem.customization ? JSON.parse(cartItem.customization) : null,
+    unit_price: parseFloat(cartItem.unit_price),
+    customization: parsedCustomization,
     product: {
       ...cartItem.product,
       images: productImages

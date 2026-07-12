@@ -4,6 +4,7 @@ const {
   createOrder,
   getOrders,
   getOrder,
+  trackOrder,
   updateOrderStatus,
   cancelOrder,
   processRefund,
@@ -11,7 +12,11 @@ const {
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 
-// All order routes require authentication
+// Public — guest order tracking
+router.post('/track', trackOrder);
+router.get('/track', trackOrder);
+
+// All other order routes require authentication
 router.use(protect);
 
 router.post('/', createOrder);
