@@ -822,17 +822,19 @@ model Banner {
 }
 
 model EyeHygieneVariant {
-  id           Int      @id @default(autoincrement())
-  product_id   Int
-  name         String   @db.VarChar(255)
-  description  String?  @db.Text
-  price        Decimal  @db.Decimal(10, 2)
-  image_url    String?  @db.VarChar(500)
-  is_active    Boolean  @default(true)
-  sort_order   Int      @default(0)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  product      Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  id               Int      @id @default(autoincrement())
+  product_id       Int
+  name             String   @db.VarChar(255)
+  description      String?  @db.Text
+  price            Decimal  @db.Decimal(10, 2)
+  compare_at_price Decimal? @db.Decimal(10, 2)
+  cost_price       Decimal? @db.Decimal(10, 2)
+  image_url        String?  @db.VarChar(500)
+  is_active        Boolean  @default(true)
+  sort_order       Int      @default(0)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  product          Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@index([product_id])
   @@index([is_active])

@@ -1787,7 +1787,7 @@ exports.deleteProductCaliber = asyncHandler(async (req, res) => {
 
 // Eye Hygiene Variant Management
 exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
-  const { product_id, name, description, price, image_url, sort_order } = req.body;
+  const { product_id, name, description, price, compare_at_price, cost_price, image_url, sort_order } = req.body;
 
   try {
     const product = await prisma.product.findUnique({
@@ -1804,6 +1804,14 @@ exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
         name,
         description,
         price: parseFloat(price),
+        compare_at_price:
+          compare_at_price !== undefined && compare_at_price !== null && String(compare_at_price).trim() !== ''
+            ? parseFloat(compare_at_price)
+            : null,
+        cost_price:
+          cost_price !== undefined && cost_price !== null && String(cost_price).trim() !== ''
+            ? parseFloat(cost_price)
+            : null,
         image_url,
         sort_order: parseInt(sort_order) || 0
       }
@@ -1818,7 +1826,7 @@ exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
 
 exports.updateEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, price, image_url, is_active, sort_order } = req.body;
+  const { name, description, price, compare_at_price, cost_price, image_url, is_active, sort_order } = req.body;
 
   try {
     const variant = await prisma.eyeHygieneVariant.findUnique({
@@ -1829,16 +1837,27 @@ exports.updateEyeHygieneVariant = asyncHandler(async (req, res) => {
       return error(res, 'Eye hygiene variant not found', 404);
     }
 
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (compare_at_price !== undefined) {
+      updateData.compare_at_price =
+        compare_at_price !== null && String(compare_at_price).trim() !== ''
+          ? parseFloat(compare_at_price)
+          : null;
+    }
+    if (cost_price !== undefined) {
+      updateData.cost_price =
+        cost_price !== null && String(cost_price).trim() !== '' ? parseFloat(cost_price) : null;
+    }
+    if (image_url !== undefined) updateData.image_url = image_url;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (sort_order !== undefined) updateData.sort_order = parseInt(sort_order) || 0;
+
     const updatedVariant = await prisma.eyeHygieneVariant.update({
       where: { id: parseInt(id) },
-      data: {
-        name,
-        description,
-        price: price ? parseFloat(price) : undefined,
-        image_url,
-        is_active: is_active !== undefined ? Boolean(is_active) : undefined,
-        sort_order: sort_order !== undefined ? parseInt(sort_order) : undefined
-      }
+      data: updateData
     });
 
     return success(res, 'Eye hygiene variant updated successfully', updatedVariant);

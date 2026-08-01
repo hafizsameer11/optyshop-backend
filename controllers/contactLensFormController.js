@@ -935,6 +935,8 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
     left_diameter,
     left_power,
     price,
+    compare_at_price,
+    cost_price,
     display_name,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
     same_for_both_eyes, // Alternative flag name for same functionality
@@ -1029,6 +1031,14 @@ exports.createSphericalConfig = asyncHandler(async (req, res) => {
       left_diameter: finalLeftDiameter !== undefined ? stringifyEyeArrayForDb(finalLeftDiameter) : null,
       left_power: finalLeftPower !== undefined ? stringifyEyeArrayForDb(finalLeftPower) : null,
       price: price ? parseFloat(price) : null,
+      compare_at_price:
+        compare_at_price !== undefined && compare_at_price !== null && String(compare_at_price).trim() !== ''
+          ? parseFloat(compare_at_price)
+          : null,
+      cost_price:
+        cost_price !== undefined && cost_price !== null && String(cost_price).trim() !== ''
+          ? parseFloat(cost_price)
+          : null,
       display_name: display_name || name,
       available_units: available_units !== undefined ? normalizeAvailableUnitsForDb(available_units) : null,
       unit_prices: unit_prices !== undefined ? normalizeUnitPricesForDb(unit_prices) : null,
@@ -1109,6 +1119,8 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
     left_diameter,
     left_power,
     price,
+    compare_at_price,
+    cost_price,
     display_name,
     is_active,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
@@ -1200,6 +1212,16 @@ exports.updateSphericalConfig = asyncHandler(async (req, res) => {
   if (name) updateData.name = name;
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
+  if (compare_at_price !== undefined) {
+    updateData.compare_at_price =
+      compare_at_price !== null && String(compare_at_price).trim() !== ''
+        ? parseFloat(compare_at_price)
+        : null;
+  }
+  if (cost_price !== undefined) {
+    updateData.cost_price =
+      cost_price !== null && String(cost_price).trim() !== '' ? parseFloat(cost_price) : null;
+  }
   if (is_active !== undefined) {
     const b = parseMultipartBoolean(is_active);
     if (b !== undefined) updateData.is_active = b;
@@ -1463,6 +1485,8 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
     left_cylinder,
     left_axis,
     price,
+    compare_at_price,
+    cost_price,
     display_name,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
     same_for_both_eyes, // Alternative flag name for same functionality
@@ -1560,6 +1584,14 @@ exports.createAstigmatismConfig = asyncHandler(async (req, res) => {
       left_cylinder: finalLeftCylinder !== undefined ? stringifyEyeArrayForDb(finalLeftCylinder) : null,
       left_axis: finalLeftAxis !== undefined ? stringifyEyeArrayForDb(finalLeftAxis) : null,
       price: price ? parseFloat(price) : null,
+      compare_at_price:
+        compare_at_price !== undefined && compare_at_price !== null && String(compare_at_price).trim() !== ''
+          ? parseFloat(compare_at_price)
+          : null,
+      cost_price:
+        cost_price !== undefined && cost_price !== null && String(cost_price).trim() !== ''
+          ? parseFloat(cost_price)
+          : null,
       display_name: display_name || name,
       available_units: available_units !== undefined ? normalizeAvailableUnitsForDb(available_units) : null,
       unit_prices: unit_prices !== undefined ? normalizeUnitPricesForDb(unit_prices) : null,
@@ -1647,6 +1679,8 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
     left_cylinder,
     left_axis,
     price,
+    compare_at_price,
+    cost_price,
     display_name,
     is_active,
     copy_right_to_left, // New flag: if true, copy right eye values to left eye
@@ -1717,6 +1751,16 @@ exports.updateAstigmatismConfig = asyncHandler(async (req, res) => {
   if (name) updateData.name = name;
   if (display_name) updateData.display_name = display_name;
   if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
+  if (compare_at_price !== undefined) {
+    updateData.compare_at_price =
+      compare_at_price !== null && String(compare_at_price).trim() !== ''
+        ? parseFloat(compare_at_price)
+        : null;
+  }
+  if (cost_price !== undefined) {
+    updateData.cost_price =
+      cost_price !== null && String(cost_price).trim() !== '' ? parseFloat(cost_price) : null;
+  }
   if (is_active !== undefined) {
     const b = parseMultipartBoolean(is_active);
     if (b !== undefined) updateData.is_active = b;

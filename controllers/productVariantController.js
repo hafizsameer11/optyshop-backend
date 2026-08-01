@@ -138,7 +138,7 @@ exports.getProductCalibers = asyncHandler(async (req, res) => {
 
 // Eye Hygiene Variant Management (Prisma)
 exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
-  const { product_id, name, description, price, image_url, sort_order, is_active } = req.body;
+  const { product_id, name, description, price, compare_at_price, cost_price, image_url, sort_order, is_active } = req.body;
 
   try {
     if (!product_id) {
@@ -163,6 +163,14 @@ exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
         name: String(name).trim(),
         description: description || null,
         price: parseFloat(price),
+        compare_at_price:
+          compare_at_price !== undefined && compare_at_price !== null && String(compare_at_price).trim() !== ''
+            ? parseFloat(compare_at_price)
+            : null,
+        cost_price:
+          cost_price !== undefined && cost_price !== null && String(cost_price).trim() !== ''
+            ? parseFloat(cost_price)
+            : null,
         image_url: image_url || null,
         sort_order: sort_order !== undefined && sort_order !== null && sort_order !== ''
           ? parseInt(sort_order, 10) || 0
@@ -185,7 +193,7 @@ exports.createEyeHygieneVariant = asyncHandler(async (req, res) => {
 
 exports.updateEyeHygieneVariant = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, price, image_url, is_active, sort_order } = req.body;
+  const { name, description, price, compare_at_price, cost_price, image_url, is_active, sort_order } = req.body;
 
   try {
     const idInt = parseInt(id, 10);
@@ -200,6 +208,16 @@ exports.updateEyeHygieneVariant = asyncHandler(async (req, res) => {
     if (price !== undefined && price !== null && price !== '') {
       const p = parseFloat(price);
       if (!isNaN(p)) updateData.price = p;
+    }
+    if (compare_at_price !== undefined) {
+      updateData.compare_at_price =
+        compare_at_price !== null && String(compare_at_price).trim() !== ''
+          ? parseFloat(compare_at_price)
+          : null;
+    }
+    if (cost_price !== undefined) {
+      updateData.cost_price =
+        cost_price !== null && String(cost_price).trim() !== '' ? parseFloat(cost_price) : null;
     }
     if (image_url !== undefined) updateData.image_url = image_url || null;
     if (sort_order !== undefined && sort_order !== null && sort_order !== '') {
