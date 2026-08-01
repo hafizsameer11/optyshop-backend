@@ -2326,6 +2326,7 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
       product_id: true,
       price: true,
       unit_prices: true,
+      unit_images: true,
       available_units: true,
     },
     orderBy: [{ sort_order: 'asc' }],
@@ -2344,6 +2345,7 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
 
   let availableUnitsSet = new Set();
   let mergedUnitPrices = {};
+  let mergedUnitImages = {};
   let configFallbackPrice = null;
 
   for (const cfg of orderedConfigs) {
@@ -2352,11 +2354,16 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
       if (!isNaN(p)) configFallbackPrice = p;
     }
     let unitPrices = null;
+    let unitImages = null;
     let availableUnits = null;
     try {
       if (cfg.unit_prices) {
         unitPrices =
           typeof cfg.unit_prices === 'string' ? JSON.parse(cfg.unit_prices) : cfg.unit_prices;
+      }
+      if (cfg.unit_images) {
+        unitImages =
+          typeof cfg.unit_images === 'string' ? JSON.parse(cfg.unit_images) : cfg.unit_images;
       }
       if (cfg.available_units) {
         availableUnits =
@@ -2365,7 +2372,7 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
             : cfg.available_units;
       }
     } catch (e) {
-      console.error('Error parsing pack unit_prices/available_units:', e);
+      console.error('Error parsing pack unit_prices/unit_images/available_units:', e);
     }
     if (Array.isArray(availableUnits)) {
       availableUnits.forEach((u) => {
@@ -2379,6 +2386,13 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
         if (!isNaN(n)) availableUnitsSet.add(n);
         if (mergedUnitPrices[String(k)] === undefined) {
           mergedUnitPrices[String(k)] = unitPrices[k];
+        }
+      });
+    }
+    if (unitImages && typeof unitImages === 'object') {
+      Object.keys(unitImages).forEach((k) => {
+        if (mergedUnitImages[String(k)] === undefined) {
+          mergedUnitImages[String(k)] = unitImages[k];
         }
       });
     }
@@ -2430,10 +2444,18 @@ exports.addContactLensToCart = asyncHandler(async (req, res) => {
     customizationMerged = { ...(customizationMerged || {}), ...colorCustomization };
   }
   if (selectedUnitValue != null) {
+    const rawPackImages = lookupUnitPackValue(mergedUnitImages, selectedUnitValue);
+    const packImages = (Array.isArray(rawPackImages) ? rawPackImages : rawPackImages ? [rawPackImages] : [])
+      .map((img) => String(img || '').trim())
+      .filter(Boolean);
+
     customizationMerged = {
       ...(customizationMerged || {}),
       selected_unit: selectedUnitValue,
       pack_price: unitPrice,
+      ...(packImages.length
+        ? { unit_images: packImages, unit_image_url: packImages[0] }
+        : {}),
     };
   }
   if (customizationMerged && Object.keys(customizationMerged).length) {

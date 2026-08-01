@@ -9,6 +9,7 @@ const getCartItemDisplayImages = (item, product) => {
   let selectedColorImages = null;
   let caliberImage = null;
   let variantImage = null;
+  let packImages = null;
   let customization = item.customization;
   if (typeof customization === 'string') {
     try {
@@ -36,6 +37,16 @@ const getCartItemDisplayImages = (item, product) => {
   // Check for size volume variant image
   if (customization && customization.size_volume_image_url) {
     variantImage = customization.size_volume_image_url;
+  }
+
+  // Contact lens pack (unit) images — the pack the customer actually selected
+  if (customization && (customization.unit_images || customization.unit_image_url)) {
+    const rawPackImages = customization.unit_images || customization.unit_image_url;
+    const list = Array.isArray(rawPackImages) ? rawPackImages : [rawPackImages];
+    const cleaned = list.map((img) => String(img || '').trim()).filter(Boolean);
+    if (cleaned.length > 0) {
+      packImages = cleaned;
+    }
   }
   
   if (customization && customization.variant_images) {
@@ -83,7 +94,7 @@ const getCartItemDisplayImages = (item, product) => {
     productImages = [];
   }
   
-  // Priority: variant image > caliber image > selected color images > product images
+  // Priority: variant image > caliber image > selected color images > selected pack images > product images
   let displayImages = [];
   if (variantImage) {
     displayImages = [variantImage];
@@ -91,6 +102,8 @@ const getCartItemDisplayImages = (item, product) => {
     displayImages = [caliberImage];
   } else if (selectedColorImages && selectedColorImages.length > 0) {
     displayImages = selectedColorImages;
+  } else if (packImages && packImages.length > 0) {
+    displayImages = packImages;
   } else {
     displayImages = productImages;
   }
