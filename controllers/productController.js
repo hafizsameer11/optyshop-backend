@@ -274,6 +274,10 @@ const formatProductMedia = (product) => {
     colors: colors, // Array of color objects for swatches: [{name, display_name, value, price, images, primaryImage, hexCode}]
     selectedColor: defaultColor, // Default selected color value
     currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
+    // Derived for storefront cards: qty 0 or status out_of_stock → not purchasable (still listed)
+    in_stock:
+      product.stock_status !== 'out_of_stock' &&
+      !(product.stock_quantity != null && Number(product.stock_quantity) <= 0),
     // model_3d_url is already in the product object from Prisma
     model_3d_url: product.model_3d_url || null
   };

@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getDashboardStats,
   getAllProducts,
+  getOutOfStockProducts,
   getSunglassesProducts,
   getEyeglassesProducts,
   getContactLensesProducts,
@@ -254,6 +255,7 @@ router.post(
 
 // Products
 router.get('/products', getAllProducts);
+router.get('/products/out-of-stock', getOutOfStockProducts);
 // Section-specific product endpoints
 router.get('/products/section/sunglasses', getSunglassesProducts);
 router.get('/products/section/eyeglasses', getEyeglassesProducts);

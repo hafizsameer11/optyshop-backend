@@ -1397,6 +1397,222 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
 
 // ==================== PRODUCTS ====================
 
+// @desc    List out-of-stock products and variants for admin restock dashboard
+// @route   GET /api/admin/products/out-of-stock
+// @access  Private/Admin
+exports.getOutOfStockProducts = asyncHandler(async (req, res) => {
+  const products = await prisma.product.findMany({
+    where: { is_active: true },
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      model_3d_url: true,
+      frame_color: true,
+      stock_quantity: true,
+      stock_status: true,
+      product_type: true,
+      mm_calibers: true,
+      color_images: true,
+      category: { select: { id: true, name: true } },
+      sizeVolumeVariants: {
+        select: {
+          id: true,
+          size_volume: true,
+          pack_type: true,
+          stock_quantity: true,
+          stock_status: true,
+          sku: true,
+          is_active: true,
+        },
+      },
+      eyeHygieneVariants: {
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          is_active: true,
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  const rows = [];
+
+  const pushRow = (row) => {
+    rows.push({
+      product_id: row.product_id,
+      product_name: row.product_name,
+      sku: row.sku || null,
+      model: row.model || null,
+      color: row.color || null,
+      caliber_mm: row.caliber_mm || null,
+      size: row.size || null,
+      variant_type: row.variant_type,
+      stock_quantity: Number(row.stock_quantity) || 0,
+      stock_status: row.stock_status || 'out_of_stock',
+      product_type: row.product_type || null,
+      category: row.category || null,
+    });
+  };
+
+  for (const product of products) {
+    let calibers = [];
+    if (product.mm_calibers) {
+      try {
+        calibers =
+          typeof product.mm_calibers === 'string'
+            ? JSON.parse(product.mm_calibers)
+            : product.mm_calibers;
+      } catch (e) {
+        calibers = [];
+      }
+    }
+    if (!Array.isArray(calibers)) calibers = [];
+
+    let colors = [];
+    if (product.color_images) {
+      try {
+        const parsed =
+          typeof product.color_images === 'string'
+            ? JSON.parse(product.color_images)
+            : product.color_images;
+        if (Array.isArray(parsed)) {
+          colors = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          colors = Object.values(parsed);
+        }
+      } catch (e) {
+        colors = [];
+      }
+    }
+
+    const colorNames = colors
+      .map((c) => c?.name || c?.display_name || c?.color || c?.hexCode || null)
+      .filter(Boolean);
+    const primaryColor = product.frame_color || colorNames[0] || null;
+
+    // Model: prefer SKU / name as model label for frames
+    const modelLabel = product.sku || product.name;
+
+    const sizeVolume = (product.sizeVolumeVariants || []).filter((v) => v.is_active !== false);
+    let hasVariantRows = false;
+
+    for (const variant of sizeVolume) {
+      const qty = Number(variant.stock_quantity) || 0;
+      if (variant.stock_status === 'out_of_stock' || qty <= 0) {
+        hasVariantRows = true;
+        pushRow({
+          product_id: product.id,
+          product_name: product.name,
+          sku: variant.sku || product.sku,
+          model: modelLabel,
+          color: primaryColor,
+          size: [variant.size_volume, variant.pack_type].filter(Boolean).join(' / ') || null,
+          variant_type: 'size_volume',
+          stock_quantity: qty,
+          stock_status: variant.stock_status || (qty <= 0 ? 'out_of_stock' : 'in_stock'),
+          product_type: product.product_type,
+          category: product.category?.name || null,
+        });
+      }
+    }
+
+    for (const caliber of calibers) {
+      const hasCaliberStock =
+        caliber.stock_quantity != null || caliber.stock_status != null;
+      if (!hasCaliberStock) continue;
+      const qty =
+        caliber.stock_quantity != null ? Number(caliber.stock_quantity) : 0;
+      if (caliber.stock_status === 'out_of_stock' || qty <= 0) {
+        hasVariantRows = true;
+        pushRow({
+          product_id: product.id,
+          product_name: product.name,
+          sku: product.sku,
+          model: modelLabel,
+          color: primaryColor,
+          caliber_mm: caliber.mm != null ? String(caliber.mm) : null,
+          size: caliber.mm != null ? `${caliber.mm}mm` : null,
+          variant_type: 'mm_caliber',
+          stock_quantity: qty,
+          stock_status:
+            caliber.stock_status || (qty <= 0 ? 'out_of_stock' : 'in_stock'),
+          product_type: product.product_type,
+          category: product.category?.name || null,
+        });
+      }
+    }
+
+    // Color-level stock (optional on color_images JSON)
+    for (const color of colors) {
+      const hasColorStock = color.stock_quantity != null || color.stock_status != null;
+      if (!hasColorStock) continue;
+      const qty = color.stock_quantity != null ? Number(color.stock_quantity) : 0;
+      if (color.stock_status === 'out_of_stock' || qty <= 0) {
+        hasVariantRows = true;
+        pushRow({
+          product_id: product.id,
+          product_name: product.name,
+          sku: product.sku,
+          model: modelLabel,
+          color: color.name || color.display_name || color.color || color.hexCode || null,
+          variant_type: 'color',
+          stock_quantity: qty,
+          stock_status: color.stock_status || (qty <= 0 ? 'out_of_stock' : 'in_stock'),
+          product_type: product.product_type,
+          category: product.category?.name || null,
+        });
+      }
+    }
+
+    // Product-level OOS when no variant rows cover it, or product itself is OOS
+    const productQty = Number(product.stock_quantity) || 0;
+    const productOos =
+      product.stock_status === 'out_of_stock' || productQty <= 0;
+
+    if (productOos && !hasVariantRows) {
+      pushRow({
+        product_id: product.id,
+        product_name: product.name,
+        sku: product.sku,
+        model: modelLabel,
+        color: primaryColor,
+        caliber_mm: calibers.length === 1 ? String(calibers[0].mm) : null,
+        size:
+          calibers.length === 1
+            ? `${calibers[0].mm}mm`
+            : null,
+        variant_type: 'product',
+        stock_quantity: productQty,
+        stock_status: product.stock_status || 'out_of_stock',
+        product_type: product.product_type,
+        category: product.category?.name || null,
+      });
+    } else if (productOos && sizeVolume.length === 0 && calibers.length === 0) {
+      // Also list base product when variants exist but product itself is OOS
+      pushRow({
+        product_id: product.id,
+        product_name: product.name,
+        sku: product.sku,
+        model: modelLabel,
+        color: primaryColor,
+        variant_type: 'product',
+        stock_quantity: productQty,
+        stock_status: product.stock_status || 'out_of_stock',
+        product_type: product.product_type,
+        category: product.category?.name || null,
+      });
+    }
+  }
+
+  return success(res, 'Out of stock items retrieved successfully', {
+    items: rows,
+    total: rows.length,
+  });
+});
+
 // @desc    Get all products (Admin)
 // @route   GET /api/admin/products
 // @access  Private/Admin
@@ -2244,6 +2460,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
     // Convert stock_quantity to Int
     if (productData.stock_quantity !== undefined) {
       productData.stock_quantity = parseInt(productData.stock_quantity, 10) || 0;
+      if (productData.stock_quantity <= 0 && productData.stock_status === undefined) {
+        productData.stock_status = 'out_of_stock';
+      } else if (productData.stock_quantity > 0 && productData.stock_status === undefined) {
+        productData.stock_status = 'in_stock';
+      }
     }
 
     // Convert boolean fields from strings
@@ -3179,9 +3400,16 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Only touch stored color images when the request actually carries color image data,
+  // otherwise an unrelated field update (e.g. caliber/size) would wipe them from storage.
+  const colorImagesProvided =
+    req.body.color_images !== undefined ||
+    req.body.images_with_colors !== undefined ||
+    req.body.image_colors !== undefined ||
+    (req.files && Object.keys(req.files).some(key => key.startsWith('color_images_')));
+
   // Compare existing and new color images to find deleted ones
-  // Always check for deletions if there are existing color images
-  if (existingColorImages.length > 0) {
+  if (existingColorImages.length > 0 && colorImagesProvided) {
     const newColorImagesMap = {};
     Object.values(colorImagesMap).forEach((colorData) => {
       const hexCode = colorData.hexCode;
@@ -3284,6 +3512,15 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Convert stock_quantity to Int (form-data sends as string)
   if (productData.stock_quantity !== undefined) {
     productData.stock_quantity = parseInt(productData.stock_quantity, 10) || 0;
+    if (productData.stock_quantity <= 0 && productData.stock_status === undefined) {
+      productData.stock_status = 'out_of_stock';
+    } else if (
+      productData.stock_quantity <= 0 &&
+      productData.stock_status &&
+      String(productData.stock_status).toLowerCase() === 'in_stock'
+    ) {
+      productData.stock_status = 'out_of_stock';
+    }
   }
 
   // Validate and normalize product_type enum if provided

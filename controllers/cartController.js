@@ -7,7 +7,6 @@ const { sendCartNotificationToAdmin } = require('../utils/email');
 const getCartItemDisplayImages = (item, product) => {
   // Get selected color images from customization
   let selectedColorImages = null;
-  let caliberImage = null;
   let variantImage = null;
   let packImages = null;
   let customization = item.customization;
@@ -22,11 +21,6 @@ const getCartItemDisplayImages = (item, product) => {
   // Check for variant image first (new variant system)
   if (customization && customization.variant_image_url) {
     variantImage = customization.variant_image_url;
-  }
-  
-  // Check for caliber image (legacy)
-  if (customization && customization.caliber_image_url) {
-    caliberImage = customization.caliber_image_url;
   }
   
   // Check for eye hygiene variant image
@@ -94,12 +88,11 @@ const getCartItemDisplayImages = (item, product) => {
     productImages = [];
   }
   
-  // Priority: variant image > caliber image > selected color images > selected pack images > product images
+  // Priority: variant image > selected color images > selected pack images > product images
+  // MM caliber is a size option only and never contributes an image.
   let displayImages = [];
   if (variantImage) {
     displayImages = [variantImage];
-  } else if (caliberImage) {
-    displayImages = [caliberImage];
   } else if (selectedColorImages && selectedColorImages.length > 0) {
     displayImages = selectedColorImages;
   } else if (packImages && packImages.length > 0) {
@@ -193,7 +186,6 @@ function applyResolvedVariant(foundVariant, selectedVariantId, variantType) {
 
   if (foundVariant.type === 'mm_caliber') {
     customizationData.selected_mm_caliber = foundVariant.metadata.mm;
-    customizationData.caliber_image_url = foundVariant.metadata.image_url;
   } else if (foundVariant.type === 'eye_hygiene') {
     customizationData.eye_hygiene_variant_id = foundVariant.metadata.variant_id;
     customizationData.eye_hygiene_variant_name = foundVariant.name;
@@ -654,6 +646,9 @@ exports.addToCart = asyncHandler(async (req, res) => {
         if (resolved.stockStatus === 'out_of_stock') {
           return error(res, 'Selected variant is out of stock', 400);
         }
+        if (resolved.stockQuantity != null && Number(resolved.stockQuantity) <= 0) {
+          return error(res, 'Selected variant is out of stock', 400);
+        }
       }
     } catch (err) {
       console.error('Error processing variant selection:', err);
@@ -680,7 +675,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
 
   // Handle MM caliber selection (legacy support)
   let selectedCaliberData = null;
-  if (selected_mm_caliber && !customizationData) {
+  if (selected_mm_caliber) {
     // Parse mm_calibers to find matching caliber
     let mmCalibers = product.mm_calibers;
     if (typeof mmCalibers === 'string') {
@@ -694,15 +689,26 @@ exports.addToCart = asyncHandler(async (req, res) => {
       mmCalibers = mmCalibers ? [mmCalibers] : [];
     }
 
-    selectedCaliberData = mmCalibers.find(caliber => caliber.mm === selected_mm_caliber);
+    selectedCaliberData = mmCalibers.find(
+      (caliber) => String(caliber.mm) === String(selected_mm_caliber)
+    );
     
     if (selectedCaliberData) {
-      // Store caliber selection in customization
       if (!customizationData) {
         customizationData = {};
       }
       customizationData.selected_mm_caliber = selected_mm_caliber;
-      customizationData.caliber_image_url = selectedCaliberData.image_url;
+
+      // Caliber-level stock (optional field on mm_calibers JSON)
+      if (
+        selectedCaliberData.stock_quantity != null &&
+        Number(selectedCaliberData.stock_quantity) <= 0
+      ) {
+        return error(res, 'Selected frame size is out of stock', 400);
+      }
+      if (selectedCaliberData.stock_status === 'out_of_stock') {
+        return error(res, 'Selected frame size is out of stock', 400);
+      }
     } else {
       console.warn(`MM caliber "${selected_mm_caliber}" not found for product ${product_id}`);
     }
@@ -776,6 +782,14 @@ exports.addToCart = asyncHandler(async (req, res) => {
   // Check stock (use size/volume variant stock when a variant was selected)
   const stockQuantity =
     resolvedVariantStockQuantity != null ? resolvedVariantStockQuantity : product.stock_quantity;
+
+  if (product.stock_status === 'out_of_stock' && resolvedVariantStockQuantity == null) {
+    return error(res, 'This product is out of stock', 400);
+  }
+
+  if (stockQuantity != null && Number(stockQuantity) <= 0) {
+    return error(res, 'This product is out of stock', 400);
+  }
 
   if (stockQuantity != null && Number(stockQuantity) < quantity) {
     return error(res, `Insufficient stock. Only ${stockQuantity} available.`, 400);

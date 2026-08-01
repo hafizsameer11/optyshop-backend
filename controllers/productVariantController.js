@@ -458,7 +458,7 @@ exports.getProductVariants = asyncHandler(async (req, res) => {
     // Format variants for frontend
     const variants = [];
 
-    // Add MM caliber variants
+    // Add MM caliber variants (size options only — they carry no image of their own)
     if (productData.mm_calibers && productData.mm_calibers.length > 0) {
       productData.mm_calibers.forEach((caliber, index) => {
         variants.push({
@@ -467,13 +467,12 @@ exports.getProductVariants = asyncHandler(async (req, res) => {
           name: `${caliber.mm}mm`,
           display_name: `${caliber.mm}mm Caliber`,
           price: parseFloat(product.price),
-          image_url: caliber.image_url,
+          image_url: null,
           stock_quantity: product.stock_quantity,
           stock_status: product.stock_status,
           sort_order: index,
           metadata: {
-            mm: caliber.mm,
-            image_url: caliber.image_url
+            mm: caliber.mm
           }
         });
       });
