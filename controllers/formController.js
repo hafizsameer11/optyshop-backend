@@ -22,8 +22,8 @@ const formSchemas = {
     firstName: Joi.string().required(),
     lastName: Joi.string().required(),
     country: Joi.string().required(),
-    company: Joi.string().required(),
-    companyName: Joi.string().optional(), // Alternative field name
+    company: Joi.string().allow('', null).optional(),
+    companyName: Joi.string().allow('', null).optional(),
     message: Joi.string().required()
   }).unknown(true),
   demo: Joi.object({
@@ -249,7 +249,7 @@ exports.submitForm = asyncHandler(async (req, res) => {
           first_name: value.firstName,
           last_name: value.lastName,
           country: value.country,
-          company_name: value.company || value.companyName, // Support both field names
+          company_name: (value.company || value.companyName || 'Individual').toString().trim() || 'Individual',
           message: value.message
         },
         select: {

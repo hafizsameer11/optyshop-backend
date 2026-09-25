@@ -228,7 +228,9 @@ exports.createOrder = asyncHandler(async (req, res) => {
     shipping_address,
     billing_address,
     payment_method,
-    notes
+    notes,
+    coupon_code,
+    shipping_method_id,
   } = req.body;
 
   if (!items || items.length === 0) {
@@ -348,33 +350,79 @@ exports.createOrder = asyncHandler(async (req, res) => {
     validPrescriptionId = prescriptionIdInt;
   }
 
-  // Calculate tax (example: 10%)
+  // Calculate tax / shipping / discount
   const tax = subtotal * 0.1;
-  const shipping = 0; // Free shipping or calculate based on address
-  const discount = 0; // Apply discount codes here
-  const total = subtotal + tax + shipping - discount;
 
-  // Map and validate payment_method
-  let validPaymentMethod = null;
-  if (payment_method) {
-    const paymentMethodMap = {
-      'card': 'stripe',
-      'credit_card': 'stripe',
-      'debit_card': 'stripe',
-      'stripe': 'stripe',
-      'paypal': 'paypal',
-      'cod': 'cod',
-      'cash_on_delivery': 'cod',
-      'cash': 'cod'
-    };
-    
-    const mappedMethod = paymentMethodMap[payment_method.toLowerCase()] || payment_method.toLowerCase();
-    const validMethods = ['stripe', 'paypal', 'cod'];
-    
-    if (validMethods.includes(mappedMethod)) {
-      validPaymentMethod = mappedMethod;
+  let shipping = 0;
+  let shippingMethodLabel = null;
+  if (shipping_method_id) {
+    const methodId = parseInt(shipping_method_id, 10);
+    if (!Number.isNaN(methodId)) {
+      const method = await prisma.shippingMethod.findFirst({
+        where: { id: methodId, is_active: true },
+      });
+      if (method) {
+        shipping = parseFloat(method.price) || 0;
+        shippingMethodLabel = method.name;
+      }
     }
   }
+
+  let discount = 0;
+  let appliedCouponCode = null;
+  let freeShippingCoupon = false;
+  if (coupon_code && String(coupon_code).trim()) {
+    const coupon = await prisma.coupon.findUnique({
+      where: { code: String(coupon_code).toUpperCase().trim() },
+    });
+    if (coupon && coupon.is_active) {
+      const now = new Date();
+      const startsOk = !coupon.starts_at || new Date(coupon.starts_at) <= now;
+      const endsOk = !coupon.ends_at || new Date(coupon.ends_at) >= now;
+      const minOk =
+        !coupon.min_order_amount || subtotal >= parseFloat(coupon.min_order_amount);
+      if (startsOk && endsOk && minOk) {
+        appliedCouponCode = coupon.code;
+        if (coupon.discount_type === 'percentage') {
+          discount = (subtotal * parseFloat(coupon.discount_value)) / 100;
+          if (coupon.max_discount && discount > parseFloat(coupon.max_discount)) {
+            discount = parseFloat(coupon.max_discount);
+          }
+        } else if (coupon.discount_type === 'fixed_amount') {
+          discount = Math.min(parseFloat(coupon.discount_value), subtotal);
+        } else if (coupon.discount_type === 'free_shipping') {
+          freeShippingCoupon = true;
+        }
+      }
+    }
+  }
+
+  if (freeShippingCoupon) {
+    shipping = 0;
+  }
+
+  if (discount > subtotal) discount = subtotal;
+  const total = Math.max(0, subtotal + tax + shipping - discount);
+
+  // Map and validate payment_method — Stripe only for checkout
+  let validPaymentMethod = 'stripe';
+  if (payment_method) {
+    const paymentMethodMap = {
+      card: 'stripe',
+      credit_card: 'stripe',
+      debit_card: 'stripe',
+      stripe: 'stripe',
+    };
+    const mappedMethod =
+      paymentMethodMap[String(payment_method).toLowerCase()] || 'stripe';
+    validPaymentMethod = mappedMethod === 'stripe' ? 'stripe' : 'stripe';
+  }
+
+  const notesParts = [];
+  if (notes) notesParts.push(String(notes));
+  if (appliedCouponCode) notesParts.push(`Coupon: ${appliedCouponCode}`);
+  if (shippingMethodLabel) notesParts.push(`Shipping: ${shippingMethodLabel}`);
+  const orderNotes = notesParts.length ? notesParts.join(' | ') : null;
 
   // Convert addresses to JSON strings - Prisma expects String, not Object
   if (!shipping_address) {
@@ -426,7 +474,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       total: total.toFixed(2),
       shipping_address: shippingAddressString,
       billing_address: billingAddressString,
-      notes: notes || null,
+      notes: orderNotes,
       items: {
         create: orderItems
       }

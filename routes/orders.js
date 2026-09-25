@@ -23,6 +23,7 @@ router.post('/', createOrder);
 router.get('/', getOrders);
 router.get('/:id', getOrder);
 router.put('/:id/cancel', cancelOrder);
+router.post('/:id/cancel', cancelOrder); // alias for clients that POST
 
 // Admin only routes
 router.put('/:id/status', authorize('admin', 'staff'), updateOrderStatus);

@@ -452,14 +452,28 @@ exports.applyCoupon = asyncHandler(async (req, res) => {
         discountAmount = 0; // BOGO logic would be more complex
     }
 
+    const originalTotal = parseFloat(calculatedSubtotal) || 0;
+    const finalTotal = Math.max(0, originalTotal - discountAmount);
+
     return success(res, 'Coupon applied successfully', {
+        // Flat fields expected by storefront
+        discount_amount: discountAmount,
+        discount_type: coupon.discount_type,
+        discount_value: coupon.discount_value,
+        final_total: finalTotal,
+        original_total: originalTotal,
+        free_shipping: coupon.discount_type === 'free_shipping',
+        code: coupon.code,
+        // Nested copy for older clients
         coupon: {
             id: coupon.id,
             code: coupon.code,
             discount_type: coupon.discount_type,
             discount_value: coupon.discount_value,
             discount_amount: discountAmount,
-            free_shipping: coupon.discount_type === 'free_shipping'
+            free_shipping: coupon.discount_type === 'free_shipping',
+            final_total: finalTotal,
+            original_total: originalTotal,
         }
     });
 });
