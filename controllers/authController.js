@@ -11,16 +11,61 @@ function hashResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function getFrontendBaseUrl() {
-  const url = (
-    process.env.FRONTEND_URL ||
-    process.env.CLIENT_URL ||
-    process.env.STOREFRONT_URL ||
-    (process.env.NODE_ENV === 'production'
-      ? 'https://optyshop.hmstech.org'
-      : 'http://localhost:5173')
-  ).trim();
-  return url.replace(/\/$/, '');
+const PRODUCTION_STOREFRONT_URL = 'https://optyshop.hmstech.org';
+const ALLOWED_STOREFRONT_HOSTS = new Set([
+  'optyshop.hmstech.org',
+  'www.optyshop.hmstech.org',
+  'localhost',
+  '127.0.0.1',
+]);
+
+function isLocalhostHostname(hostname) {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function parseOrigin(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  try {
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const u = new URL(withProtocol);
+    if (!ALLOWED_STOREFRONT_HOSTS.has(u.hostname)) return '';
+    return `${u.protocol}//${u.host}`.replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function getFrontendBaseUrl(req) {
+  const isProd = process.env.NODE_ENV === 'production';
+  let refererOrigin = '';
+  try {
+    const referer = req && typeof req.get === 'function' ? req.get('referer') || req.get('referrer') : '';
+    if (referer) refererOrigin = new URL(referer).origin;
+  } catch {
+    refererOrigin = '';
+  }
+  const originHeader = req && typeof req.get === 'function' ? req.get('origin') : '';
+
+  // Prefer the live storefront origin so reset emails never use a leftover localhost FRONTEND_URL.
+  const requestOrigins = [originHeader, refererOrigin];
+  for (const candidate of requestOrigins) {
+    const origin = parseOrigin(candidate);
+    if (!origin) continue;
+    if (isLocalhostHostname(new URL(origin).hostname)) continue;
+    return origin;
+  }
+
+  const envOrigins = [process.env.FRONTEND_URL, process.env.CLIENT_URL, process.env.STOREFRONT_URL];
+  for (const candidate of envOrigins) {
+    const origin = parseOrigin(candidate);
+    if (!origin) continue;
+    if (isProd && isLocalhostHostname(new URL(origin).hostname)) continue;
+    return origin;
+  }
+
+  return isProd ? PRODUCTION_STOREFRONT_URL : 'http://localhost:5173';
 }
 
 // Generate JWT Token
@@ -411,7 +456,7 @@ exports.forgotPassword = async (req, res) => {
       }
     });
 
-    const resetUrl = `${getFrontendBaseUrl()}/reset-password?token=${resetToken}`;
+    const resetUrl = `${getFrontendBaseUrl(req)}/reset-password?token=${resetToken}`;
     const emailResult = await sendPasswordResetEmail({
       to: user.email,
       firstName: user.first_name,
