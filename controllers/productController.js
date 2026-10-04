@@ -608,7 +608,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
   if (product_type) {
     // Validate product_type against enum values
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
     const normalizedType = product_type.toLowerCase().trim();
     if (validProductTypes.includes(normalizedType)) {
       where.product_type = normalizedType;
@@ -777,6 +777,11 @@ exports.getContactLensesProducts = getProductsBySection('contact_lens');
 // @route   GET /api/products/section/eye-hygiene
 // @access  Public
 exports.getEyeHygieneProducts = getProductsBySection('eye_hygiene');
+
+// @desc    Get all accessories products (Website)
+// @route   GET /api/products/section/accessories
+// @access  Public
+exports.getAccessoriesProducts = getProductsBySection('accessory');
 
 // @desc    Get single product
 // @route   GET /api/products/:id

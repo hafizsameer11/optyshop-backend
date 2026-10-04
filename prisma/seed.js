@@ -163,6 +163,23 @@ async function main() {
     }
   });
 
+  // Matches live storefront: /collections/accessori
+  await prisma.category.upsert({
+    where: { slug: 'accessori' },
+    update: {
+      name: 'Accessori',
+      description: 'Accessori per occhiali — custodie, kit di pulizia, utensili e cinghie',
+      is_active: true,
+    },
+    create: {
+      name: 'Accessori',
+      slug: 'accessori',
+      description: 'Accessori per occhiali — custodie, kit di pulizia, utensili e cinghie',
+      is_active: true,
+      sort_order: 10,
+    },
+  });
+
   // Create Lens Types
   console.log('🔍 Creating lens types...');
   const lensType156 = await prisma.lensType.create({

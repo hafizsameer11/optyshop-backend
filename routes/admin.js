@@ -8,6 +8,7 @@ const {
   getEyeglassesProducts,
   getContactLensesProducts,
   getEyeHygieneProducts,
+  getAccessoriesProducts,
   getProduct,
   createProduct,
   updateProduct,
@@ -261,6 +262,7 @@ router.get('/products/section/sunglasses', getSunglassesProducts);
 router.get('/products/section/eyeglasses', getEyeglassesProducts);
 router.get('/products/section/contact-lenses', getContactLensesProducts);
 router.get('/products/section/eye-hygiene', getEyeHygieneProducts);
+router.get('/products/section/accessories', getAccessoriesProducts);
 router.get('/products/:id', getProduct);
 router.post('/products',
   uploadProductFiles(),

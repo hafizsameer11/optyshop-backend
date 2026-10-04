@@ -6,6 +6,7 @@ const {
   getEyeglassesProducts,
   getContactLensesProducts,
   getEyeHygieneProducts,
+  getAccessoriesProducts,
   getProduct,
   getProductBySlug,
   getFeaturedProducts,
@@ -33,6 +34,7 @@ router.get('/section/sunglasses', validateProductQuery, getSunglassesProducts);
 router.get('/section/eyeglasses', validateProductQuery, getEyeglassesProducts);
 router.get('/section/contact-lenses', validateProductQuery, getContactLensesProducts);
 router.get('/section/eye-hygiene', validateProductQuery, getEyeHygieneProducts);
+router.get('/section/accessories', validateProductQuery, getAccessoriesProducts);
 router.get('/featured', getFeaturedProducts);
 router.get('/options', getProductFormOptions);
 router.get('/configuration/lens-types', getLensTypes);

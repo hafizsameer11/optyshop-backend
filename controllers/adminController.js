@@ -1678,7 +1678,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
 
   if (product_type) {
     // Validate product_type against enum values
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
     const normalizedType = product_type.toLowerCase().trim();
     if (validProductTypes.includes(normalizedType)) {
       where.product_type = normalizedType;
@@ -2147,6 +2147,11 @@ exports.getContactLensesProducts = getAllProductsBySection('contact_lens');
 // @access  Private/Admin
 exports.getEyeHygieneProducts = getAllProductsBySection('eye_hygiene');
 
+// @desc    Get all accessories products (Admin)
+// @route   GET /api/admin/products/section/accessories
+// @access  Private/Admin
+exports.getAccessoriesProducts = getAllProductsBySection('accessory');
+
 // @desc    Get single product (Admin)
 // @route   GET /api/admin/products/:id
 // @access  Private/Admin
@@ -2541,7 +2546,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
 
     // Validate and normalize product_type enum
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
     if (productData.product_type !== undefined) {
       const productType = String(productData.product_type).toLowerCase().trim();
 
@@ -3525,7 +3530,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   // Validate and normalize product_type enum if provided
   if (productData.product_type !== undefined) {
-    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene'];
+    const validProductTypes = ['frame', 'sunglasses', 'contact_lens', 'eye_hygiene', 'accessory'];
     const productType = String(productData.product_type).toLowerCase().trim();
 
     // Map common invalid values to valid ones
