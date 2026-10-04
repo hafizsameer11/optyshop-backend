@@ -15,8 +15,9 @@ function getFrontendBaseUrl() {
   const url = (
     process.env.FRONTEND_URL ||
     process.env.CLIENT_URL ||
+    process.env.STOREFRONT_URL ||
     (process.env.NODE_ENV === 'production'
-      ? 'https://optyshop-frontend.hmstech.org'
+      ? 'https://optyshop.hmstech.org'
       : 'http://localhost:5173')
   ).trim();
   return url.replace(/\/$/, '');
@@ -418,9 +419,15 @@ exports.forgotPassword = async (req, res) => {
     });
 
     if (!emailResult.success) {
-      // Token is already saved — don't fail the request (SMTP may be misconfigured).
       console.error('[forgotPassword] Failed to send email:', emailResult.message || emailResult.error);
-      console.warn('[forgotPassword] Reset link (ops):', resetUrl);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[forgotPassword] Reset link (dev only):', resetUrl);
+      }
+      return res.status(503).json({
+        success: false,
+        message:
+          'Unable to send reset email right now. Please check email settings (EMAIL_USER / EMAIL_PASSWORD) or try again later.',
+      });
     }
 
     return res.json({ success: true, message: genericMessage });

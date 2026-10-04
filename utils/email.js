@@ -1,46 +1,91 @@
 const nodemailer = require('nodemailer');
 
-// Create reusable transporter
+const firstEnv = (...keys) => {
+  for (const key of keys) {
+    const val = process.env[key];
+    if (val != null && String(val).trim() !== '') return String(val).trim();
+  }
+  return '';
+};
+
 const createTransporter = () => {
-  // Only create transporter if email is configured
-  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+  const smtpUrl = firstEnv('SMTP_URL', 'EMAIL_URL', 'MAIL_URL');
+  if (smtpUrl) {
+    return nodemailer.createTransport(smtpUrl);
+  }
+
+  const user = firstEnv('EMAIL_USER', 'SMTP_USER', 'MAIL_USER', 'SMTP_USERNAME');
+  const pass = firstEnv('EMAIL_PASSWORD', 'EMAIL_PASS', 'SMTP_PASSWORD', 'SMTP_PASS', 'MAIL_PASSWORD').replace(
+    /\s+/g,
+    ''
+  );
+  const host = firstEnv('EMAIL_HOST', 'SMTP_HOST', 'MAIL_HOST');
+  const service = firstEnv('EMAIL_SERVICE', 'SMTP_SERVICE');
+  const portRaw = firstEnv('EMAIL_PORT', 'SMTP_PORT', 'MAIL_PORT');
+  const port = parseInt(portRaw || '587', 10) || 587;
+  const secureEnv = firstEnv('EMAIL_SECURE', 'SMTP_SECURE');
+  const secure =
+    secureEnv === 'true' ||
+    secureEnv === '1' ||
+    port === 465;
+
+  if (!user || !pass) {
+    return null;
+  }
+
+  if (service) {
+    return nodemailer.createTransport({
+      service,
+      auth: { user, pass },
+      connectionTimeout: 15000,
+    });
+  }
+
+  if (!host) {
+    // Gmail account with no host set
+    if (user.toLowerCase().includes('@gmail.com')) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        connectionTimeout: 15000,
+      });
+    }
     return null;
   }
 
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
+    host,
+    port,
+    secure,
+    requireTLS: !secure && port === 587,
+    auth: { user, pass },
+    connectionTimeout: 15000,
   });
 };
 
 /**
  * Send email notification
- * @param {Object} options - Email options
- * @param {string} options.to - Recipient email
- * @param {string} options.subject - Email subject
- * @param {string} options.html - HTML email body
- * @param {string} options.text - Plain text email body (optional)
  */
 const sendEmail = async ({ to, subject, html, text }) => {
   const transporter = createTransporter();
-  
+
   if (!transporter) {
-    console.warn('Email not configured. Skipping email send.');
+    console.warn(
+      'Email not configured. Set EMAIL_HOST/EMAIL_USER/EMAIL_PASSWORD (Gmail: use an App Password).'
+    );
     return { success: false, message: 'Email not configured' };
   }
 
+  const from =
+    firstEnv('EMAIL_FROM', 'MAIL_FROM', 'SMTP_FROM') || firstEnv('EMAIL_USER', 'SMTP_USER');
+
   try {
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      from,
       to,
       subject,
       html,
-      text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      text: text || html.replace(/<[^>]*>/g, ''),
     });
 
     console.log('Email sent:', info.messageId);
@@ -53,17 +98,10 @@ const sendEmail = async ({ to, subject, html, text }) => {
 
 /**
  * Send cart notification to admin
- * @param {Object} data - Cart notification data
- * @param {Object} data.customer - Customer information
- * @param {Object} data.product - Product information
- * @param {Object} data.cartItem - Cart item details
- * @param {Object} data.shippingInfo - Shipping information (optional)
- * @param {Object} data.paymentInfo - Payment information (optional)
- * @param {Object} data.coupon - Coupon information (optional)
  */
 const sendCartNotificationToAdmin = async ({ customer, product, cartItem, shippingInfo, paymentInfo, coupon }) => {
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
-  
+  const adminEmail = firstEnv('ADMIN_EMAIL', 'EMAIL_USER');
+
   if (!adminEmail) {
     console.warn('Admin email not configured. Skipping cart notification.');
     return { success: false, message: 'Admin email not configured' };
@@ -133,7 +171,6 @@ const sendCartNotificationToAdmin = async ({ customer, product, cartItem, shippi
             <div class="info-item"><strong>Phone:</strong> ${customer.phone || 'N/A'}</div>
             <div class="info-item"><strong>User ID:</strong> ${customer.id || 'N/A'}</div>
           </div>
-
           <div class="section">
             <h3>Product Information</h3>
             <div class="info-item"><strong>Product Name:</strong> ${product.name || 'N/A'}</div>
@@ -142,21 +179,15 @@ const sendCartNotificationToAdmin = async ({ customer, product, cartItem, shippi
             <div class="info-item"><strong>Price:</strong> $${parseFloat(product.price || 0).toFixed(2)}</div>
             <div class="info-item"><strong>Stock:</strong> ${product.stock_quantity || 0} available</div>
           </div>
-
           <div class="section">
             <h3>Cart Item Details</h3>
             <div class="info-item"><strong>Quantity:</strong> ${cartItem.quantity || 1}</div>
             <div class="info-item"><strong>Unit Price:</strong> $${parseFloat(cartItem.unit_price || 0).toFixed(2)}</div>
             <div class="info-item"><strong>Total Price:</strong> $${(parseFloat(cartItem.unit_price || 0) * (cartItem.quantity || 1)).toFixed(2)}</div>
-            ${cartItem.lens_index ? `<div class="info-item"><strong>Lens Index:</strong> ${cartItem.lens_index}</div>` : ''}
-            ${cartItem.lens_coatings ? `<div class="info-item"><strong>Lens Coatings:</strong> ${Array.isArray(cartItem.lens_coatings) ? cartItem.lens_coatings.join(', ') : cartItem.lens_coatings}</div>` : ''}
-            ${cartItem.prescription_id ? `<div class="info-item"><strong>Prescription ID:</strong> ${cartItem.prescription_id}</div>` : ''}
           </div>
-
           ${shippingDetails}
           ${paymentDetails}
           ${couponDetails}
-
           <div class="footer">
             <p>This is an automated notification from OptyShop.</p>
             <p>Time: ${new Date().toLocaleString()}</p>
@@ -235,7 +266,3 @@ module.exports = {
   sendCartNotificationToAdmin,
   sendPasswordResetEmail,
 };
-
-
-
-

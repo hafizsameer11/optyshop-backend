@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const prisma = require("../lib/prisma");
 const asyncHandler = require("../middleware/asyncHandler");
 const { success, error } = require("../utils/response");
@@ -2424,6 +2425,13 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
+    const isAccessoryProduct =
+      String(productData.product_type || "").toLowerCase() === "accessory";
+    if (isAccessoryProduct) {
+      delete productData.slug;
+      delete productData.pack_type;
+    }
+
     // Generate slug if not provided, ensuring uniqueness
     if (!productData.slug) {
       let baseSlug = productData.name
@@ -2432,7 +2440,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
         .replace(/(^-|-$)/g, "");
 
       // Check if slug exists and make it unique if needed - optimized with findFirst
-      let slug = baseSlug;
+      let slug = isAccessoryProduct
+        ? `${baseSlug || "accessory"}-${crypto.randomBytes(3).toString("hex")}`
+        : baseSlug;
       let counter = 1;
       while (true) {
         const existing = await prisma.product.findFirst({
@@ -2440,7 +2450,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
           select: { id: true }
         });
         if (!existing) break;
-        slug = `${baseSlug}-${counter}`;
+        slug = isAccessoryProduct
+          ? `${baseSlug || "accessory"}-${crypto.randomBytes(3).toString("hex")}`
+          : `${baseSlug}-${counter}`;
         counter++;
         // Safety limit to prevent infinite loops
         if (counter > 1000) {
@@ -3019,6 +3031,12 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   });
   if (!product) {
     return error(res, "Product not found", 404);
+  }
+
+  const updateType = String(productData.product_type || product.product_type || "").toLowerCase();
+  if (updateType === "accessory") {
+    delete productData.slug;
+    delete productData.pack_type;
   }
 
   // Handle images with color codes (same approach as create)

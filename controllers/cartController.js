@@ -447,7 +447,9 @@ exports.getCart = asyncHandler(async (req, res) => {
               color_images: true,
               mm_calibers: true,
               stock_quantity: true,
-              stock_status: true
+              stock_status: true,
+              product_type: true,
+              category: { select: { id: true, name: true, slug: true } }
             }
           },
           progressiveVariant: true,
@@ -479,7 +481,9 @@ exports.getCart = asyncHandler(async (req, res) => {
                 color_images: true,
                 mm_calibers: true,
                 stock_quantity: true,
-                stock_status: true
+                stock_status: true,
+                product_type: true,
+                category: { select: { id: true, name: true, slug: true } }
               }
             }
           }
