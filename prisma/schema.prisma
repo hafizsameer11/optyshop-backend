@@ -118,6 +118,7 @@ model Product {
   meta_keywords         String?                    @db.VarChar(255)
   product_type          ProductType                @default(frame)
   sub_category_id       Int?
+  brand_id              Int?
   base_curve_options    String?                    @db.LongText
   can_sleep_with        Boolean?                   @default(false)
   contact_lens_brand    String?                    @db.VarChar(100)
@@ -147,6 +148,7 @@ model Product {
   sizeVolumeVariants    ProductSizeVolume[]
   variants              ProductVariant[]
   eyeHygieneVariants    EyeHygieneVariant[]
+  brand                 Brand?                     @relation(fields: [brand_id], references: [id])
   category              Category                   @relation(fields: [category_id], references: [id])
   subCategory           SubCategory?               @relation(fields: [sub_category_id], references: [id])
   reviews               Review[]
@@ -154,6 +156,7 @@ model Product {
 
   @@index([category_id])
   @@index([sub_category_id])
+  @@index([brand_id])
   @@index([slug])
   @@index([sku])
   @@index([frame_shape])
@@ -1040,6 +1043,37 @@ model Faq {
   @@map("faqs")
 }
 
+/// Contact Us page "Locations" blocks (managed from admin)
+model ContactLocation {
+  id         Int      @id @default(autoincrement())
+  title      String   @db.VarChar(150)
+  subtitle   String?  @db.VarChar(150)
+  address    String?  @db.Text
+  phone      String?  @db.VarChar(50)
+  email      String?  @db.VarChar(150)
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([is_active, sort_order])
+  @@map("contact_locations")
+}
+
+model SocialLink {
+  id         Int      @id @default(autoincrement())
+  platform   String   @db.VarChar(50)
+  url        String   @db.VarChar(500)
+  label      String?  @db.VarChar(100)
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([is_active, sort_order])
+  @@map("social_links")
+}
+
 model Page {
   id           Int      @id @default(autoincrement())
   title        String   @db.VarChar(255)
@@ -1527,16 +1561,17 @@ enum BannerPageType {
 }
 
 model Brand {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(100)
-  slug        String   @unique @db.VarChar(100)
-  description String?  @db.Text
-  logo_image  String?  @db.VarChar(500)
-  website_url String?  @db.VarChar(500)
-  sort_order  Int      @default(0)
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  slug        String    @unique @db.VarChar(100)
+  description String?   @db.Text
+  logo_image  String?   @db.VarChar(500)
+  website_url String?   @db.VarChar(500)
+  sort_order  Int       @default(0)
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  products    Product[]
 
   @@map("brands")
 }

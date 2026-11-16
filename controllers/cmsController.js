@@ -24,14 +24,14 @@ const KNOWN_POSITIONS = new Set([
 ]);
 
 const bannerInclude = {
-  category: {
+            category: {
     select: { id: true, name: true, slug: true },
-  },
-  subCategory: {
-    select: {
-      id: true,
-      name: true,
-      slug: true,
+            },
+            subCategory: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
       category_id: true,
       parent_id: true,
     },
@@ -181,22 +181,22 @@ exports.getBanners = asyncHandler(async (req, res) => {
     where,
     include: bannerInclude,
     orderBy: { sort_order: 'asc' },
-  });
-
-  return success(res, 'Banners retrieved', { banners });
+    });
+    
+    return success(res, 'Banners retrieved', { banners });
 });
 
 // Admin version - all banners with filtering
 exports.getBannersAdmin = asyncHandler(async (req, res) => {
   const where = buildBannerListWhere(req.query, { activeOnly: false });
-
-  const banners = await prisma.banner.findMany({
-    where,
+    
+    const banners = await prisma.banner.findMany({
+        where,
     include: bannerInclude,
     orderBy: { sort_order: 'asc' },
-  });
-
-  return success(res, 'Banners retrieved', { banners });
+    });
+    
+    return success(res, 'Banners retrieved', { banners });
 });
 
 const getBannerUploadFile = (req, fieldName) => {
@@ -236,17 +236,17 @@ exports.createBanner = asyncHandler(async (req, res) => {
   if (mobileImageFile) {
     cleanData.mobile_image_url = await uploadToS3(mobileImageFile, 'cms/banners');
   }
-
-  const banner = await prisma.banner.create({
+    
+    const banner = await prisma.banner.create({
     data: cleanData,
     include: bannerInclude,
-  });
+    });
 
-  return success(res, 'Banner created', { banner }, 201);
+    return success(res, 'Banner created', { banner }, 201);
 });
 
 exports.updateBanner = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+    const { id } = req.params;
   const bannerId = parseInt(id, 10);
   const existing = await prisma.banner.findUnique({ where: { id: bannerId } });
   if (!existing) return error(res, 'Banner not found', 404);
@@ -297,20 +297,20 @@ exports.updateBanner = asyncHandler(async (req, res) => {
   if (mobileImageFile) {
     updateData.mobile_image_url = await uploadToS3(mobileImageFile, 'cms/banners');
   }
-
-  const banner = await prisma.banner.update({
+    
+    const banner = await prisma.banner.update({
     where: { id: bannerId },
-    data: updateData,
+        data: updateData,
     include: bannerInclude,
-  });
+    });
 
-  return success(res, 'Banner updated', { banner });
+    return success(res, 'Banner updated', { banner });
 });
 
 exports.deleteBanner = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const banner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
-  if (banner) {
+    const { id } = req.params;
+    const banner = await prisma.banner.findUnique({ where: { id: parseInt(id) } });
+    if (banner) {
     const keys = [banner.image_url, banner.mobile_image_url]
       .filter(Boolean)
       .map((url) => url.split('.com/')[1])
@@ -318,9 +318,9 @@ exports.deleteBanner = asyncHandler(async (req, res) => {
     for (const key of keys) {
       await deleteFromS3(key);
     }
-    await prisma.banner.delete({ where: { id: parseInt(id) } });
-  }
-  return success(res, 'Banner deleted');
+        await prisma.banner.delete({ where: { id: parseInt(id) } });
+    }
+    return success(res, 'Banner deleted');
 });
 
 // ==================== BLOG POSTS ====================
@@ -449,6 +449,216 @@ exports.deleteFaq = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await prisma.faq.delete({ where: { id: parseInt(id) } });
     return success(res, 'FAQ deleted');
+});
+
+// ==================== CONTACT LOCATIONS ====================
+
+const DEFAULT_CONTACT_LOCATIONS = [
+  {
+    title: 'EUROPE',
+    subtitle: 'Headquarters',
+    address: "209 Rue de l'Innovation\n31670 Labège\nFrance",
+    phone: '+33 9 71 00 71 00',
+    email: 'contact@fittingbox.com',
+    sort_order: 0,
+    is_active: true,
+  },
+  {
+    title: 'NORTH AMERICA',
+    subtitle: 'US Subsidiary',
+    address: '19790 W Dixie Hwy, Suite 311\nAventura, FL 33180\nUSA',
+    phone: '+33 9 71 00 71 00',
+    email: 'contactus@fittingbox.com',
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    title: 'Customer Support',
+    subtitle: null,
+    address: null,
+    phone: '+33 9 71 00 71 40',
+    email: 'sales-cs@fittingbox.com',
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    title: 'Billing',
+    subtitle: null,
+    address: null,
+    phone: '+33 9 71 00 71 00',
+    email: 'comptabilite@fittingbox.com',
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    title: 'Marketing',
+    subtitle: null,
+    address: null,
+    phone: '+33 9 71 00 71 00',
+    email: 'marketing@fittingbox.com',
+    sort_order: 4,
+    is_active: true,
+  },
+];
+
+async function ensureDefaultContactLocations() {
+  const count = await prisma.contactLocation.count();
+  if (count === 0) {
+    await prisma.contactLocation.createMany({ data: DEFAULT_CONTACT_LOCATIONS });
+  }
+}
+
+function normalizeContactLocationBody(body = {}) {
+  const data = { ...body };
+  if (data.is_active !== undefined) {
+    data.is_active = data.is_active === 'true' || data.is_active === true;
+  }
+  if (data.sort_order !== undefined) {
+    data.sort_order = parseInt(data.sort_order || 0, 10);
+  }
+  ['subtitle', 'address', 'phone', 'email'].forEach((key) => {
+    if (data[key] !== undefined && data[key] !== null && String(data[key]).trim() === '') {
+      data[key] = null;
+    }
+  });
+  if (data.title !== undefined) data.title = String(data.title).trim();
+  return data;
+}
+
+exports.getContactLocations = asyncHandler(async (req, res) => {
+  await ensureDefaultContactLocations();
+  const locations = await prisma.contactLocation.findMany({
+    where: { is_active: true },
+    orderBy: { sort_order: 'asc' },
+  });
+  return success(res, 'Contact locations retrieved', { locations });
+});
+
+exports.getContactLocationsAdmin = asyncHandler(async (req, res) => {
+  await ensureDefaultContactLocations();
+  const locations = await prisma.contactLocation.findMany({
+    orderBy: { sort_order: 'asc' },
+  });
+  return success(res, 'Contact locations retrieved', { locations });
+});
+
+exports.createContactLocation = asyncHandler(async (req, res) => {
+  const data = normalizeContactLocationBody(req.body);
+  if (!data.title) {
+    return error(res, 'Title is required', 400);
+  }
+  if (data.is_active === undefined) data.is_active = true;
+  if (data.sort_order === undefined || Number.isNaN(data.sort_order)) data.sort_order = 0;
+  const location = await prisma.contactLocation.create({ data });
+  return success(res, 'Contact location created', { location }, 201);
+});
+
+exports.updateContactLocation = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const data = normalizeContactLocationBody(req.body);
+  if (data.title !== undefined && !data.title) {
+    return error(res, 'Title is required', 400);
+  }
+  const location = await prisma.contactLocation.update({
+    where: { id: parseInt(id, 10) },
+    data,
+  });
+  return success(res, 'Contact location updated', { location });
+});
+
+exports.deleteContactLocation = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.contactLocation.delete({ where: { id: parseInt(id, 10) } });
+  return success(res, 'Contact location deleted');
+});
+
+// ==================== SOCIAL LINKS ====================
+
+const SOCIAL_PLATFORMS = new Set([
+  'linkedin',
+  'facebook',
+  'instagram',
+  'youtube',
+  'twitter',
+  'tiktok',
+  'whatsapp',
+  'other',
+]);
+
+function normalizeSocialLinkBody(body = {}) {
+  const data = {};
+  if (body.platform !== undefined) {
+    data.platform = String(body.platform || '')
+      .trim()
+      .toLowerCase();
+  }
+  if (body.url !== undefined) {
+    data.url = String(body.url || '').trim();
+  }
+  if (body.label !== undefined) {
+    const label = String(body.label || '').trim();
+    data.label = label || null;
+  }
+  if (body.sort_order !== undefined) {
+    data.sort_order = parseInt(body.sort_order || 0, 10);
+    if (Number.isNaN(data.sort_order)) data.sort_order = 0;
+  }
+  if (body.is_active !== undefined) {
+    data.is_active = body.is_active === 'true' || body.is_active === true;
+  }
+  return data;
+}
+
+exports.getSocialLinks = asyncHandler(async (req, res) => {
+  const links = await prisma.socialLink.findMany({
+    where: { is_active: true },
+    orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+  });
+  const withUrl = links.filter((l) => l.url && String(l.url).trim());
+  return success(res, 'Social links retrieved', { links: withUrl });
+});
+
+exports.getSocialLinksAdmin = asyncHandler(async (req, res) => {
+  const links = await prisma.socialLink.findMany({
+    orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+  });
+  return success(res, 'Social links retrieved', { links });
+});
+
+exports.createSocialLink = asyncHandler(async (req, res) => {
+  const data = normalizeSocialLinkBody(req.body);
+  if (!data.platform || !SOCIAL_PLATFORMS.has(data.platform)) {
+    return error(res, 'Valid platform is required (linkedin, facebook, instagram, youtube, twitter, tiktok, whatsapp, other)', 400);
+  }
+  if (!data.url) {
+    return error(res, 'URL is required', 400);
+  }
+  if (data.is_active === undefined) data.is_active = true;
+  if (data.sort_order === undefined) data.sort_order = 0;
+  const link = await prisma.socialLink.create({ data });
+  return success(res, 'Social link created', { link }, 201);
+});
+
+exports.updateSocialLink = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const data = normalizeSocialLinkBody(req.body);
+  if (data.platform !== undefined && !SOCIAL_PLATFORMS.has(data.platform)) {
+    return error(res, 'Invalid platform', 400);
+  }
+  if (data.url !== undefined && !data.url) {
+    return error(res, 'URL is required', 400);
+  }
+  const link = await prisma.socialLink.update({
+    where: { id: parseInt(id, 10) },
+    data,
+  });
+  return success(res, 'Social link updated', { link });
+});
+
+exports.deleteSocialLink = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await prisma.socialLink.delete({ where: { id: parseInt(id, 10) } });
+  return success(res, 'Social link deleted');
 });
 
 // ==================== PAGES ====================

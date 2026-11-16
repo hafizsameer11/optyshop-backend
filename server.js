@@ -35,6 +35,8 @@ const bannerRoutes = require('./routes/banners');
 const campaignRoutes = require('./routes/campaigns');
 const brandRoutes = require('./routes/brands');
 const faqRoutes = require('./routes/faqs');
+const contactLocationRoutes = require('./routes/contactLocations');
+const socialLinkRoutes = require('./routes/socialLinks');
 const pageRoutes = require('./routes/pages');
 const transactionRoutes = require('./routes/transactions');
 const paymentRoutes = require('./routes/payments');
@@ -159,6 +161,7 @@ app.get('/api', (req, res) => {
       campaigns: '/api/campaigns',
       brands: '/api/brands',
       faqs: '/api/faqs',
+      contactLocations: '/api/contact-locations',
       pages: '/api/pages',
       lens: '/api/lens',
       prescriptionSunLenses: '/api/prescription-sun-lenses',
@@ -192,6 +195,8 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/faqs', faqRoutes);
+app.use('/api/contact-locations', contactLocationRoutes);
+app.use('/api/social-links', socialLinkRoutes);
 app.use('/api/pages', pageRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/payments', paymentRoutes);

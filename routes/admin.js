@@ -110,6 +110,14 @@ const {
   createFaq,
   updateFaq,
   deleteFaq,
+  getContactLocationsAdmin,
+  createContactLocation,
+  updateContactLocation,
+  deleteContactLocation,
+  getSocialLinksAdmin,
+  createSocialLink,
+  updateSocialLink,
+  deleteSocialLink,
   getPagesAdmin,
   createPage,
   updatePage,
@@ -384,6 +392,18 @@ router.get('/faqs', getFaqsAdmin);
 router.post('/faqs', createFaq);
 router.put('/faqs/:id', updateFaq);
 router.delete('/faqs/:id', deleteFaq);
+
+// Contact locations (Contact Us page)
+router.get('/contact-locations', getContactLocationsAdmin);
+router.post('/contact-locations', createContactLocation);
+router.put('/contact-locations/:id', updateContactLocation);
+router.delete('/contact-locations/:id', deleteContactLocation);
+
+// Social links (footer)
+router.get('/social-links', getSocialLinksAdmin);
+router.post('/social-links', createSocialLink);
+router.put('/social-links/:id', updateSocialLink);
+router.delete('/social-links/:id', deleteSocialLink);
 
 // Pages
 router.get('/pages', getPagesAdmin);

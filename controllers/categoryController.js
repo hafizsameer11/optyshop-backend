@@ -1,58 +1,122 @@
 const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
+const { formatProductMedia } = require('./productController');
+
+/** Same card fields as shop listing so home ProductCard matches category page */
+const homeListingProductSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  sku: true,
+  price: true,
+  compare_at_price: true,
+  images: true,
+  color_images: true,
+  frame_color: true,
+  frame_shape: true,
+  frame_material: true,
+  gender: true,
+  stock_status: true,
+  stock_quantity: true,
+  product_type: true,
+  contact_lens_brand: true,
+  category_id: true,
+  sub_category_id: true,
+  is_featured: true,
+  category: {
+    select: { id: true, name: true, slug: true },
+  },
+  subCategory: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      parent_id: true,
+      parent: { select: { id: true, name: true, slug: true } },
+    },
+  },
+};
+
+const formatHomeProducts = (products) =>
+  (Array.isArray(products) ? products : []).map((p) => formatProductMedia(p));
 
 // @desc    Get all categories
 // @route   GET /api/categories
 // @access  Public
 exports.getCategories = asyncHandler(async (req, res) => {
-  const { includeProducts } = req.query;
+  const includeProducts = req.query.includeProducts === 'true';
+  const includeSubcategories = req.query.includeSubcategories === 'true';
+
+  const include = {};
+
+  if (includeProducts) {
+    include.products = {
+      where: { is_active: true },
+      take: 10,
+      orderBy: { created_at: 'desc' },
+      select: homeListingProductSelect,
+    };
+  }
+
+  if (includeSubcategories) {
+    include.subcategories = {
+      where: {
+        is_active: true,
+        parent_id: null,
+      },
+      include: {
+        ...(includeProducts
+          ? {
+              products: {
+                where: { is_active: true },
+                take: 10,
+                orderBy: { created_at: 'desc' },
+                select: homeListingProductSelect,
+              },
+            }
+          : {}),
+        children: {
+          where: { is_active: true },
+          select: {
+            id: true,
+            name: true,
+            name_it: true,
+            slug: true,
+            image: true,
+            parent_id: true,
+            sort_order: true,
+          },
+          orderBy: { sort_order: 'asc' },
+        },
+      },
+      orderBy: { sort_order: 'asc' },
+    };
+  }
 
   const categories = await prisma.category.findMany({
     where: { is_active: true },
-    include: includeProducts === 'true' ? {
-      products: {
-        where: { is_active: true },
-        take: 5,
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          price: true,
-          images: true
-        }
-      }
-    } : (req.query.includeSubcategories === 'true' ? {
-      subcategories: {
-        where: { 
-          is_active: true,
-          parent_id: null // Only top-level subcategories
-        },
-        include: {
-          children: {
-            where: { is_active: true },
-            select: {
-              id: true,
-              name: true,
-              name_it: true,
-              slug: true,
-              image: true,
-              parent_id: true,
-              sort_order: true
-            },
-            orderBy: { sort_order: 'asc' }
-          }
-        },
-        orderBy: { sort_order: 'asc' }
-      }
-    } : false),
+    include: Object.keys(include).length > 0 ? include : false,
     orderBy: [
       { sort_order: 'asc' },
-      { name: 'asc' }
-    ]
+      { name: 'asc' },
+    ],
   });
 
-  return success(res, 'Categories retrieved successfully', { categories });
+  const formatted = includeProducts
+    ? categories.map((cat) => ({
+        ...cat,
+        products: formatHomeProducts(cat.products),
+        subcategories: Array.isArray(cat.subcategories)
+          ? cat.subcategories.map((sub) => ({
+              ...sub,
+              products: formatHomeProducts(sub.products),
+            }))
+          : cat.subcategories,
+      }))
+    : categories;
+
+  return success(res, 'Categories retrieved successfully', { categories: formatted });
 });
 
 // @desc    Get single category

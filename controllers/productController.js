@@ -266,6 +266,12 @@ const formatProductMedia = (product) => {
     ? colors[0].price
     : parseFloat(product.price);
 
+  const brandName =
+    (product.brand && typeof product.brand === 'object' && product.brand.name) ||
+    (typeof product.brand === 'string' ? product.brand : null) ||
+    product.contact_lens_brand ||
+    null;
+
   return {
     ...product,
     images,
@@ -274,6 +280,8 @@ const formatProductMedia = (product) => {
     colors: colors, // Array of color objects for swatches: [{name, display_name, value, price, images, primaryImage, hexCode}]
     selectedColor: defaultColor, // Default selected color value
     currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
+    brand: brandName,
+    brand_id: product.brand_id ?? product.brand?.id ?? null,
     // Derived for storefront cards: qty 0 or status out_of_stock → not purchasable (still listed)
     in_stock:
       product.stock_status !== 'out_of_stock' &&
@@ -281,6 +289,14 @@ const formatProductMedia = (product) => {
     // model_3d_url is already in the product object from Prisma
     model_3d_url: product.model_3d_url || null
   };
+};
+
+const brandInclude = {
+  select: {
+    id: true,
+    name: true,
+    slug: true,
+  },
 };
 
 // Helper function to get hex code from color name
@@ -640,6 +656,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
   // Build include object - conditionally include sizeVolumeVariants if table exists
   const includeObject = {
+    brand: brandInclude,
     category: {
       select: {
         id: true,
@@ -791,6 +808,7 @@ exports.getProduct = asyncHandler(async (req, res) => {
 
   // Build include object - conditionally include sizeVolumeVariants if table exists
   const includeObject = {
+    brand: brandInclude,
     category: {
       select: {
         id: true,
@@ -974,6 +992,7 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
 
   // Build include object - conditionally include sizeVolumeVariants if table exists
   const includeObject = {
+    brand: brandInclude,
     category: {
       select: {
         id: true,
@@ -1220,6 +1239,7 @@ exports.getFeaturedProducts = asyncHandler(async (req, res) => {
       is_featured: true
     },
     include: {
+      brand: brandInclude,
       category: {
         select: {
           id: true,
@@ -1292,6 +1312,7 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
       is_active: true
     },
     include: {
+      brand: brandInclude,
       category: {
         select: {
           id: true,
