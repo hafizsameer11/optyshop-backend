@@ -2365,20 +2365,22 @@ exports.createProduct = asyncHandler(async (req, res) => {
         const uploadPromises = req.files.images.map(file => uploadToS3(file, "products"));
         const uploadedUrls = await Promise.all(uploadPromises);
 
-        // Map each uploaded image to its color
+        // Map each uploaded image to its color (group by hex — never one slot per file)
         uploadedUrls.forEach((url, index) => {
           const hexCode = imageColors[index];
-          if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-            const slotKey = `slot_${index}`;
-            if (!colorImagesMap[slotKey]) {
-              colorImagesMap[slotKey] = {
-                hexCode: hexCode,
-                name: getColorNameFromHex(hexCode),
+          if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/i)) {
+            const hex = String(hexCode).toUpperCase();
+            if (!colorImagesMap[hex]) {
+              colorImagesMap[hex] = {
+                hexCode: hex,
+                name: getColorNameFromHex(hex),
                 price: null,
                 images: []
               };
             }
-            colorImagesMap[slotKey].images.push(url);
+            if (url && !colorImagesMap[hex].images.includes(url)) {
+              colorImagesMap[hex].images.push(url);
+            }
           } else {
             // No color specified, add to general images
             generalImages.push(url);
@@ -2394,24 +2396,29 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
     }
 
-    // Convert colorImagesMap to array format (preserve slot_* order)
+    // Convert colorImagesMap to array — one entry per hex, deduped image URLs
     if (Object.keys(colorImagesMap).length > 0) {
-      const keys = Object.keys(colorImagesMap);
-      const slotKeys = keys
-        .filter((k) => k.startsWith('slot_'))
-        .sort((a, b) => parseInt(a.replace(/^slot_/, ''), 10) - parseInt(b.replace(/^slot_/, ''), 10));
-      const otherKeys = keys.filter((k) => !k.startsWith('slot_'));
-      const colorImagesArray = [...slotKeys, ...otherKeys].map((k) => {
-        const colorData = colorImagesMap[k];
-        return {
-          hexCode: colorData.hexCode,
-          name: colorData.name || getColorNameFromHex(colorData.hexCode),
-          price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-          images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
-        };
+      const byHex = {};
+      Object.values(colorImagesMap).forEach((colorData) => {
+        const hex = String(colorData.hexCode || '').toUpperCase();
+        if (!hex.match(/^#[0-9A-F]{6}$/)) return;
+        if (!byHex[hex]) {
+          byHex[hex] = {
+            hexCode: hex,
+            name: colorData.name || getColorNameFromHex(hex),
+            price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+            images: []
+          };
+        }
+        const urls = Array.isArray(colorData.images) ? colorData.images : [colorData.images];
+        urls.forEach((u) => {
+          if (u && !byHex[hex].images.includes(u)) byHex[hex].images.push(u);
+        });
+        if (byHex[hex].price == null && colorData.price != null) {
+          byHex[hex].price = parseFloat(colorData.price);
+        }
       });
-
-      productData.color_images = JSON.stringify(colorImagesArray);
+      productData.color_images = JSON.stringify(Object.values(byHex));
     }
 
     // Handle 3D model upload
@@ -3050,17 +3057,23 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         ? JSON.parse(product.color_images)
         : (Array.isArray(product.color_images) ? product.color_images : []);
 
-      // Group existing by hex code
-      existingColorImages.forEach((item, idx) => {
+      // Group existing by hex code (merge duplicate rows)
+      existingColorImages.forEach((item) => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
-        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
-          const slotKey = `slot_${idx}`;
-          colorImagesMap[slotKey] = {
-            hexCode: hexCode,
-            name: item.name || getColorNameFromHex(hexCode),
-            price: item.price !== undefined ? parseFloat(item.price) : null,
-            images: item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : []
-          };
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/i)) {
+          const hex = String(hexCode).toUpperCase();
+          if (!colorImagesMap[hex]) {
+            colorImagesMap[hex] = {
+              hexCode: hex,
+              name: item.name || getColorNameFromHex(hex),
+              price: item.price !== undefined ? parseFloat(item.price) : null,
+              images: []
+            };
+          }
+          const urls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
+          urls.forEach((u) => {
+            if (u && !colorImagesMap[hex].images.includes(u)) colorImagesMap[hex].images.push(u);
+          });
         }
       });
     } catch (e) {
@@ -3363,22 +3376,21 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         });
       }
 
-      // Add/update color images from the provided data (slot index preserves multiple variants with same hex)
-      colorImagesData.forEach((item, idx) => {
+      // Replace / merge by hex only (one color = one entry, deduped URLs)
+      colorImagesData.forEach((item) => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
-        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/)) {
+        if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/i)) {
+          const hex = String(hexCode).toUpperCase();
           const keptUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
-          const prior = colorImagesMap[hexCode];
+          const prior = colorImagesMap[hex];
           const fromParallel = prior && Array.isArray(prior.images) ? prior.images : [];
-          const merged = [...keptUrls];
-          fromParallel.forEach((u) => {
+          const merged = [];
+          [...keptUrls, ...fromParallel].forEach((u) => {
             if (u && !merged.includes(u)) merged.push(u);
           });
-          if (prior) delete colorImagesMap[hexCode];
-          const slotKey = `slot_${idx}`;
-          colorImagesMap[slotKey] = {
-            hexCode: hexCode,
-            name: item.name || getColorNameFromHex(hexCode),
+          colorImagesMap[hex] = {
+            hexCode: hex,
+            name: item.name || getColorNameFromHex(hex),
             price: item.price !== undefined ? parseFloat(item.price) : null,
             images: merged
           };
@@ -3491,24 +3503,26 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // Convert colorImagesMap to array format (preserve slot_* order so duplicate hex variants stay separate)
+  // One entry per hex, deduped image URLs
   if (Object.keys(colorImagesMap).length > 0) {
-    const keys = Object.keys(colorImagesMap);
-    const slotKeys = keys
-      .filter((k) => k.startsWith('slot_'))
-      .sort((a, b) => parseInt(a.replace(/^slot_/, ''), 10) - parseInt(b.replace(/^slot_/, ''), 10));
-    const otherKeys = keys.filter((k) => !k.startsWith('slot_'));
-    const colorImagesArray = [...slotKeys, ...otherKeys].map((k) => {
-      const colorData = colorImagesMap[k];
-      return {
-        hexCode: colorData.hexCode,
-        name: colorData.name || getColorNameFromHex(colorData.hexCode),
-        price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-        images: Array.isArray(colorData.images) ? colorData.images : [colorData.images]
-      };
+    const byHex = {};
+    Object.values(colorImagesMap).forEach((colorData) => {
+      const hex = String(colorData.hexCode || '').toUpperCase();
+      if (!hex.match(/^#[0-9A-F]{6}$/)) return;
+      if (!byHex[hex]) {
+        byHex[hex] = {
+          hexCode: hex,
+          name: colorData.name || getColorNameFromHex(hex),
+          price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+          images: []
+        };
+      }
+      const urls = Array.isArray(colorData.images) ? colorData.images : [colorData.images];
+      urls.forEach((u) => {
+        if (u && !byHex[hex].images.includes(u)) byHex[hex].images.push(u);
+      });
     });
-
-    productData.color_images = JSON.stringify(colorImagesArray);
+    productData.color_images = JSON.stringify(Object.values(byHex));
   } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
     // Allow clearing color images - explicitly set to null when cleared
     productData.color_images = null;

@@ -404,18 +404,20 @@ exports.createOrder = asyncHandler(async (req, res) => {
   if (discount > subtotal) discount = subtotal;
   const total = Math.max(0, subtotal + tax + shipping - discount);
 
-  // Map and validate payment_method — Stripe only for checkout
-  let validPaymentMethod = 'stripe';
+  // Allow stripe / paypal / cod (dummy checkout)
+  let validPaymentMethod = 'cod';
   if (payment_method) {
     const paymentMethodMap = {
       card: 'stripe',
       credit_card: 'stripe',
       debit_card: 'stripe',
       stripe: 'stripe',
+      paypal: 'paypal',
+      cod: 'cod',
+      cash: 'cod',
+      dummy: 'cod',
     };
-    const mappedMethod =
-      paymentMethodMap[String(payment_method).toLowerCase()] || 'stripe';
-    validPaymentMethod = mappedMethod === 'stripe' ? 'stripe' : 'stripe';
+    validPaymentMethod = paymentMethodMap[String(payment_method).toLowerCase()] || 'cod';
   }
 
   const notesParts = [];

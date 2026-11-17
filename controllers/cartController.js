@@ -54,14 +54,16 @@ const getCartItemDisplayImages = (item, product) => {
           colorImages = JSON.parse(colorImages);
         }
         if (Array.isArray(colorImages)) {
-          const selectedColor = customization.selected_color || customization.hex_code;
+          const selectedColor = customization.selected_color || customization.hex_code || customization.color;
+          const norm = (v) => { const t = String(v ?? '').trim().toLowerCase(); return t.startsWith('#') ? t.slice(1) : t; };
+          const sel = norm(selectedColor);
           const colorVariant = colorImages.find(c => {
             const hexCode = c.hexCode || c.hex_code;
             const colorName = c.name || c.color;
             const colorValue = c.value;
-            return (hexCode && hexCode.toLowerCase() === selectedColor.toLowerCase()) ||
-                   (colorName && colorName.toLowerCase() === selectedColor.toLowerCase()) ||
-                   (colorValue && String(colorValue).toLowerCase() === selectedColor.toLowerCase());
+            return (hexCode && norm(hexCode) === sel) ||
+                   (colorName && norm(colorName) === sel) ||
+                   (colorValue && norm(colorValue) === sel);
           });
           if (colorVariant && colorVariant.images) {
             selectedColorImages = Array.isArray(colorVariant.images) ? colorVariant.images : [colorVariant.images];
@@ -732,27 +734,33 @@ exports.addToCart = asyncHandler(async (req, res) => {
       colorImages = colorImages ? [colorImages] : [];
     }
 
-    // Find matching color variant by hex code or color name (backward compatibility)
-    // selected_color can be a hex code (e.g., "#000000") or color name (e.g., "black")
-    const normalizedSelectedColor = selected_color.trim();
-    const isHexCode = normalizedSelectedColor.match(/^#[0-9A-Fa-f]{6}$/);
-    
-    selectedColorVariant = colorImages.find(colorData => {
-      // Support both new format (hexCode) and old format (color) for backward compatibility
+    const normKey = (v) => {
+      const t = String(v ?? '').trim().toLowerCase();
+      return t.startsWith('#') ? t.slice(1) : t;
+    };
+    const selectedKey = normKey(selected_color);
+    const mergedByHex = {};
+    colorImages.forEach((colorData) => {
+      const hexCode = colorData.hexCode || colorData.hex_code || null;
+      const bucket = hexCode ? normKey(hexCode) : normKey(colorData.name || colorData.color || colorData.value || '');
+      if (!bucket) return;
+      if (!mergedByHex[bucket]) {
+        mergedByHex[bucket] = { ...colorData, hexCode: hexCode || colorData.hexCode, images: [] };
+      }
+      const urls = Array.isArray(colorData.images)
+        ? colorData.images
+        : colorData.images ? [colorData.images] : colorData.image ? [colorData.image] : [];
+      urls.forEach((u) => {
+        if (u && !mergedByHex[bucket].images.includes(u)) mergedByHex[bucket].images.push(u);
+      });
+    });
+    selectedColorVariant = Object.values(mergedByHex).find((colorData) => {
       const hexCode = colorData.hexCode || colorData.hex_code || null;
       const colorName = colorData.color || colorData.name || '';
-      
-      if (isHexCode) {
-        // Match by hex code (case-insensitive)
-        return hexCode && hexCode.toLowerCase() === normalizedSelectedColor.toLowerCase();
-      } else {
-        // Match by color name (case-insensitive)
-        const normalizedColorName = colorName.toLowerCase().trim();
-        const normalizedSelected = normalizedSelectedColor.toLowerCase().trim();
-        return normalizedColorName === normalizedSelected || 
-               normalizedColorName.includes(normalizedSelected) ||
-               normalizedSelected.includes(normalizedColorName);
-      }
+      const colorValue = colorData.value || '';
+      return (hexCode && normKey(hexCode) === selectedKey) ||
+             (colorName && normKey(colorName) === selectedKey) ||
+             (colorValue && normKey(colorValue) === selectedKey);
     });
 
     if (selectedColorVariant) {
