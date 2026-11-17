@@ -3363,29 +3363,56 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         colorImagesData = req.body.color_images;
       }
 
-      // REPLACE existing color images (don't merge)
-      // Clear the map first if color_images is explicitly provided
-      if (req.body.color_images !== null && req.body.color_images !== '' && req.body.color_images !== '[]') {
-        // Only clear if it's not an empty array/null
-        Object.keys(colorImagesMap).forEach((key) => {
-          if (!key.startsWith('slot_')) return;
-          const i = parseInt(String(key).replace(/^slot_/, ''), 10);
-          if (Number.isNaN(i) || i < 0 || i >= colorImagesData.length) {
-            delete colorImagesMap[key];
-          }
+      // REPLACE existing color images with the keep-list from the client.
+      // Previously only slot_* keys were cleared, so removed hex variants stayed forever.
+      const originalUrlsByHex = {};
+      try {
+        const rawExisting = product.color_images;
+        const parsedExisting = typeof rawExisting === 'string'
+          ? JSON.parse(rawExisting)
+          : (Array.isArray(rawExisting) ? rawExisting : []);
+        (Array.isArray(parsedExisting) ? parsedExisting : []).forEach((item) => {
+          const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
+          if (!hexCode || !String(hexCode).match(/^#[0-9A-Fa-f]{6}$/i)) return;
+          const hex = String(hexCode).toUpperCase();
+          if (!originalUrlsByHex[hex]) originalUrlsByHex[hex] = new Set();
+          const urls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
+          urls.forEach((u) => { if (u) originalUrlsByHex[hex].add(u); });
         });
+      } catch (e) {
+        console.error('Error parsing original color_images for replace:', e);
       }
 
-      // Replace / merge by hex only (one color = one entry, deduped URLs)
+      // URLs uploaded earlier in THIS request (not present in DB before)
+      const newUploadsByHex = {};
+      Object.keys(colorImagesMap).forEach((key) => {
+        if (key.startsWith('slot_')) return;
+        const hex = String(key).toUpperCase();
+        const orig = originalUrlsByHex[hex] || new Set();
+        const images = (colorImagesMap[key] && colorImagesMap[key].images) || [];
+        images.forEach((u) => {
+          if (!u || orig.has(u)) return;
+          if (!newUploadsByHex[hex]) newUploadsByHex[hex] = [];
+          if (!newUploadsByHex[hex].includes(u)) newUploadsByHex[hex].push(u);
+        });
+      });
+
+      // Drop every previous hex entry so removed variants are actually removed
+      Object.keys(colorImagesMap).forEach((key) => {
+        if (!key.startsWith('slot_')) delete colorImagesMap[key];
+      });
+
+      // Apply keep-list
       colorImagesData.forEach((item) => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/i)) {
           const hex = String(hexCode).toUpperCase();
           const keptUrls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
-          const prior = colorImagesMap[hex];
-          const fromParallel = prior && Array.isArray(prior.images) ? prior.images : [];
           const merged = [];
-          [...keptUrls, ...fromParallel].forEach((u) => {
+          keptUrls.forEach((u) => {
+            if (u && !merged.includes(u)) merged.push(u);
+          });
+          (newUploadsByHex[hex] || []).forEach((u) => {
             if (u && !merged.includes(u)) merged.push(u);
           });
           colorImagesMap[hex] = {
@@ -3394,7 +3421,19 @@ exports.updateProduct = asyncHandler(async (req, res) => {
             price: item.price !== undefined ? parseFloat(item.price) : null,
             images: merged
           };
+          delete newUploadsByHex[hex];
         }
+      });
+
+      // Brand-new colors uploaded this request that were not in the keep-list yet
+      Object.entries(newUploadsByHex).forEach(([hex, urls]) => {
+        if (originalUrlsByHex[hex]) return; // intentionally removed
+        colorImagesMap[hex] = {
+          hexCode: hex,
+          name: getColorNameFromHex(hex),
+          price: null,
+          images: [...urls]
+        };
       });
     } catch (e) {
       console.error("Error parsing color_images:", e);
