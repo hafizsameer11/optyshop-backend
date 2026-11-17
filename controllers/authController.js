@@ -11,8 +11,10 @@ function hashResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-const PRODUCTION_STOREFRONT_URL = 'https://optyshop.hmstech.org';
+const PRODUCTION_STOREFRONT_URL = 'https://optyshops.it';
 const ALLOWED_STOREFRONT_HOSTS = new Set([
+  'optyshops.it',
+  'www.optyshops.it',
   'optyshop.hmstech.org',
   'www.optyshop.hmstech.org',
   'localhost',
