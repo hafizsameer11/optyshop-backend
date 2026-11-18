@@ -568,11 +568,9 @@ exports.createOrder = asyncHandler(async (req, res) => {
     validPaymentMethod = paymentMethodMap[String(payment_method).toLowerCase()] || 'cod';
   }
 
-  const notesParts = [];
-  if (notes) notesParts.push(String(notes));
-  if (appliedCouponCode) notesParts.push(`Coupon: ${appliedCouponCode}`);
-  if (shippingMethodLabel) notesParts.push(`Shipping: ${shippingMethodLabel}`);
-  const orderNotes = notesParts.length ? notesParts.join(' | ') : null;
+  // Keep notes as customer/admin text only (do not inject coupon/shipping labels here)
+  const orderNotes = notes ? String(notes) : null;
+  // appliedCouponCode / shippingMethodLabel are still used for totals; not stuffed into notes.
 
   // Convert addresses to JSON strings - Prisma expects String, not Object
   if (!shipping_address) {

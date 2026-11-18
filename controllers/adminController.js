@@ -4639,9 +4639,17 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
     return error(res, "Order not found", 404);
   }
 
-  // Parse JSON strings in order items
+  const parseAddr = (raw) => {
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  };
+
+  // Parse JSON strings in order items + addresses (checkout uses address/zip_code/first_name)
   const parsedOrder = {
     ...order,
+    shipping_address: parseAddr(order.shipping_address),
+    billing_address: parseAddr(order.billing_address),
     items: order.items.map(item => {
       const parsedItem = {
         ...item,
