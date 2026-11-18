@@ -608,14 +608,19 @@ exports.createOrder = asyncHandler(async (req, res) => {
     billingAddressString = JSON.stringify(billingAddressString);
   }
 
+  // COD: order is accepted, payment collected on delivery (stays pending).
+  // Stripe/PayPal: stay pending until webhook / payment page marks paid.
+  const initialOrderStatus = validPaymentMethod === 'cod' ? 'confirmed' : 'pending';
+  const initialPaymentStatus = 'pending';
+
   // Create order with items
   const order = await prisma.order.create({
     data: {
       order_number: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
       user_id: req.user.id,
       prescription_id: validPrescriptionId, // Will be null if not provided or invalid
-      status: 'pending',
-      payment_status: 'pending',
+      status: initialOrderStatus,
+      payment_status: initialPaymentStatus,
       payment_method: validPaymentMethod,
       subtotal: subtotal.toFixed(2),
       tax: tax.toFixed(2),
