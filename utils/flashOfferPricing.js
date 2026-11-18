@@ -122,10 +122,38 @@ function enrichFormattedProductWithFlashOffer(formattedProduct, offer) {
   return out;
 }
 
+
+/**
+ * Resolve active flash unit price for a product id + base price.
+ * Returns { unitPrice, offer, freeShipping }.
+ */
+async function resolveFlashPriceForProduct(productId, basePrice) {
+  const base = parseFloat(basePrice);
+  const offers = await getActiveFlashOffers();
+  const map = buildProductIdToOfferMap(offers);
+  const offer = map.get(Number(productId)) || null;
+  if (!offer) {
+    return { unitPrice: Number.isNaN(base) ? null : roundMoney(base), offer: null, freeShipping: false };
+  }
+  if (offer.discount_type === 'free_shipping') {
+    return {
+      unitPrice: Number.isNaN(base) ? null : roundMoney(base),
+      offer,
+      freeShipping: true,
+    };
+  }
+  const discounted = computeDiscountedUnitPrice(base, offer);
+  return {
+    unitPrice: discounted != null ? discounted : (Number.isNaN(base) ? null : roundMoney(base)),
+    offer,
+    freeShipping: false,
+  };
+}
 module.exports = {
   getActiveFlashOffers,
   buildProductIdToOfferMap,
   computeDiscountedUnitPrice,
   enrichFormattedProductWithFlashOffer,
-  publicFlashOfferSummary
+  publicFlashOfferSummary,
+  resolveFlashPriceForProduct
 };

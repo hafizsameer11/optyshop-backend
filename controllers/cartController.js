@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { resolveFlashPriceForProduct } = require('../utils/flashOfferPricing');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { sendCartNotificationToAdmin } = require('../utils/email');
@@ -473,6 +474,92 @@ function resolveAvailableStockForCartItem(product, customization) {
   return null;
 }
 
+async function syncFreeGiftsForProduct(cartId, productId, quantity) {
+  const qty = Math.max(0, Number(quantity) || 0);
+  const applicableGifts = qty <= 0
+    ? []
+    : await prisma.productGift.findMany({
+        where: {
+          product_id: productId,
+          is_active: true,
+          min_quantity: { lte: qty },
+          OR: [{ max_quantity: null }, { max_quantity: { gte: qty } }],
+        },
+        include: {
+          giftProduct: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              price: true,
+              images: true,
+              stock_status: true,
+              is_active: true,
+            },
+          },
+        },
+      });
+
+  const wantedGiftProductIds = new Set();
+  const added = [];
+  for (const gift of applicableGifts) {
+    if (!gift.giftProduct?.is_active || gift.giftProduct.stock_status !== 'in_stock') continue;
+    wantedGiftProductIds.add(gift.gift_product_id);
+    const existingGiftItem = await prisma.cartItem.findFirst({
+      where: { cart_id: cartId, product_id: gift.gift_product_id, unit_price: 0 },
+    });
+    if (!existingGiftItem) {
+      const giftItem = await prisma.cartItem.create({
+        data: {
+          cart_id: cartId,
+          product_id: gift.gift_product_id,
+          quantity: 1,
+          unit_price: 0,
+          customization: JSON.stringify({
+            is_gift: true,
+            gift_from_product_id: productId,
+            gift_rule_id: gift.id,
+          }),
+        },
+      });
+      added.push({ ...giftItem, gift_product: gift.giftProduct, is_gift: true });
+    }
+  }
+
+  // Remove orphan gifts that came from this parent but no longer qualify
+  const cartItems = await prisma.cartItem.findMany({ where: { cart_id: cartId, unit_price: 0 } });
+  for (const gi of cartItems) {
+    let custom = null;
+    try {
+      custom = typeof gi.customization === 'string' ? JSON.parse(gi.customization) : gi.customization;
+    } catch (e) {
+      custom = null;
+    }
+    if (!custom || !custom.is_gift) continue;
+    if (Number(custom.gift_from_product_id) !== Number(productId)) continue;
+    if (!wantedGiftProductIds.has(gi.product_id)) {
+      await prisma.cartItem.delete({ where: { id: gi.id } });
+    }
+  }
+  return added;
+}
+
+async function removeGiftsForParentProduct(cartId, productId) {
+  const cartItems = await prisma.cartItem.findMany({ where: { cart_id: cartId, unit_price: 0 } });
+  for (const gi of cartItems) {
+    let custom = null;
+    try {
+      custom = typeof gi.customization === 'string' ? JSON.parse(gi.customization) : gi.customization;
+    } catch (e) {
+      custom = null;
+    }
+    if (custom && custom.is_gift && Number(custom.gift_from_product_id) === Number(productId)) {
+      await prisma.cartItem.delete({ where: { id: gi.id } });
+    }
+  }
+}
+
+
 // @desc    Get user's cart
 // @route   GET /api/cart
 // @access  Private
@@ -541,14 +628,28 @@ exports.getCart = asyncHandler(async (req, res) => {
   let subtotal = 0;
   if (cart.items && cart.items.length > 0) {
     cart.items = cart.items.map(item => {
-      subtotal += parseFloat(item.unit_price) * item.quantity;
+subtotal += parseFloat(item.unit_price) * item.quantity;
+      // Enrich gift flags for storefront
+      try {
+        const custom = typeof item.customization === 'string'
+          ? JSON.parse(item.customization)
+          : item.customization;
+        item.is_gift = !!(custom && custom.is_gift);
+        item.gift_product = item.is_gift ? item.product : undefined;
+      } catch (e) {
+        item.is_gift = false;
+      }
       // Parse lens_coatings and customization from JSON strings
+      const parsedCustomization = item.customization
+        ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization)
+        : null;
       const parsedItem = {
         ...item,
         lens_coatings: item.lens_coatings ? JSON.parse(item.lens_coatings) : null,
-        customization: item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null,
+        customization: parsedCustomization,
         prescription_data: item.prescription_data ? JSON.parse(item.prescription_data) : null,
-        treatment_ids: item.treatment_ids ? JSON.parse(item.treatment_ids) : null
+        treatment_ids: item.treatment_ids ? JSON.parse(item.treatment_ids) : null,
+        is_gift: !!(parsedCustomization && parsedCustomization.is_gift),
       };
       
       // Get display images using helper function
@@ -855,6 +956,27 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   }
 
+  // Apply flash to base/variant price early (so merge path also gets discounted unit_price)
+  {
+    const baseForFlash = variantPrice !== null ? variantPrice : parseFloat(product.price);
+    try {
+      const flash = await resolveFlashPriceForProduct(product_id, baseForFlash);
+      if (flash.offer && flash.unitPrice != null && flash.offer.discount_type !== 'free_shipping') {
+        variantPrice = Number(flash.unitPrice);
+        if (!customizationData) customizationData = {};
+        customizationData.flash_offer_id = flash.offer.id;
+        customizationData.flash_offer_title = flash.offer.title;
+        customizationData.flash_unit_price = variantPrice;
+      } else if (flash.freeShipping) {
+        if (!customizationData) customizationData = {};
+        customizationData.flash_free_shipping = true;
+        customizationData.flash_offer_id = flash.offer?.id;
+      }
+    } catch (e) {
+      console.warn('Flash pricing (pre-merge) skipped:', e.message);
+    }
+  }
+
   // Check stock (use size/volume variant stock when a variant was selected)
   const stockQuantity =
     resolvedVariantStockQuantity != null ? resolvedVariantStockQuantity : product.stock_quantity;
@@ -920,6 +1042,9 @@ exports.addToCart = asyncHandler(async (req, res) => {
       where: { id: existingItem.id },
       data: updateData
     });
+
+    // Sync free gifts after quantity merge
+    await syncFreeGiftsForProduct(cart.id, product_id, mergedQty);
     
     // Parse JSON strings for response
     const parsedItem = {
@@ -1104,6 +1229,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
   // Calculate unit price including all add-ons
   // Start with variant price if color is selected, otherwise use base product price
   let calculatedPrice = variantPrice !== null ? variantPrice : parseFloat(product.price);
+  // Flash already applied above when possible; keep customization flags
   
   // Add progressive variant price if selected
   if (progressive_variant_id) {
@@ -1189,70 +1315,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   });
 
-  // Check for free gifts and add them automatically
-  const applicableGifts = await prisma.productGift.findMany({
-    where: {
-      product_id: product_id,
-      is_active: true,
-      min_quantity: { lte: quantity },
-      OR: [
-        { max_quantity: null },
-        { max_quantity: { gte: quantity } }
-      ]
-    },
-    include: {
-      giftProduct: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          price: true,
-          images: true,
-          stock_status: true,
-          is_active: true
-        }
-      }
-    }
-  });
-
-  const addedGifts = [];
-  for (const gift of applicableGifts) {
-    // Check if gift product is active and in stock
-    if (!gift.giftProduct.is_active || gift.giftProduct.stock_status !== 'in_stock') {
-      continue;
-    }
-
-    // Check if gift is already in cart
-    const existingGiftItem = await prisma.cartItem.findFirst({
-      where: {
-        cart_id: cart.id,
-        product_id: gift.gift_product_id,
-        // Check if it's marked as a gift (we'll use a custom field or check by price = 0)
-        unit_price: 0
-      }
-    });
-
-    if (!existingGiftItem) {
-      // Add gift to cart with price 0
-      const giftItem = await prisma.cartItem.create({
-        data: {
-          cart_id: cart.id,
-          product_id: gift.gift_product_id,
-          quantity: 1, // Always add 1 gift item
-          unit_price: 0, // Free gift
-          customization: JSON.stringify({
-            is_gift: true,
-            gift_from_product_id: product_id,
-            gift_rule_id: gift.id
-          })
-        }
-      });
-      addedGifts.push({
-        ...giftItem,
-        gift_product: gift.giftProduct
-      });
-    }
-  }
+  // Sync free gifts for new cart line
+  const addedGifts = await syncFreeGiftsForProduct(cart.id, product_id, quantity);
 
   // Parse JSON strings for response
   const parsedItem = {
@@ -1453,6 +1517,10 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
       where: { id: parseInt(id) },
       data: updateData
     });
+
+    if (quantity !== undefined) {
+      await syncFreeGiftsForProduct(cart.id, cartItem.product_id, quantity);
+    }
     
     // Parse JSON strings for response
     const parsedItem = {
@@ -1531,7 +1599,15 @@ exports.removeFromCart = asyncHandler(async (req, res) => {
     return error(res, 'Cart item not found', 404);
   }
 
+  const parentProductId = cartItem.product_id;
+  const parentCustom = parseCustomizationField(cartItem.customization);
+  const isGiftLine = !!(parentCustom && parentCustom.is_gift);
+
   await prisma.cartItem.delete({ where: { id: parseInt(id) } });
+
+  if (!isGiftLine) {
+    await removeGiftsForParentProduct(cart.id, parentProductId);
+  }
 
   return success(res, 'Item removed from cart');
 });

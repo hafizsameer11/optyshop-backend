@@ -45,6 +45,27 @@ exports.createCoupon = asyncHandler(async (req, res) => {
         }
     });
 
+    // Persist admin product picker into conditions.product_ids (schema has no product_ids column)
+    if (rest.product_ids !== undefined) {
+      let ids = rest.product_ids;
+      if (typeof ids === 'string') {
+        ids = ids.split(',').map((x) => parseInt(String(x).trim(), 10)).filter((n) => !Number.isNaN(n));
+      }
+      if (Array.isArray(ids) && ids.length > 0) {
+        let conditionsObj = {};
+        if (couponData.conditions) {
+          try {
+            conditionsObj = typeof couponData.conditions === 'string'
+              ? JSON.parse(couponData.conditions)
+              : { ...couponData.conditions };
+          } catch (e) {
+            conditionsObj = {};
+          }
+        }
+        conditionsObj.product_ids = ids.map((n) => Number(n));
+        couponData.conditions = JSON.stringify(conditionsObj);
+      }
+    }
     // Explicitly remove any invalid fields that might cause issues
     delete couponData.product_ids;
     delete couponData.created_at;
@@ -107,6 +128,29 @@ exports.updateCoupon = asyncHandler(async (req, res) => {
 
     // Map valid_from/valid_until to starts_at/ends_at and convert to Date objects
     const updateData = { ...rest };
+    // Persist product_ids on update
+    if (rest.product_ids !== undefined) {
+      let ids = rest.product_ids;
+      if (typeof ids === 'string') {
+        ids = ids.split(',').map((x) => parseInt(String(x).trim(), 10)).filter((n) => !Number.isNaN(n));
+      }
+      let conditionsObj = {};
+      if (updateData.conditions) {
+        try {
+          conditionsObj = typeof updateData.conditions === 'string'
+            ? JSON.parse(updateData.conditions)
+            : { ...updateData.conditions };
+        } catch (e) { conditionsObj = {}; }
+      }
+      if (Array.isArray(ids) && ids.length > 0) {
+        conditionsObj.product_ids = ids.map((n) => Number(n));
+        updateData.conditions = JSON.stringify(conditionsObj);
+      } else if (Array.isArray(ids) && ids.length === 0 && conditionsObj.product_ids) {
+        delete conditionsObj.product_ids;
+        updateData.conditions = Object.keys(conditionsObj).length ? JSON.stringify(conditionsObj) : null;
+      }
+      delete updateData.product_ids;
+    }
     
     if (valid_from !== undefined) {
         updateData.starts_at = valid_from ? new Date(valid_from) : null;

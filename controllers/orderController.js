@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { resolveFlashPriceForProduct } = require('../utils/flashOfferPricing');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
@@ -434,8 +435,30 @@ exports.createOrder = asyncHandler(async (req, res) => {
         : (typeof item.treatment_ids === 'string' ? item.treatment_ids : JSON.stringify([item.treatment_ids]));
     }
 
-    // Use unit_price from item if available (from cart), otherwise use product price
-    const unitPrice = item.unit_price ? parseFloat(item.unit_price) : parseFloat(product.price);
+    // Cart unit_price may include lens add-ons; apply flash only to catalog base, keep addon delta
+    const catalogPrice = parseFloat(product.price);
+    let unitPrice = item.unit_price != null ? parseFloat(item.unit_price) : catalogPrice;
+    let flashFreeShipping = false;
+    try {
+      let custom = null;
+      if (item.customization) {
+        custom = typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization;
+      }
+      if (custom && custom.is_gift) {
+        unitPrice = 0;
+      } else {
+        const flash = await resolveFlashPriceForProduct(product.id, catalogPrice);
+        if (flash.freeShipping) flashFreeShipping = true;
+        if (custom && custom.flash_free_shipping) flashFreeShipping = true;
+        if (flash.offer && flash.unitPrice != null && flash.offer.discount_type !== 'free_shipping') {
+          const addon = Math.max(0, (Number.isNaN(unitPrice) ? catalogPrice : unitPrice) - catalogPrice);
+          unitPrice = Number(flash.unitPrice) + addon;
+        }
+      }
+    } catch (e) {
+      /* ignore flash errors */
+    }
+    item._flashFreeShipping = flashFreeShipping;
     const itemTotal = unitPrice * item.quantity;
     subtotal += itemTotal;
 
@@ -519,6 +542,9 @@ exports.createOrder = asyncHandler(async (req, res) => {
   let discount = 0;
   let appliedCouponCode = null;
   let freeShippingCoupon = false;
+  const anyFlashFreeShipping = items.some((it) => !!it._flashFreeShipping);
+  if (anyFlashFreeShipping) freeShippingCoupon = true;
+
   if (coupon_code && String(coupon_code).trim()) {
     const coupon = await prisma.coupon.findUnique({
       where: { code: String(coupon_code).toUpperCase().trim() },
@@ -529,15 +555,55 @@ exports.createOrder = asyncHandler(async (req, res) => {
       const endsOk = !coupon.ends_at || new Date(coupon.ends_at) >= now;
       const minOk =
         !coupon.min_order_amount || subtotal >= parseFloat(coupon.min_order_amount);
-      if (startsOk && endsOk && minOk) {
+
+      let conditionsOk = true;
+      let eligibleSubtotal = subtotal;
+      try {
+        let conditions = coupon.conditions;
+        if (typeof conditions === 'string' && conditions.trim()) conditions = JSON.parse(conditions);
+        if (conditions && Array.isArray(conditions.product_ids) && conditions.product_ids.length > 0) {
+          const allowed = new Set(conditions.product_ids.map((id) => Number(id)));
+          eligibleSubtotal = 0;
+          for (const it of items) {
+            const pid = Number(it.product_id);
+            if (!allowed.has(pid)) continue;
+            const p = await prisma.product.findUnique({ where: { id: pid } });
+            let up = it.unit_price != null ? parseFloat(it.unit_price) : parseFloat(p?.price || 0);
+            eligibleSubtotal += up * Number(it.quantity || 1);
+          }
+          if (eligibleSubtotal <= 0) conditionsOk = false;
+        }
+      } catch (e) {
+        /* ignore bad conditions */
+      }
+
+      let usageOk = true;
+      if (coupon.usage_limit != null) {
+        const used = await prisma.order.count({
+          where: { notes: { contains: `Coupon: ${coupon.code}` } },
+        });
+        if (used >= Number(coupon.usage_limit)) usageOk = false;
+      }
+      if (usageOk && coupon.usage_per_user != null && req.user?.id) {
+        const usedByUser = await prisma.order.count({
+          where: {
+            user_id: req.user.id,
+            notes: { contains: `Coupon: ${coupon.code}` },
+          },
+        });
+        if (usedByUser >= Number(coupon.usage_per_user)) usageOk = false;
+      }
+
+      if (startsOk && endsOk && minOk && conditionsOk && usageOk) {
         appliedCouponCode = coupon.code;
+        const base = eligibleSubtotal > 0 && eligibleSubtotal < subtotal ? eligibleSubtotal : subtotal;
         if (coupon.discount_type === 'percentage') {
-          discount = (subtotal * parseFloat(coupon.discount_value)) / 100;
+          discount = (base * parseFloat(coupon.discount_value)) / 100;
           if (coupon.max_discount && discount > parseFloat(coupon.max_discount)) {
             discount = parseFloat(coupon.max_discount);
           }
         } else if (coupon.discount_type === 'fixed_amount') {
-          discount = Math.min(parseFloat(coupon.discount_value), subtotal);
+          discount = Math.min(parseFloat(coupon.discount_value), base);
         } else if (coupon.discount_type === 'free_shipping') {
           freeShippingCoupon = true;
         }
@@ -568,9 +634,10 @@ exports.createOrder = asyncHandler(async (req, res) => {
     validPaymentMethod = paymentMethodMap[String(payment_method).toLowerCase()] || 'cod';
   }
 
-  // Keep notes as customer/admin text only (do not inject coupon/shipping labels here)
-  const orderNotes = notes ? String(notes) : null;
-  // appliedCouponCode / shippingMethodLabel are still used for totals; not stuffed into notes.
+  const notesParts = [];
+  if (notes) notesParts.push(String(notes));
+  if (appliedCouponCode) notesParts.push(`Coupon: ${appliedCouponCode}`);
+  const orderNotes = notesParts.length ? notesParts.join(' | ') : null;
 
   // Convert addresses to JSON strings - Prisma expects String, not Object
   if (!shipping_address) {
