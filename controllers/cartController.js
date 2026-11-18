@@ -724,7 +724,16 @@ exports.addToCart = asyncHandler(async (req, res) => {
 
   // Handle MM caliber selection (legacy support)
   let selectedCaliberData = null;
-  if (selected_mm_caliber) {
+  // Coerce object calibers (e.g. { mm: 52 }) / "[object Object]" to plain mm
+  let resolvedMmCaliber = selected_mm_caliber;
+  if (resolvedMmCaliber && typeof resolvedMmCaliber === 'object') {
+    resolvedMmCaliber = resolvedMmCaliber.mm ?? resolvedMmCaliber.value ?? resolvedMmCaliber.size ?? null;
+  }
+  if (typeof resolvedMmCaliber === 'string' && resolvedMmCaliber === '[object Object]') {
+    resolvedMmCaliber = null;
+  }
+
+  if (resolvedMmCaliber) {
     // Parse mm_calibers to find matching caliber
     let mmCalibers = product.mm_calibers;
     if (typeof mmCalibers === 'string') {
@@ -739,14 +748,14 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
 
     selectedCaliberData = mmCalibers.find(
-      (caliber) => String(caliber.mm) === String(selected_mm_caliber)
+      (caliber) => String(caliber.mm) === String(resolvedMmCaliber)
     );
     
     if (selectedCaliberData) {
       if (!customizationData) {
         customizationData = {};
       }
-      customizationData.selected_mm_caliber = selected_mm_caliber;
+      customizationData.selected_mm_caliber = String(resolvedMmCaliber);
 
       // Caliber-level stock (optional field on mm_calibers JSON)
       if (
@@ -759,7 +768,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
         return error(res, 'Selected frame size is out of stock', 400);
       }
     } else {
-      console.warn(`MM caliber "${selected_mm_caliber}" not found for product ${product_id}`);
+      console.warn(`MM caliber "${resolvedMmCaliber}" not found for product ${product_id}`);
     }
   }
 
