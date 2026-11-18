@@ -773,6 +773,17 @@ exports.addToCart = asyncHandler(async (req, res) => {
       const hexCode = selectedColorVariant.hexCode || selectedColorVariant.hex_code || null;
       const colorName = selectedColorVariant.name || selectedColorVariant.color || 'Unknown';
 
+      // Per-color stock (independent from product-level stock)
+      if (selectedColorVariant.stock_quantity != null && selectedColorVariant.stock_quantity !== '') {
+        resolvedVariantStockQuantity = Number(selectedColorVariant.stock_quantity);
+      }
+      if (selectedColorVariant.stock_status === 'out_of_stock') {
+        return error(res, 'Il colore selezionato è esaurito', 400);
+      }
+      if (resolvedVariantStockQuantity != null && Number(resolvedVariantStockQuantity) <= 0) {
+        return error(res, 'Il colore selezionato è esaurito', 400);
+      }
+
       // Store color selection in customization
       if (!customizationData) {
         customizationData = {};
@@ -782,6 +793,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
       customizationData.color_name = colorName;
       customizationData.color_display_name = selectedColorVariant.display_name || colorName;
       customizationData.variant_price = variantPrice;
+      customizationData.color_stock_quantity = resolvedVariantStockQuantity;
       customizationData.variant_images = Array.isArray(selectedColorVariant.images) 
         ? selectedColorVariant.images 
         : (selectedColorVariant.images ? [selectedColorVariant.images] : [])
