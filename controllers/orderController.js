@@ -498,8 +498,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
     validPrescriptionId = prescriptionIdInt;
   }
 
-  // Calculate tax / shipping / discount
-  const tax = subtotal * 0.1;
+  // Tax disabled — keep field at 0 for schema compatibility
+  const tax = 0;
 
   let shipping = 0;
   let shippingMethodLabel = null;
