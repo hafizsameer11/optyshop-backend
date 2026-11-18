@@ -261,8 +261,168 @@ const sendPasswordResetEmail = async ({ to, firstName, resetUrl }) => {
   });
 };
 
+
+const STATUS_LABELS_IT = {
+  pending: 'In attesa',
+  confirmed: 'Confermato',
+  processing: 'In elaborazione',
+  shipped: 'Spedito',
+  delivered: 'Consegnato',
+  cancelled: 'Annullato',
+  refunded: 'Rimborsato',
+};
+
+const parseAddressSafe = (raw) => {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const getOrderCustomerEmail = (order) => {
+  const shipping = parseAddressSafe(order.shipping_address);
+  const billing = parseAddressSafe(order.billing_address);
+  return (
+    (shipping && shipping.email) ||
+    (billing && billing.email) ||
+    (order.user && order.user.email) ||
+    null
+  );
+};
+
+const getOrderCustomerName = (order) => {
+  const shipping = parseAddressSafe(order.shipping_address);
+  const billing = parseAddressSafe(order.billing_address);
+  const fromAddr = shipping || billing;
+  if (fromAddr) {
+    const n = `${fromAddr.first_name || ''} ${fromAddr.last_name || ''}`.trim();
+    if (n) return n;
+  }
+  if (order.user) {
+    const n = `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim();
+    if (n) return n;
+  }
+  return 'Cliente';
+};
+
+/**
+ * Email stato ordine in italiano (cliente)
+ */
+const sendOrderStatusEmailIT = async (order, previousStatus = null) => {
+  const to = getOrderCustomerEmail(order);
+  if (!to) {
+    console.warn('No customer email for order status notification');
+    return { success: false, message: 'No customer email' };
+  }
+
+  const status = String(order.status || '').toLowerCase();
+  const statusLabel = STATUS_LABELS_IT[status] || order.status;
+  const orderNumber = order.order_number || `#${order.id}`;
+  const name = getOrderCustomerName(order);
+  const total = order.total != null ? Number(order.total).toFixed(2) : '0.00';
+  const trackBase =
+    firstEnv('FRONTEND_URL', 'STORE_URL', 'CLIENT_URL') || 'https://optyshops.it';
+  const trackUrl = `${String(trackBase).replace(/\/$/, '')}/track-order?order=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(to)}`;
+
+  const prevLabel = previousStatus
+    ? STATUS_LABELS_IT[String(previousStatus).toLowerCase()] || previousStatus
+    : null;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background:#172554;color:#fff;padding:24px;text-align:center;">
+        <h1 style="margin:0;font-size:22px;">Aggiornamento ordine</h1>
+      </div>
+      <div style="padding:24px;background:#f9fafb;">
+        <p>Ciao ${name},</p>
+        <p>Lo stato del tuo ordine <strong>${orderNumber}</strong> è stato aggiornato${prevLabel ? ` da <strong>${prevLabel}</strong>` : ''} a:</p>
+        <p style="font-size:24px;font-weight:bold;color:#172554;margin:16px 0;">${statusLabel}</p>
+        <p><strong>Totale:</strong> €${total}</p>
+        <p style="margin:24px 0;text-align:center;">
+          <a href="${trackUrl}" style="display:inline-block;background:#172554;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+            Traccia il tuo ordine
+          </a>
+        </p>
+        <p style="color:#666;font-size:13px;">Se hai domande, contattaci rispondendo a questa email o tramite la pagina Contatti.</p>
+        <p style="margin-top:20px;">Grazie per aver scelto OptiShop.<br/><strong>Il team OptiShop</strong></p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `Ordine ${orderNumber} — ${statusLabel}`,
+    html,
+    text: `Ciao ${name}, lo stato del tuo ordine ${orderNumber} è ora: ${statusLabel}. Totale: €${total}. Traccia: ${trackUrl}`,
+  });
+};
+
+const sendOrderCancellationEmailIT = async (order, reason = null) => {
+  const to = getOrderCustomerEmail(order);
+  if (!to) return { success: false, message: 'No customer email' };
+  const orderNumber = order.order_number || `#${order.id}`;
+  const name = getOrderCustomerName(order);
+  const total = order.total != null ? Number(order.total).toFixed(2) : '0.00';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background:#DC2626;color:#fff;padding:24px;text-align:center;">
+        <h1 style="margin:0;font-size:22px;">Ordine annullato</h1>
+      </div>
+      <div style="padding:24px;background:#f9fafb;">
+        <p>Ciao ${name},</p>
+        <p>Il tuo ordine <strong>${orderNumber}</strong> è stato annullato.</p>
+        ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ''}
+        <p><strong>Importo:</strong> €${total}</p>
+        <p>Se il pagamento era già stato effettuato, il rimborso verrà elaborato sul metodo di pagamento originale entro 5-10 giorni lavorativi.</p>
+        <p style="margin-top:20px;">Ci scusiamo per l'eventuale disagio.<br/><strong>Il team OptiShop</strong></p>
+      </div>
+    </div>
+  `;
+  return sendEmail({
+    to,
+    subject: `Ordine ${orderNumber} — Annullato`,
+    html,
+  });
+};
+
+const sendOrderRefundEmailIT = async (order, amount = null, reason = null) => {
+  const to = getOrderCustomerEmail(order);
+  if (!to) return { success: false, message: 'No customer email' };
+  const orderNumber = order.order_number || `#${order.id}`;
+  const name = getOrderCustomerName(order);
+  const refundAmount = amount != null ? Number(amount).toFixed(2) : (order.total != null ? Number(order.total).toFixed(2) : '0.00');
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background:#EA580C;color:#fff;padding:24px;text-align:center;">
+        <h1 style="margin:0;font-size:22px;">Rimborso elaborato</h1>
+      </div>
+      <div style="padding:24px;background:#f9fafb;">
+        <p>Ciao ${name},</p>
+        <p>Abbiamo elaborato un rimborso per l'ordine <strong>${orderNumber}</strong>.</p>
+        <p style="font-size:22px;font-weight:bold;">€${refundAmount}</p>
+        ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ''}
+        <p>Il rimborso verrà accreditato sul metodo di pagamento originale entro 5-10 giorni lavorativi.</p>
+        <p style="margin-top:20px;">Grazie.<br/><strong>Il team OptiShop</strong></p>
+      </div>
+    </div>
+  `;
+  return sendEmail({
+    to,
+    subject: `Rimborso per ordine ${orderNumber}`,
+    html,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendCartNotificationToAdmin,
   sendPasswordResetEmail,
+  sendOrderStatusEmailIT,
+  sendOrderCancellationEmailIT,
+  sendOrderRefundEmailIT,
+  getOrderCustomerEmail,
+  STATUS_LABELS_IT,
 };

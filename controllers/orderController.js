@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma');
 const asyncHandler = require('../middleware/asyncHandler');
 const { success, error } = require('../utils/response');
 const { v4: uuidv4 } = require('uuid');
+const { sendOrderStatusEmailIT, sendOrderCancellationEmailIT, sendOrderRefundEmailIT } = require('../utils/email');
 
 // Helper function to format contact lens details for display
 const formatContactLensDetails = (item) => {
@@ -175,9 +176,11 @@ exports.trackOrder = asyncHandler(async (req, res) => {
     return error(res, 'Email is required', 400);
   }
 
-  const order = await prisma.order.findFirst({
+  const normalizedOrderNumber = orderNumber.replace(/\s+/g, '').toUpperCase();
+
+  let order = await prisma.order.findFirst({
     where: {
-      order_number: orderNumber.toUpperCase(),
+      order_number: normalizedOrderNumber,
     },
     include: {
       user: {
@@ -202,15 +205,38 @@ exports.trackOrder = asyncHandler(async (req, res) => {
     },
   });
 
+  // Fallback: case-insensitive / partial match on order_number
   if (!order) {
-    return error(res, 'Order not found. Please check your order number and email.', 404);
+    const candidates = await prisma.order.findMany({
+      where: {
+        order_number: { contains: normalizedOrderNumber.replace(/^ORD-/, '') },
+      },
+      take: 5,
+      include: {
+        user: { select: { email: true, first_name: true, last_name: true } },
+        items: {
+          include: {
+            product: { select: { id: true, name: true, slug: true, images: true } },
+          },
+        },
+      },
+    });
+    order =
+      candidates.find(
+        (o) => String(o.order_number || '').replace(/\s+/g, '').toUpperCase() === normalizedOrderNumber
+      ) || null;
+  }
+
+  if (!order) {
+    return error(res, 'Ordine non trovato. Controlla il numero ordine e l\'email.', 404);
   }
 
   const shippingEmail = getAddressEmail(order.shipping_address);
+  const billingEmail = getAddressEmail(order.billing_address);
   const userEmail = normalizeEmail(order.user?.email);
 
-  if (email !== shippingEmail && email !== userEmail) {
-    return error(res, 'Order not found. Please check your order number and email.', 404);
+  if (email !== shippingEmail && email !== billingEmail && email !== userEmail) {
+    return error(res, 'Ordine non trovato. Controlla il numero ordine e l\'email.', 404);
   }
 
   return success(res, 'Order found', {
@@ -641,12 +667,35 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
     updateData.delivered_at = new Date();
   }
 
+  const previousStatus = existingOrder.status;
+
   const order = await prisma.order.update({
     where: { id: parseInt(id) },
-    data: updateData
+    data: updateData,
+    include: {
+      user: {
+        select: { id: true, email: true, first_name: true, last_name: true },
+      },
+      items: true,
+    },
   });
 
-  return success(res, 'Order status updated', { order });
+  // Notify customer in Italian (best-effort)
+  try {
+    if (previousStatus !== order.status) {
+      if (order.status === 'cancelled') {
+        await sendOrderCancellationEmailIT(order);
+      } else if (order.status === 'refunded') {
+        await sendOrderRefundEmailIT(order);
+      } else {
+        await sendOrderStatusEmailIT(order, previousStatus);
+      }
+    }
+  } catch (emailErr) {
+    console.error('Order status email failed:', emailErr.message || emailErr);
+  }
+
+  return success(res, 'Stato ordine aggiornato', { order });
 });
 
 // @desc    Cancel order
@@ -687,7 +736,13 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  return success(res, 'Order cancelled successfully', { order: updatedOrder });
+  try {
+    await sendOrderCancellationEmailIT(updatedOrder);
+  } catch (e) {
+    console.error('Cancel email failed:', e.message || e);
+  }
+
+  return success(res, 'Ordine annullato con successo', { order: updatedOrder });
 });
 
 // @desc    Process refund (Admin)
@@ -712,7 +767,13 @@ exports.processRefund = asyncHandler(async (req, res) => {
     }
   });
 
-  return success(res, 'Refund processed successfully', { order: updatedOrder });
+  try {
+    await sendOrderRefundEmailIT(updatedOrder, amount, reason);
+  } catch (e) {
+    console.error('Refund email failed:', e.message || e);
+  }
+
+  return success(res, 'Rimborso elaborato con successo', { order: updatedOrder });
 });
 
 // @desc    Assign technician (Admin)

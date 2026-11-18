@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendEmail } = require('../utils/email');
 const router = express.Router();
 const {
   getDashboardStats,
@@ -544,6 +545,25 @@ router.delete('/vto-settings/:id', deleteVtoConfig);
 
 // Product Variants (MM Calibers and Eye Hygiene)
 // These routes are now above the auth middleware
+
+
+// Admin email send (used by admin panel notifications)
+router.post('/email/send', async (req, res) => {
+  try {
+    const { to, subject, html, text } = req.body || {};
+    if (!to || !subject || (!html && !text)) {
+      return res.status(400).json({ success: false, message: 'to, subject e html/text sono obbligatori' });
+    }
+    const result = await sendEmail({ to, subject, html, text });
+    if (!result.success) {
+      return res.status(500).json({ success: false, message: result.message || result.error || 'Invio email non riuscito' });
+    }
+    return res.json({ success: true, message: 'Email inviata', data: { messageId: result.messageId } });
+  } catch (err) {
+    console.error('Admin email send error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Invio email non riuscito' });
+  }
+});
 
 module.exports = router;
 
