@@ -1820,11 +1820,15 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       colorImages = colorImages ? [colorImages] : [];
     }
 
-    // Create colors array for frontend color swatches with variant name and price
+    // Create colors array for frontend color swatches with variant name, price, stock
     // Support both new format (hexCode) and old format (color) for backward compatibility
     const colors = colorImages.map((colorData, index) => {
       const hexCode = colorData.hexCode || colorData.hex_code || (colorData.color ? getColorHexCode(colorData.color) : null) || '#000000';
-      const colorName = colorData.name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
+      const colorName = colorData.name || colorData.display_name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
+      const stockQty = colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null;
+      const stockStatus =
+        colorData.stock_status ||
+        (stockQty != null ? (stockQty > 0 ? 'in_stock' : 'out_of_stock') : null);
 
       return {
         name: colorName,
@@ -1832,6 +1836,8 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         value: hexCode, // Use hex code as value for matching
         hexCode: hexCode, // Hex code for color picker
         price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
+        stock_quantity: stockQty,
+        stock_status: stockStatus,
         images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
         primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0
           ? colorData.images[0]
@@ -1839,16 +1845,11 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       };
     });
 
-    // Determine default/selected color
+    // Determine default/selected color (PDP). Listing image stays general gallery.
     const defaultColor = colors.length > 0 ? colors[0].value : null;
-    const currentImages = defaultColor && colors.length > 0
-      ? colors[0].images.length > 0
-        ? colors[0].images
-        : images
-      : images;
 
-    // Get first image URL for easy access in frontend
-    const firstImage = currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null);
+    // Get first image URL for easy access in frontend — general uploads only
+    const firstImage = images && images.length > 0 ? images[0] : null;
 
     // Get current variant price (from selected color, or base product price)
     const currentVariantPrice = defaultColor && colors.length > 0 && colors[0].price !== null
@@ -2405,8 +2406,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
         if (!byHex[hex]) {
           byHex[hex] = {
             hexCode: hex,
-            name: colorData.name || getColorNameFromHex(hex),
+            name: colorData.name || colorData.display_name || getColorNameFromHex(hex),
+            display_name: colorData.display_name || colorData.name || getColorNameFromHex(hex),
             price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+            stock_quantity: colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null,
+            stock_status: colorData.stock_status || null,
             images: []
           };
         }
@@ -3415,10 +3419,16 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           (newUploadsByHex[hex] || []).forEach((u) => {
             if (u && !merged.includes(u)) merged.push(u);
           });
+          const stockQty = item.stock_quantity != null && item.stock_quantity !== ''
+            ? parseInt(item.stock_quantity, 10)
+            : null;
           colorImagesMap[hex] = {
             hexCode: hex,
-            name: item.name || getColorNameFromHex(hex),
-            price: item.price !== undefined ? parseFloat(item.price) : null,
+            name: item.name || item.display_name || getColorNameFromHex(hex),
+            display_name: item.display_name || item.name || getColorNameFromHex(hex),
+            price: item.price !== undefined && item.price !== null && item.price !== '' ? parseFloat(item.price) : null,
+            stock_quantity: Number.isFinite(stockQty) ? stockQty : null,
+            stock_status: item.stock_status || (Number.isFinite(stockQty) ? (stockQty > 0 ? 'in_stock' : 'out_of_stock') : null),
             images: merged
           };
           delete newUploadsByHex[hex];
@@ -3551,8 +3561,11 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       if (!byHex[hex]) {
         byHex[hex] = {
           hexCode: hex,
-          name: colorData.name || getColorNameFromHex(hex),
+          name: colorData.name || colorData.display_name || getColorNameFromHex(hex),
+          display_name: colorData.display_name || colorData.name || getColorNameFromHex(hex),
           price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
+          stock_quantity: colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null,
+          stock_status: colorData.stock_status || null,
           images: []
         };
       }

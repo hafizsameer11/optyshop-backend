@@ -238,14 +238,20 @@ const formatProductMedia = (product) => {
   const colors = colorImages.map((colorData, index) => {
     // Support both new format (hexCode) and old format (color) for backward compatibility
     const hexCode = colorData.hexCode || colorData.hex_code || (colorData.color ? getColorHexCode(colorData.color) : null) || '#000000';
-    const colorName = colorData.name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
-    
+    const colorName = colorData.name || colorData.display_name || (colorData.color ? getColorNameFromHex(hexCode) : null) || `Color ${index + 1}`;
+    const stockQty = colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null;
+    const stockStatus =
+      colorData.stock_status ||
+      (stockQty != null ? (stockQty > 0 ? 'in_stock' : 'out_of_stock') : null);
+
     return {
       name: colorName,
       display_name: colorData.display_name || colorName,
       value: hexCode, // Use hex code as value for matching
       hexCode: hexCode, // Hex code for color picker
       price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
+      stock_quantity: stockQty,
+      stock_status: stockStatus,
       images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
       primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
         ? colorData.images[0] 
@@ -253,13 +259,11 @@ const formatProductMedia = (product) => {
     };
   });
 
-  // Determine default/selected color (first color or use main images)
+  // Homepage / listing image = general gallery only (never first color variant)
+  const listingImage = images && images.length > 0 ? images[0] : null;
+
+  // Default selected color for PDP (does not affect listing image)
   const defaultColor = colors.length > 0 ? colors[0].value : null;
-  const currentImages = defaultColor && colors.length > 0 
-    ? colors[0].images.length > 0 
-      ? colors[0].images 
-      : images
-    : images;
   
   // Get current variant price (from selected color, or base product price)
   const currentVariantPrice = defaultColor && colors.length > 0 && colors[0].price !== null
@@ -275,10 +279,11 @@ const formatProductMedia = (product) => {
   return {
     ...product,
     images,
-    image: currentImages && currentImages.length > 0 ? currentImages[0] : (images && images.length > 0 ? images[0] : null),
+    image: listingImage,
+    thumbnail: listingImage,
     color_images: colorImages,
-    colors: colors, // Array of color objects for swatches: [{name, display_name, value, price, images, primaryImage, hexCode}]
-    selectedColor: defaultColor, // Default selected color value
+    colors: colors, // Array of color objects for swatches: [{name, display_name, value, price, stock_quantity, images, primaryImage, hexCode}]
+    selectedColor: defaultColor, // Default selected color value (PDP only)
     currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
     brand: brandName,
     brand_id: product.brand_id ?? product.brand?.id ?? null,
