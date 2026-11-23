@@ -412,13 +412,22 @@ exports.createOrder = asyncHandler(async (req, res) => {
         : JSON.stringify([item.lens_coatings]);
     }
 
-    // Enrich customization with model / barcode / purchase from live product color data
+    // Enrich customization with model / barcode / purchase / frame sizes from live product
     let customizationValue = null;
     {
       let custom = parseOrderCustomization(item.customization) || {};
       if (!custom || typeof custom !== 'object') custom = {};
       if (!custom.model_code && (product.model_code || product.model_name)) {
         custom.model_code = product.model_code || product.model_name;
+      }
+      // Normalize frame measurement aliases
+      if (!custom.calibro && (custom.lens_width || custom.selected_mm_caliber)) {
+        custom.calibro = custom.lens_width || custom.selected_mm_caliber;
+      }
+      if (!custom.ponte && custom.bridge_width) custom.ponte = custom.bridge_width;
+      if (!custom.asta && custom.temple_length) custom.asta = custom.temple_length;
+      if (!custom.selected_mm_caliber && custom.calibro) {
+        custom.selected_mm_caliber = String(custom.calibro);
       }
       const colorMatch = findColorVariant(product, custom);
       if (colorMatch) {

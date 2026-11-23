@@ -4747,6 +4747,8 @@ exports.getOrderDetail = asyncHandler(async (req, res) => {
               lens_type: true,
               frame_material: true,
               frame_shape: true,
+              model_code: true,
+              sku: true,
             },
           },
           prescription: true,

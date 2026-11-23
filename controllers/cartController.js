@@ -959,6 +959,41 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   }
 
+  // Merge storefront frame picks (Calibro / Ponte / Asta) into cart customization
+  if (parsedRequestCustomization && typeof parsedRequestCustomization === 'object') {
+    if (!customizationData) customizationData = {};
+    const frameKeys = [
+      'calibro', 'ponte', 'asta', 'frame_width',
+      'lens_width', 'bridge_width', 'temple_length',
+      'frame_material', 'lens_color', 'lens_type',
+      'selected_mm_caliber', 'model_code', 'model_name',
+    ];
+    frameKeys.forEach((key) => {
+      const val = parsedRequestCustomization[key];
+      if (val !== undefined && val !== null && val !== '' && customizationData[key] == null) {
+        customizationData[key] = val;
+      }
+    });
+  }
+
+  // Prefer Calibro dropdown as frame size when legacy selected_mm_caliber was empty
+  {
+    const calibroVal =
+      customizationData?.calibro ||
+      customizationData?.lens_width ||
+      parsedRequestCustomization?.calibro ||
+      parsedRequestCustomization?.lens_width ||
+      null;
+    if (calibroVal) {
+      if (!customizationData) customizationData = {};
+      if (!customizationData.selected_mm_caliber) {
+        customizationData.selected_mm_caliber = String(calibroVal);
+      }
+      if (!customizationData.calibro) customizationData.calibro = String(calibroVal);
+      if (!customizationData.lens_width) customizationData.lens_width = String(calibroVal);
+    }
+  }
+
   // Always attach model code on cart lines (even without a color pick)
   if (product.model_code || product.model_name) {
     if (!customizationData) customizationData = {};
