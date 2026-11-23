@@ -947,6 +947,9 @@ exports.addToCart = asyncHandler(async (req, res) => {
       customizationData.color_display_name = selectedColorVariant.display_name || colorName;
       customizationData.variant_price = variantPrice;
       customizationData.color_stock_quantity = resolvedVariantStockQuantity;
+      customizationData.barcode = selectedColorVariant.barcode || selectedColorVariant.bar_code || null;
+      customizationData.purchase_code = selectedColorVariant.purchase_code || selectedColorVariant.purchaseCode || null;
+      customizationData.model_code = product.model_code || product.model_name || null;
       customizationData.variant_images = Array.isArray(selectedColorVariant.images) 
         ? selectedColorVariant.images 
         : (selectedColorVariant.images ? [selectedColorVariant.images] : [])

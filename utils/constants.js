@@ -41,7 +41,8 @@ module.exports = {
     'aviator',
     'rectangle',
     'wayfarer',
-    'geometric'
+    'geometric',
+    'butterfly'
   ],
 
   // Frame materials

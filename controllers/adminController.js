@@ -1838,6 +1838,8 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
         price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
         stock_quantity: stockQty,
         stock_status: stockStatus,
+        barcode: colorData.barcode || colorData.bar_code || null,
+        purchase_code: colorData.purchase_code || colorData.purchaseCode || null,
         images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
         primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0
           ? colorData.images[0]
@@ -1867,7 +1869,9 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       colors: colors, // Array of color objects for swatches with name, display_name, price
       selectedColor: defaultColor, // Default selected color value
       currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
-      model_3d_url: product.model_3d_url || null
+      model_3d_url: product.model_3d_url || null,
+      model_name: product.model_code || product.model_name || null,
+      model_code: product.model_code || null,
     };
   };
 
@@ -2242,6 +2246,9 @@ exports.getProduct = asyncHandler(async (req, res) => {
     image: images && images.length > 0 ? images[0] : null,
     color_images: colorImages,
     model_3d_url: product.model_3d_url || null,
+    // Admin form still uses model_name; DB field is model_code
+    model_name: product.model_code || product.model_name || null,
+    model_code: product.model_code || null,
   };
 
   return success(res, "Product retrieved successfully", { product: formattedProduct });
@@ -2411,6 +2418,8 @@ exports.createProduct = asyncHandler(async (req, res) => {
             price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
             stock_quantity: colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null,
             stock_status: colorData.stock_status || null,
+            barcode: colorData.barcode || colorData.bar_code || null,
+            purchase_code: colorData.purchase_code || colorData.purchaseCode || null,
             images: []
           };
         }
@@ -2421,8 +2430,30 @@ exports.createProduct = asyncHandler(async (req, res) => {
         if (byHex[hex].price == null && colorData.price != null) {
           byHex[hex].price = parseFloat(colorData.price);
         }
+        if (!byHex[hex].barcode && (colorData.barcode || colorData.bar_code)) {
+          byHex[hex].barcode = colorData.barcode || colorData.bar_code;
+        }
+        if (!byHex[hex].purchase_code && (colorData.purchase_code || colorData.purchaseCode)) {
+          byHex[hex].purchase_code = colorData.purchase_code || colorData.purchaseCode;
+        }
+        if (colorData.stock_quantity != null) {
+          byHex[hex].stock_quantity = Number(colorData.stock_quantity);
+        }
       });
       productData.color_images = JSON.stringify(Object.values(byHex));
+      // Auto-sum after byHex
+      {
+        const vals = Object.values(byHex);
+        const stocks = vals
+          .map((c) => (c.stock_quantity != null ? Number(c.stock_quantity) : null))
+          .filter((n) => n != null && !Number.isNaN(n));
+        if (stocks.length > 0) {
+          productData.stock_quantity = stocks.reduce((a, b) => a + b, 0);
+          if (productData.stock_status === undefined) {
+            productData.stock_status = productData.stock_quantity > 0 ? 'in_stock' : 'out_of_stock';
+          }
+        }
+      }
     }
 
     // Handle 3D model upload
@@ -2746,8 +2777,27 @@ exports.createProduct = asyncHandler(async (req, res) => {
       }
 
       // Convert color_images array to JSON string for database storage
+      // Preserve barcode / purchase_code on each color entry
+      colorImagesArray = colorImagesArray.map((c) => ({
+        ...c,
+        barcode: c.barcode || c.bar_code || null,
+        purchase_code: c.purchase_code || c.purchaseCode || null,
+        stock_quantity: c.stock_quantity != null ? Number(c.stock_quantity) : c.stock_quantity,
+      }));
       productData.color_images = colorImagesArray.length > 0 ? JSON.stringify(colorImagesArray) : null;
       console.log('💾 Saving color_images to DB:', productData.color_images ? `${colorImagesArray.length} color(s)` : 'null');
+
+      // Auto-sum stock from color_images when any color has stock_quantity
+      const colorStocks = colorImagesArray
+        .map((c) => (c.stock_quantity != null && c.stock_quantity !== '' ? Number(c.stock_quantity) : null))
+        .filter((n) => n != null && !Number.isNaN(n));
+      if (colorStocks.length > 0) {
+        productData.stock_quantity = colorStocks.reduce((a, b) => a + b, 0);
+        if (productData.stock_status === undefined) {
+          productData.stock_status = productData.stock_quantity > 0 ? 'in_stock' : 'out_of_stock';
+        }
+        console.log('Auto-sum stock from color_images:', productData.stock_quantity);
+      }
     }
 
     // Handle variants
@@ -2780,8 +2830,14 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
     // Clean productData - only include valid Prisma fields
     // List of valid Product model fields (excluding relations and auto-generated fields)
+    // model_name → model_code (admin form field name)
+    if (productData.model_name != null && productData.model_code == null) {
+      productData.model_code = String(productData.model_name).trim() || null;
+    }
+    delete productData.model_name;
+
     const validProductFields = [
-      'name', 'slug', 'sku', 'description', 'short_description',
+      'name', 'slug', 'sku', 'model_code', 'description', 'short_description',
       'category_id', 'sub_category_id', 'price', 'compare_at_price', 'cost_price',
       'stock_quantity', 'stock_status', 'images', 'color_images',
       'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',

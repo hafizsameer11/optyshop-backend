@@ -88,6 +88,7 @@ model Product {
   name                  String                     @db.VarChar(255)
   slug                  String                     @unique @db.VarChar(255)
   sku                   String                     @unique @db.VarChar(100)
+  model_code            String?                    @db.VarChar(100)
   description           String?                    @db.Text
   short_description     String?                    @db.VarChar(500)
   category_id           Int
@@ -159,6 +160,7 @@ model Product {
   @@index([brand_id])
   @@index([slug])
   @@index([sku])
+  @@index([model_code])
   @@index([frame_shape])
   @@index([frame_material])
   @@index([is_active, is_featured])

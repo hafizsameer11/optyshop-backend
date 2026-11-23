@@ -15,7 +15,8 @@ const FRAME_SHAPES = [
   'aviator',
   'rectangle',
   'wayfarer',
-  'geometric'
+  'geometric',
+  'butterfly'
 ];
 
 const FRAME_MATERIALS = [
@@ -537,7 +538,11 @@ exports.getProducts = asyncHandler(async (req, res) => {
     product_type,
     sortBy = 'created_at',
     sortOrder = 'desc',
-    isFeatured
+    isFeatured,
+    lens_width,
+    bridge_width,
+    temple_length,
+    frame_width,
   } = req.query;
 
   const skip = (page - 1) * limit;
@@ -640,6 +645,20 @@ exports.getProducts = asyncHandler(async (req, res) => {
   if (frameMaterial) where.frame_material = frameMaterial;
   if (lensType) where.lens_type = lensType;
   if (gender) where.gender = gender;
+
+  // Size filters via related frame_sizes (calibro / ponte / asta / frame width)
+  const sizeFilter = {};
+  const lw = lens_width != null && String(lens_width).trim() !== '' ? Number(lens_width) : null;
+  const bw = bridge_width != null && String(bridge_width).trim() !== '' ? Number(bridge_width) : null;
+  const tw = temple_length != null && String(temple_length).trim() !== '' ? Number(temple_length) : null;
+  const fw = frame_width != null && String(frame_width).trim() !== '' ? Number(frame_width) : null;
+  if (lw != null && !Number.isNaN(lw)) sizeFilter.lens_width = lw;
+  if (bw != null && !Number.isNaN(bw)) sizeFilter.bridge_width = bw;
+  if (tw != null && !Number.isNaN(tw)) sizeFilter.temple_length = tw;
+  if (fw != null && !Number.isNaN(fw)) sizeFilter.frame_width = fw;
+  if (Object.keys(sizeFilter).length > 0) {
+    where.frameSizes = { some: sizeFilter };
+  }
 
   if (minPrice || maxPrice) {
     where.price = {};
