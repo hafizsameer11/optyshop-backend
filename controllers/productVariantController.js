@@ -9,39 +9,59 @@ function normMmField(value) {
   return s || null;
 }
 
-function caliberComboKey(c) {
-  const mm = String(c.mm ?? c.lens_width ?? '');
-  return [
-    mm,
-    String(c.bridge_width ?? c.ponte ?? ''),
-    String(c.temple_length ?? c.asta ?? ''),
-    String(c.frame_width ?? ''),
-  ].join('|');
+const CALIBER_DIMENSIONS = new Set(['calibro', 'ponte', 'asta', 'frame_width']);
+
+function resolveDimension(raw) {
+  const d = String(raw || 'calibro').trim().toLowerCase();
+  if (d === 'lens_width' || d === 'caliber' || d === 'mm') return 'calibro';
+  if (d === 'bridge' || d === 'bridge_width') return 'ponte';
+  if (d === 'temple' || d === 'temple_length') return 'asta';
+  if (CALIBER_DIMENSIONS.has(d)) return d;
+  return 'calibro';
 }
 
-function findCaliberIndex(list, key) {
-  // Prefer id match, then legacy mm-only, then combo key
+function entryDimension(c) {
+  if (c && c.dimension) return resolveDimension(c.dimension);
+  // Legacy combo rows (had bridge/temple on same object) → treat as calibro for mm
+  return 'calibro';
+}
+
+function parseCalibersJson(raw) {
+  let list = [];
+  try {
+    list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : [];
+  } catch {
+    list = [];
+  }
+  return Array.isArray(list) ? list : [];
+}
+
+function findCaliberIndex(list, key, dimensionHint) {
   let idx = list.findIndex((c) => c.id && String(c.id) === String(key));
   if (idx >= 0) return idx;
-  idx = list.findIndex((c) => caliberComboKey(c) === String(key));
-  if (idx >= 0) return idx;
+  const dim = dimensionHint ? resolveDimension(dimensionHint) : null;
   const matches = list
     .map((c, i) => ({ c, i }))
-    .filter(({ c }) => String(c.mm) === String(key));
-  return matches.length === 1 ? matches[0].i : -1;
+    .filter(({ c }) => {
+      if (String(c.mm) !== String(key) && String(c.lens_width ?? '') !== String(key)) return false;
+      if (dim) return entryDimension(c) === dim;
+      return true;
+    });
+  return matches.length === 1 ? matches[0].i : matches.length > 1 && dim
+    ? matches[0].i
+    : matches.length === 1
+      ? matches[0].i
+      : -1;
 }
 
-// MM Caliber Management — each row can include Calibro/Ponte/Asta/frame width (multiple per product)
+// MM Caliber Management — independent dimension lists (calibro / ponte / asta / frame_width)
 exports.addProductCaliber = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const {
     mm,
     lens_width,
-    bridge_width,
-    temple_length,
-    frame_width,
-    ponte,
-    asta,
+    value,
+    dimension,
     price,
     stock_quantity,
     image_url,
@@ -56,39 +76,43 @@ exports.addProductCaliber = asyncHandler(async (req, res) => {
       return error(res, 'Product not found', 404);
     }
 
-    const lensWidth = normMmField(lens_width) || normMmField(mm);
-    if (!lensWidth || Number.isNaN(Number(lensWidth))) {
-      return error(res, 'Caliber / lens width (mm) is required and must be a number', 400);
+    const dim = resolveDimension(dimension);
+    const sizeVal = normMmField(value) || normMmField(lens_width) || normMmField(mm);
+    if (!sizeVal || Number.isNaN(Number(sizeVal))) {
+      return error(res, 'Size value (mm) is required and must be a number', 400);
     }
 
-    let currentCalibers = [];
-    try {
-      currentCalibers = product.mm_calibers
-        ? (typeof product.mm_calibers === 'string' ? JSON.parse(product.mm_calibers) : product.mm_calibers)
-        : [];
-    } catch {
-      currentCalibers = [];
+    const currentCalibers = parseCalibersJson(product.mm_calibers);
+
+    const already = currentCalibers.some(
+      (c) => entryDimension(c) === dim && String(c.mm) === String(sizeVal)
+    );
+    if (already) {
+      return error(res, `This ${dim} value already exists`, 400);
     }
-    if (!Array.isArray(currentCalibers)) currentCalibers = [];
 
     const entry = {
       id: `cal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      mm: lensWidth,
-      lens_width: lensWidth,
-      bridge_width: normMmField(bridge_width) || normMmField(ponte),
-      temple_length: normMmField(temple_length) || normMmField(asta),
-      frame_width: normMmField(frame_width),
-      price: price != null && price !== '' && !Number.isNaN(Number(price)) ? Number(price) : null,
+      dimension: dim,
+      mm: sizeVal,
+      // Keep aliases for PDP / legacy readers (only set for matching dimension)
+      lens_width: dim === 'calibro' ? sizeVal : null,
+      bridge_width: dim === 'ponte' ? sizeVal : null,
+      temple_length: dim === 'asta' ? sizeVal : null,
+      frame_width: dim === 'frame_width' ? sizeVal : null,
+      price:
+        dim === 'calibro' && price != null && price !== '' && !Number.isNaN(Number(price))
+          ? Number(price)
+          : null,
       stock_quantity:
-        stock_quantity != null && stock_quantity !== '' && !Number.isNaN(Number(stock_quantity))
+        dim === 'calibro' &&
+        stock_quantity != null &&
+        stock_quantity !== '' &&
+        !Number.isNaN(Number(stock_quantity))
           ? parseInt(stock_quantity, 10)
           : null,
       image_url: image_url && String(image_url).trim() ? String(image_url).trim() : '',
     };
-
-    if (currentCalibers.some((c) => caliberComboKey(c) === caliberComboKey(entry))) {
-      return error(res, 'This size combination already exists', 400);
-    }
 
     currentCalibers.push(entry);
 
@@ -99,7 +123,7 @@ exports.addProductCaliber = asyncHandler(async (req, res) => {
       }
     });
 
-    return success(res, 'Caliber added successfully', { product: updatedProduct, caliber: entry, calibers: currentCalibers });
+    return success(res, 'Option added successfully', { product: updatedProduct, caliber: entry, calibers: currentCalibers });
   } catch (err) {
     console.error('Add caliber error:', err);
     return error(res, 'Error adding caliber', 500);
@@ -110,12 +134,9 @@ exports.updateProductCaliber = asyncHandler(async (req, res) => {
   const { productId, mm } = req.params;
   const {
     image_url,
+    value,
     lens_width,
-    bridge_width,
-    temple_length,
-    frame_width,
-    ponte,
-    asta,
+    dimension,
     price,
     stock_quantity,
     mm: bodyMm,
@@ -130,40 +151,28 @@ exports.updateProductCaliber = asyncHandler(async (req, res) => {
       return error(res, 'Product not found', 404);
     }
 
-    let currentCalibers = [];
-    try {
-      currentCalibers = product.mm_calibers
-        ? (typeof product.mm_calibers === 'string' ? JSON.parse(product.mm_calibers) : product.mm_calibers)
-        : [];
-    } catch {
-      currentCalibers = [];
-    }
-    if (!Array.isArray(currentCalibers)) currentCalibers = [];
-
-    const caliberIndex = findCaliberIndex(currentCalibers, mm);
+    const currentCalibers = parseCalibersJson(product.mm_calibers);
+    const dimHint = req.query.dimension || dimension;
+    const caliberIndex = findCaliberIndex(currentCalibers, mm, dimHint);
     if (caliberIndex === -1) {
-      return error(res, 'Caliber not found', 404);
+      return error(res, 'Option not found', 404);
     }
 
     const row = { ...currentCalibers[caliberIndex] };
     if (!row.id) row.id = `cal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const dim = resolveDimension(dimension || row.dimension || 'calibro');
+    row.dimension = dim;
 
     if (image_url !== undefined) {
       row.image_url = image_url && String(image_url).trim() ? String(image_url).trim() : '';
     }
-    const nextLens = normMmField(lens_width) || normMmField(bodyMm);
-    if (nextLens) {
-      row.mm = nextLens;
-      row.lens_width = nextLens;
-    }
-    if (bridge_width !== undefined || ponte !== undefined) {
-      row.bridge_width = normMmField(bridge_width) || normMmField(ponte);
-    }
-    if (temple_length !== undefined || asta !== undefined) {
-      row.temple_length = normMmField(temple_length) || normMmField(asta);
-    }
-    if (frame_width !== undefined) {
-      row.frame_width = normMmField(frame_width);
+    const nextVal = normMmField(value) || normMmField(lens_width) || normMmField(bodyMm);
+    if (nextVal) {
+      row.mm = nextVal;
+      row.lens_width = dim === 'calibro' ? nextVal : null;
+      row.bridge_width = dim === 'ponte' ? nextVal : null;
+      row.temple_length = dim === 'asta' ? nextVal : null;
+      row.frame_width = dim === 'frame_width' ? nextVal : null;
     }
     if (price !== undefined) {
       row.price = price != null && price !== '' && !Number.isNaN(Number(price)) ? Number(price) : null;
@@ -184,7 +193,7 @@ exports.updateProductCaliber = asyncHandler(async (req, res) => {
       }
     });
 
-    return success(res, 'Caliber updated successfully', { product: updatedProduct, caliber: row, calibers: currentCalibers });
+    return success(res, 'Option updated successfully', { product: updatedProduct, caliber: row, calibers: currentCalibers });
   } catch (err) {
     console.error('Update caliber error:', err);
     return error(res, 'Error updating caliber', 500);
@@ -193,9 +202,7 @@ exports.updateProductCaliber = asyncHandler(async (req, res) => {
 
 exports.deleteProductCaliber = asyncHandler(async (req, res) => {
   const { productId, mm } = req.params;
-  const bridgeQ = req.query.bridge_width ?? req.query.ponte;
-  const templeQ = req.query.temple_length ?? req.query.asta;
-  const frameQ = req.query.frame_width;
+  const dimQ = req.query.dimension;
 
   try {
     const product = await prisma.product.findUnique({
@@ -206,31 +213,21 @@ exports.deleteProductCaliber = asyncHandler(async (req, res) => {
       return error(res, 'Product not found', 404);
     }
 
-    let currentCalibers = [];
-    try {
-      currentCalibers = product.mm_calibers
-        ? (typeof product.mm_calibers === 'string' ? JSON.parse(product.mm_calibers) : product.mm_calibers)
-        : [];
-    } catch {
-      currentCalibers = [];
-    }
-    if (!Array.isArray(currentCalibers)) currentCalibers = [];
+    const currentCalibers = parseCalibersJson(product.mm_calibers);
 
     let filteredCalibers;
-    const byIdOrCombo = findCaliberIndex(currentCalibers, mm);
-    if (byIdOrCombo >= 0 && (String(currentCalibers[byIdOrCombo].id) === String(mm) || caliberComboKey(currentCalibers[byIdOrCombo]) === String(mm))) {
-      filteredCalibers = currentCalibers.filter((_, i) => i !== byIdOrCombo);
-    } else if (bridgeQ != null || templeQ != null || frameQ != null) {
-      const target = caliberComboKey({
-        mm,
-        bridge_width: bridgeQ,
-        temple_length: templeQ,
-        frame_width: frameQ,
-      });
-      filteredCalibers = currentCalibers.filter((c) => caliberComboKey(c) !== target);
+    const byId = currentCalibers.findIndex((c) => c.id && String(c.id) === String(mm));
+    if (byId >= 0) {
+      filteredCalibers = currentCalibers.filter((_, i) => i !== byId);
+    } else if (dimQ) {
+      const dim = resolveDimension(dimQ);
+      filteredCalibers = currentCalibers.filter(
+        (c) => !(entryDimension(c) === dim && String(c.mm) === String(mm))
+      );
     } else {
-      // Legacy: delete all rows with this mm when no extra dims specified
-      filteredCalibers = currentCalibers.filter((caliber) => String(caliber.mm) !== String(mm) && String(caliber.id) !== String(mm));
+      filteredCalibers = currentCalibers.filter(
+        (c) => String(c.mm) !== String(mm) && String(c.id) !== String(mm)
+      );
     }
 
     const updatedProduct = await prisma.product.update({
@@ -240,7 +237,7 @@ exports.deleteProductCaliber = asyncHandler(async (req, res) => {
       }
     });
 
-    return success(res, 'Caliber deleted successfully', { product: updatedProduct, calibers: filteredCalibers });
+    return success(res, 'Option deleted successfully', { product: updatedProduct, calibers: filteredCalibers });
   } catch (err) {
     console.error('Delete caliber error:', err);
     return error(res, 'Error deleting caliber', 500);
@@ -264,26 +261,46 @@ exports.getProductCalibers = asyncHandler(async (req, res) => {
       return error(res, 'Product not found', 404);
     }
 
-    let calibers = [];
-    try {
-      calibers = product.mm_calibers
-        ? (typeof product.mm_calibers === 'string' ? JSON.parse(product.mm_calibers) : product.mm_calibers)
-        : [];
-    } catch {
-      calibers = [];
-    }
-    if (!Array.isArray(calibers)) calibers = [];
+    let calibers = parseCalibersJson(product.mm_calibers);
 
-    // Ensure lens_width alias for admin/PDP
-    calibers = calibers.map((c) => ({
-      ...c,
-      lens_width: c.lens_width || c.mm || null,
-      bridge_width: c.bridge_width || c.ponte || null,
-      temple_length: c.temple_length || c.asta || null,
-      frame_width: c.frame_width || null,
-    }));
+    // Normalize: independent dimension entries; expand legacy combo rows into separate options
+    const normalized = [];
+    const seen = new Set();
+    const pushDim = (dimension, mm, extra = {}) => {
+      const val = normMmField(mm);
+      if (!val) return;
+      const key = `${dimension}|${val}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      normalized.push({
+        id: extra.id || `cal_${dimension}_${val}`,
+        dimension,
+        mm: val,
+        lens_width: dimension === 'calibro' ? val : null,
+        bridge_width: dimension === 'ponte' ? val : null,
+        temple_length: dimension === 'asta' ? val : null,
+        frame_width: dimension === 'frame_width' ? val : null,
+        price: dimension === 'calibro' ? (extra.price ?? null) : null,
+        stock_quantity: dimension === 'calibro' ? (extra.stock_quantity ?? null) : null,
+        image_url: extra.image_url || '',
+        is_active: extra.is_active !== false,
+      });
+    };
 
-    return success(res, 'Product calibers retrieved successfully', calibers);
+    calibers.forEach((c) => {
+      if (!c || typeof c !== 'object') return;
+      if (c.dimension) {
+        pushDim(resolveDimension(c.dimension), c.mm ?? c.value ?? c.lens_width, c);
+        return;
+      }
+      // Legacy linked row → split into independent options
+      pushDim('calibro', c.mm ?? c.lens_width, c);
+      pushDim('ponte', c.bridge_width ?? c.ponte, {});
+      pushDim('asta', c.temple_length ?? c.asta, {});
+      pushDim('frame_width', c.frame_width, {});
+    });
+
+    return success(res, 'Product calibers retrieved successfully', normalized);
   } catch (err) {
     console.error('Get product calibers error:', err);
     return error(res, 'Error retrieving product calibers', 500);
