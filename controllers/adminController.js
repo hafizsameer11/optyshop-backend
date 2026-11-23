@@ -3128,7 +3128,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   let generalImages = [];
   const colorImagesMap = {};
 
-  // Parse existing color images
+  // Parse existing color images — keep barcode / purchase_code / stock on every update
   if (product.color_images) {
     try {
       const existingColorImages = typeof product.color_images === 'string'
@@ -3140,13 +3140,39 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         const hexCode = item.hexCode || item.hex_code || (item.color ? getColorHexCode(item.color) : null);
         if (hexCode && hexCode.match(/^#[0-9A-Fa-f]{6}$/i)) {
           const hex = String(hexCode).toUpperCase();
+          const stockQty = item.stock_quantity != null && item.stock_quantity !== ''
+            ? Number(item.stock_quantity)
+            : null;
           if (!colorImagesMap[hex]) {
             colorImagesMap[hex] = {
               hexCode: hex,
-              name: item.name || getColorNameFromHex(hex),
-              price: item.price !== undefined ? parseFloat(item.price) : null,
+              name: item.name || item.display_name || getColorNameFromHex(hex),
+              display_name: item.display_name || item.name || getColorNameFromHex(hex),
+              price: item.price !== undefined && item.price !== null && item.price !== ''
+                ? parseFloat(item.price)
+                : null,
+              stock_quantity: Number.isFinite(stockQty) ? stockQty : null,
+              stock_status:
+                item.stock_status ||
+                (Number.isFinite(stockQty) ? (stockQty > 0 ? 'in_stock' : 'out_of_stock') : null),
+              barcode: item.barcode || item.bar_code || null,
+              purchase_code: item.purchase_code || item.purchaseCode || null,
               images: []
             };
+          } else {
+            if (!colorImagesMap[hex].barcode && (item.barcode || item.bar_code)) {
+              colorImagesMap[hex].barcode = item.barcode || item.bar_code;
+            }
+            if (!colorImagesMap[hex].purchase_code && (item.purchase_code || item.purchaseCode)) {
+              colorImagesMap[hex].purchase_code = item.purchase_code || item.purchaseCode;
+            }
+            if (colorImagesMap[hex].stock_quantity == null && Number.isFinite(stockQty)) {
+              colorImagesMap[hex].stock_quantity = stockQty;
+            }
+            if ((item.name || item.display_name) && (!colorImagesMap[hex].name || colorImagesMap[hex].name === getColorNameFromHex(hex))) {
+              colorImagesMap[hex].name = item.name || item.display_name;
+              colorImagesMap[hex].display_name = item.display_name || item.name;
+            }
           }
           const urls = item.images ? (Array.isArray(item.images) ? item.images : [item.images]) : [];
           urls.forEach((u) => {
@@ -3630,48 +3656,57 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // One entry per hex, deduped image URLs — keep barcode / purchase_code
-  if (Object.keys(colorImagesMap).length > 0) {
-    const byHex = {};
-    Object.values(colorImagesMap).forEach((colorData) => {
-      const hex = String(colorData.hexCode || '').toUpperCase();
-      if (!hex.match(/^#[0-9A-F]{6}$/)) return;
-      if (!byHex[hex]) {
-        byHex[hex] = {
-          hexCode: hex,
-          name: colorData.name || colorData.display_name || getColorNameFromHex(hex),
-          display_name: colorData.display_name || colorData.name || getColorNameFromHex(hex),
-          price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
-          stock_quantity: colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null,
-          stock_status: colorData.stock_status || null,
-          barcode: colorData.barcode || colorData.bar_code || null,
-          purchase_code: colorData.purchase_code || colorData.purchaseCode || null,
-          images: []
-        };
-      }
-      const urls = Array.isArray(colorData.images) ? colorData.images : [colorData.images];
-      urls.forEach((u) => {
-        if (u && !byHex[hex].images.includes(u)) byHex[hex].images.push(u);
+  // Only rewrite color_images when the request actually changed colors.
+  // Previously every update re-serialized the seed map and dropped barcode/purchase_code.
+  if (colorImagesProvided) {
+    if (Object.keys(colorImagesMap).length > 0) {
+      const byHex = {};
+      Object.values(colorImagesMap).forEach((colorData) => {
+        const hex = String(colorData.hexCode || '').toUpperCase();
+        if (!hex.match(/^#[0-9A-F]{6}$/)) return;
+        // Merge any leftover meta from DB seed (same hex) when upload paths omit codes
+        const seeded = colorImagesMap[hex] || {};
+        if (!byHex[hex]) {
+          byHex[hex] = {
+            hexCode: hex,
+            name: colorData.name || colorData.display_name || seeded.name || getColorNameFromHex(hex),
+            display_name: colorData.display_name || colorData.name || seeded.display_name || getColorNameFromHex(hex),
+            price: colorData.price !== undefined && colorData.price !== null
+              ? parseFloat(colorData.price)
+              : (seeded.price != null ? seeded.price : null),
+            stock_quantity: colorData.stock_quantity != null
+              ? Number(colorData.stock_quantity)
+              : (seeded.stock_quantity != null ? Number(seeded.stock_quantity) : null),
+            stock_status: colorData.stock_status || seeded.stock_status || null,
+            barcode: colorData.barcode || colorData.bar_code || seeded.barcode || seeded.bar_code || null,
+            purchase_code: colorData.purchase_code || colorData.purchaseCode || seeded.purchase_code || seeded.purchaseCode || null,
+            images: []
+          };
+        }
+        const urls = Array.isArray(colorData.images) ? colorData.images : [colorData.images];
+        urls.forEach((u) => {
+          if (u && !byHex[hex].images.includes(u)) byHex[hex].images.push(u);
+        });
+        if (!byHex[hex].barcode && (colorData.barcode || colorData.bar_code || seeded.barcode)) {
+          byHex[hex].barcode = colorData.barcode || colorData.bar_code || seeded.barcode;
+        }
+        if (!byHex[hex].purchase_code && (colorData.purchase_code || colorData.purchaseCode || seeded.purchase_code)) {
+          byHex[hex].purchase_code = colorData.purchase_code || colorData.purchaseCode || seeded.purchase_code;
+        }
+        if (colorData.stock_quantity != null) {
+          byHex[hex].stock_quantity = Number(colorData.stock_quantity);
+        }
+        if (colorData.name || colorData.display_name) {
+          byHex[hex].name = colorData.name || colorData.display_name || byHex[hex].name;
+          byHex[hex].display_name = colorData.display_name || colorData.name || byHex[hex].display_name;
+        }
       });
-      if (!byHex[hex].barcode && (colorData.barcode || colorData.bar_code)) {
-        byHex[hex].barcode = colorData.barcode || colorData.bar_code;
-      }
-      if (!byHex[hex].purchase_code && (colorData.purchase_code || colorData.purchaseCode)) {
-        byHex[hex].purchase_code = colorData.purchase_code || colorData.purchaseCode;
-      }
-      if (colorData.stock_quantity != null) {
-        byHex[hex].stock_quantity = Number(colorData.stock_quantity);
-      }
-      if (colorData.name || colorData.display_name) {
-        byHex[hex].name = colorData.name || colorData.display_name || byHex[hex].name;
-        byHex[hex].display_name = colorData.display_name || colorData.name || byHex[hex].display_name;
-      }
-    });
-    productData.color_images = JSON.stringify(Object.values(byHex));
-  } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
-    // Allow clearing color images - explicitly set to null when cleared
-    productData.color_images = null;
-    console.log('💾 Clearing color_images - setting to null in database');
+      productData.color_images = JSON.stringify(Object.values(byHex));
+    } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {
+      // Allow clearing color images - explicitly set to null when cleared
+      productData.color_images = null;
+      console.log('💾 Clearing color_images - setting to null in database');
+    }
   }
 
   // Handle 3D model upload
