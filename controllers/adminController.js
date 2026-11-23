@@ -2165,6 +2165,13 @@ exports.getProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const includeObject = {
+    brand: {
+      select: {
+        id: true,
+        name: true,
+        slug: true
+      }
+    },
     category: true,
     subCategory: true,
     variants: true,
@@ -2249,6 +2256,7 @@ exports.getProduct = asyncHandler(async (req, res) => {
     // Admin form still uses model_name; DB field is model_code
     model_name: product.model_code || product.model_name || null,
     model_code: product.model_code || null,
+    brand_id: product.brand_id ?? product.brand?.id ?? null,
   };
 
   return success(res, "Product retrieved successfully", { product: formattedProduct });
@@ -2836,9 +2844,19 @@ exports.createProduct = asyncHandler(async (req, res) => {
     }
     delete productData.model_name;
 
+    // Normalize brand_id (FormData sends strings; empty → null)
+    if (productData.brand_id !== undefined) {
+      if (productData.brand_id === '' || productData.brand_id === 'null' || productData.brand_id === null) {
+        productData.brand_id = null;
+      } else {
+        const parsedBrand = parseInt(productData.brand_id, 10);
+        productData.brand_id = Number.isNaN(parsedBrand) ? null : parsedBrand;
+      }
+    }
+
     const validProductFields = [
       'name', 'slug', 'sku', 'model_code', 'description', 'short_description',
-      'category_id', 'sub_category_id', 'price', 'compare_at_price', 'cost_price',
+      'category_id', 'sub_category_id', 'brand_id', 'price', 'compare_at_price', 'cost_price',
       'stock_quantity', 'stock_status', 'images', 'color_images',
       'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',
       'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
@@ -3947,11 +3965,27 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     delete productData[field];
   });
 
+  // model_name → model_code (admin form field name)
+  if (productData.model_name != null && (productData.model_code == null || productData.model_code === '')) {
+    productData.model_code = String(productData.model_name).trim() || null;
+  }
+  delete productData.model_name;
+
+  // Normalize brand_id (FormData sends strings; empty → null)
+  if (productData.brand_id !== undefined) {
+    if (productData.brand_id === '' || productData.brand_id === 'null' || productData.brand_id === null) {
+      productData.brand_id = null;
+    } else {
+      const parsedBrand = parseInt(productData.brand_id, 10);
+      productData.brand_id = Number.isNaN(parsedBrand) ? null : parsedBrand;
+    }
+  }
+
   // Clean productData - only include valid Prisma fields
   // List of valid Product model fields (excluding relations and auto-generated fields)
   const validProductFields = [
-    'name', 'slug', 'sku', 'description', 'short_description',
-    'category_id', 'sub_category_id', 'price', 'compare_at_price', 'cost_price',
+    'name', 'slug', 'sku', 'model_code', 'description', 'short_description',
+    'category_id', 'sub_category_id', 'brand_id', 'price', 'compare_at_price', 'cost_price',
     'stock_quantity', 'stock_status', 'images', 'color_images',
     'frame_shape', 'frame_material', 'frame_color', 'gender', 'lens_type',
     'lens_index_options', 'treatment_options', 'model_3d_url', 'try_on_image',
@@ -4019,7 +4053,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   }
 
 
-  // Convert category_id and sub_category_id to Prisma relation syntax if they exist
+  // Convert category_id / sub_category_id / brand_id to Prisma relation syntax
   const updateData = { ...cleanedProductData };
 
   // Handle category relation
@@ -4033,22 +4067,39 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   // Handle subCategory relation
   if (updateData.sub_category_id !== undefined) {
     if (updateData.sub_category_id === null || updateData.sub_category_id === 'null' || updateData.sub_category_id === '') {
-    updateData.subCategory = {
-      disconnect: true
-    };
-  } else {
-    updateData.subCategory = {
-      connect: { id: updateData.sub_category_id }
-    };
+      updateData.subCategory = {
+        disconnect: true
+      };
+    } else {
+      updateData.subCategory = {
+        connect: { id: updateData.sub_category_id }
+      };
+    }
+    delete updateData.sub_category_id;
   }
-  delete updateData.sub_category_id;
-}
+
+  // Handle brand relation
+  if (updateData.brand_id !== undefined) {
+    if (updateData.brand_id === null || updateData.brand_id === '' || updateData.brand_id === 'null') {
+      updateData.brand = { disconnect: true };
+    } else {
+      updateData.brand = { connect: { id: parseInt(updateData.brand_id, 10) } };
+    }
+    delete updateData.brand_id;
+  }
 
 
 const updatedProduct = await prisma.product.update({
     where: { id: productId },
     data: updateData,
     include: {
+      brand: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
+      },
       category: {
         select: {
           id: true,
