@@ -271,9 +271,14 @@ const formatProductMedia = (product) => {
     ? colors[0].price
     : parseFloat(product.price);
 
+  const brandRelation =
+    product.brand && typeof product.brand === 'object' && !Array.isArray(product.brand)
+      ? product.brand
+      : null;
   const brandName =
-    (product.brand && typeof product.brand === 'object' && product.brand.name) ||
+    (brandRelation && brandRelation.name) ||
     (typeof product.brand === 'string' ? product.brand : null) ||
+    product.brand_name ||
     product.contact_lens_brand ||
     null;
 
@@ -286,8 +291,11 @@ const formatProductMedia = (product) => {
     colors: colors, // Array of color objects for swatches: [{name, display_name, value, price, stock_quantity, images, primaryImage, hexCode}]
     selectedColor: defaultColor, // Default selected color value (PDP only)
     currentVariantPrice: currentVariantPrice, // Current variant price (or base price)
+    // Keep relation + flat name so PDP Brand cell never loses the label
     brand: brandName,
-    brand_id: product.brand_id ?? product.brand?.id ?? null,
+    brand_name: brandName,
+    brand_info: brandRelation,
+    brand_id: product.brand_id ?? brandRelation?.id ?? null,
     // Derived for storefront cards: qty 0 or status out_of_stock → not purchasable (still listed)
     in_stock:
       product.stock_status !== 'out_of_stock' &&
