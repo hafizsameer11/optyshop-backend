@@ -412,11 +412,32 @@ exports.createOrder = asyncHandler(async (req, res) => {
         : JSON.stringify([item.lens_coatings]);
     }
 
+    // Enrich customization with model / barcode / purchase from live product color data
     let customizationValue = null;
-    if (item.customization) {
-      customizationValue = typeof item.customization === 'string' 
-        ? item.customization 
-        : JSON.stringify(item.customization);
+    {
+      let custom = parseOrderCustomization(item.customization) || {};
+      if (!custom || typeof custom !== 'object') custom = {};
+      if (!custom.model_code && (product.model_code || product.model_name)) {
+        custom.model_code = product.model_code || product.model_name;
+      }
+      const colorMatch = findColorVariant(product, custom);
+      if (colorMatch) {
+        if (!custom.barcode) {
+          custom.barcode = colorMatch.barcode || colorMatch.bar_code || null;
+        }
+        if (!custom.purchase_code) {
+          custom.purchase_code = colorMatch.purchase_code || colorMatch.purchaseCode || null;
+        }
+        if (!custom.color_display_name) {
+          custom.color_display_name = colorMatch.display_name || colorMatch.name || null;
+        }
+        if (!custom.hex_code && (colorMatch.hexCode || colorMatch.hex_code)) {
+          custom.hex_code = colorMatch.hexCode || colorMatch.hex_code;
+        }
+      }
+      if (Object.keys(custom).length > 0) {
+        customizationValue = JSON.stringify(custom);
+      }
     }
 
     // Handle prescription_data

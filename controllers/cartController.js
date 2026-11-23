@@ -959,6 +959,14 @@ exports.addToCart = asyncHandler(async (req, res) => {
     }
   }
 
+  // Always attach model code on cart lines (even without a color pick)
+  if (product.model_code || product.model_name) {
+    if (!customizationData) customizationData = {};
+    if (!customizationData.model_code) {
+      customizationData.model_code = product.model_code || product.model_name;
+    }
+  }
+
   // Apply flash to base/variant price early (so merge path also gets discounted unit_price)
   {
     const baseForFlash = variantPrice !== null ? variantPrice : parseFloat(product.price);

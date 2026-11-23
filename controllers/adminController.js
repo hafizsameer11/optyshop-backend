@@ -3503,6 +3503,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
             price: item.price !== undefined && item.price !== null && item.price !== '' ? parseFloat(item.price) : null,
             stock_quantity: Number.isFinite(stockQty) ? stockQty : null,
             stock_status: item.stock_status || (Number.isFinite(stockQty) ? (stockQty > 0 ? 'in_stock' : 'out_of_stock') : null),
+            barcode: item.barcode || item.bar_code || null,
+            purchase_code: item.purchase_code || item.purchaseCode || null,
             images: merged
           };
           delete newUploadsByHex[hex];
@@ -3516,6 +3518,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           hexCode: hex,
           name: getColorNameFromHex(hex),
           price: null,
+          barcode: null,
+          purchase_code: null,
           images: [...urls]
         };
       });
@@ -3626,7 +3630,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // One entry per hex, deduped image URLs
+  // One entry per hex, deduped image URLs — keep barcode / purchase_code
   if (Object.keys(colorImagesMap).length > 0) {
     const byHex = {};
     Object.values(colorImagesMap).forEach((colorData) => {
@@ -3640,6 +3644,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
           price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null,
           stock_quantity: colorData.stock_quantity != null ? Number(colorData.stock_quantity) : null,
           stock_status: colorData.stock_status || null,
+          barcode: colorData.barcode || colorData.bar_code || null,
+          purchase_code: colorData.purchase_code || colorData.purchaseCode || null,
           images: []
         };
       }
@@ -3647,6 +3653,19 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       urls.forEach((u) => {
         if (u && !byHex[hex].images.includes(u)) byHex[hex].images.push(u);
       });
+      if (!byHex[hex].barcode && (colorData.barcode || colorData.bar_code)) {
+        byHex[hex].barcode = colorData.barcode || colorData.bar_code;
+      }
+      if (!byHex[hex].purchase_code && (colorData.purchase_code || colorData.purchaseCode)) {
+        byHex[hex].purchase_code = colorData.purchase_code || colorData.purchaseCode;
+      }
+      if (colorData.stock_quantity != null) {
+        byHex[hex].stock_quantity = Number(colorData.stock_quantity);
+      }
+      if (colorData.name || colorData.display_name) {
+        byHex[hex].name = colorData.name || colorData.display_name || byHex[hex].name;
+        byHex[hex].display_name = colorData.display_name || colorData.name || byHex[hex].display_name;
+      }
     });
     productData.color_images = JSON.stringify(Object.values(byHex));
   } else if (shouldClearAllColorImages || req.body.color_images === null || req.body.color_images === '' || req.body.color_images === '[]') {

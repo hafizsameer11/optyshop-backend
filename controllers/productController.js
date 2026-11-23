@@ -253,6 +253,8 @@ const formatProductMedia = (product) => {
       price: colorData.price !== undefined && colorData.price !== null ? parseFloat(colorData.price) : null, // Variant-specific price
       stock_quantity: stockQty,
       stock_status: stockStatus,
+      barcode: colorData.barcode || colorData.bar_code || null,
+      purchase_code: colorData.purchase_code || colorData.purchaseCode || null,
       images: Array.isArray(colorData.images) ? colorData.images : (colorData.images ? [colorData.images] : []),
       primaryImage: Array.isArray(colorData.images) && colorData.images.length > 0 
         ? colorData.images[0] 
